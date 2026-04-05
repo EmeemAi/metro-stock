@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetroMLStock - Gestión de Instrumentos</title>
+    <meta name="description" content="Dashboard para la gestión integral de estado y calibración de instrumentos de medición.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Icons (Lucide) -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <i data-lucide="scale-3d" class="logo-icon"></i>
+                <h2>MetroMLStock</h2>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item active"><i data-lucide="layout-dashboard"></i> Gestión de Equipos</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn btn-outline" id="btn-export">
+                    <i data-lucide="download"></i> Exportar CSV
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="top-header">
+                <div class="header-left">
+                    <button class="btn-menu no-print" id="btn-menu-toggle">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <div>
+                        <h1>Estado de Calibraciones</h1>
+                        <p class="subtitle">Gestiona el ciclo de vida de los equipos de medición.</p>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <div class="alert-badge" id="low-stock-alert" style="display: none;">
+                        <i data-lucide="alert-triangle"></i>
+                        <span>Stock Bajo</span>
+                    </div>
+                    <button class="btn btn-primary" id="btn-new-equipo">
+                        <i data-lucide="plus"></i> Nuevo Equipo
+                    </button>
+                </div>
+            </header>
+
+            <!-- KPI Cards -->
+            <section class="kpi-grid">
+                <div class="kpi-card stock-disponible">
+                    <div class="kpi-icon"><i data-lucide="check-circle"></i></div>
+                    <div class="kpi-info">
+                        <h3>Stock Disponible</h3>
+                        <p class="kpi-value" id="count-disponible">0</p>
+                    </div>
+                </div>
+                <div class="kpi-card stock-reservado">
+                    <div class="kpi-icon"><i data-lucide="clock"></i></div>
+                    <div class="kpi-info">
+                        <h3>Reservado (Cert. Pendiente)</h3>
+                        <p class="kpi-value" id="count-reservado">0</p>
+                    </div>
+                </div>
+                <div class="kpi-card stock-entregado">
+                    <div class="kpi-icon"><i data-lucide="truck"></i></div>
+                    <div class="kpi-info">
+                        <h3>Equipos Entregados</h3>
+                        <p class="kpi-value" id="count-entregado">0</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Table Controls -->
+            <section class="toolbar">
+                <div class="search-box">
+                    <i data-lucide="search"></i>
+                    <input type="text" id="search-input" placeholder="Buscar por ID, Modelo, Serie, Cliente o Certificado...">
+                </div>
+                <div class="filters">
+                    <button class="filter-btn active" data-filter="ALL">Todos</button>
+                    <button class="filter-btn" data-filter="DISPONIBLE">Disponibles</button>
+                    <button class="filter-btn" data-filter="RESERVADO">Reservados</button>
+                    <button class="filter-btn" data-filter="ENTREGADO">Entregados</button>
+                </div>
+            </section>
+
+            <!-- Datatable -->
+            <section class="table-container">
+                <table id="instrumentos-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Marca / Modelo</th>
+                            <th>Nº Serie</th>
+                            <th>Estado</th>
+                            <th>Fecha Cal.</th>
+                            <th>Certificado</th>
+                            <th>Cliente</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody id="table-body">
+                        <!-- Rows will be populated by JS -->
+                    </tbody>
+                </table>
+                <div id="loading-state" class="empty-state">
+                    <div class="spinner"></div>
+                    <p>Sincronizando con Google Sheets...</p>
+                </div>
+                <div id="empty-state" class="empty-state" style="display: none;">
+                    <i data-lucide="folder-open"></i>
+                    <p>No se encontraron registros.</p>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal Nuevo Equipo -->
+    <div id="modal-nuevo" class="modal-overlay">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Ingresar Nuevo Equipo Calibrado</h2>
+                <button class="btn-close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-nuevo">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>ID Autogenerado</label>
+                            <input type="text" id="nuevo-id" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre del Instrumento</label>
+                            <input type="text" id="nuevo-nombre" required placeholder="Ej. Calibrador de Proceso">
+                        </div>
+                        <div class="form-group">
+                            <label>Marca</label>
+                            <input type="text" id="nuevo-marca" required placeholder="Ej. Fluke">
+                        </div>
+                        <div class="form-group">
+                            <label>Modelo</label>
+                            <input type="text" id="nuevo-modelo" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Número de Serie</label>
+                            <input type="text" id="nuevo-serie" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha Inicial Calibración</label>
+                            <input type="date" id="nuevo-fecha" required>
+                        </div>
+                    </div>
+                    
+                    <h3 class="section-title">Puntos de Medición</h3>
+                    <div class="table-puntos-container">
+                        <table class="table-puntos">
+                            <thead>
+                                <tr>
+                                    <th>Punto</th>
+                                    <th>Variable</th>
+                                    <th>Unidad</th>
+                                    <th>Referencia</th>
+                                    <th>Instrumento</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbody-puntos">
+                                <!-- Generado por JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-outline" id="btn-add-punto" style="margin-top: 0.5rem; font-size: 0.75rem;">
+                        <i data-lucide="plus"></i> Añadir otro punto
+                    </button>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline btn-close-action">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-save-nuevo">Generar Entrada</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Cambio Estado -->
+    <div id="modal-estado" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="modal-estado-title">Actualizar Estado</h2>
+                <button class="btn-close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="context-info" id="estado-context">
+                    <!-- Info inyectada por JS -->
+                </div>
+                <form id="form-estado">
+                    <input type="hidden" id="estado-id">
+                    <input type="hidden" id="estado-target">
+                    
+                    <!-- Campos Dinámicos (Mostrar/Ocultar por JS) -->
+                    <div id="fields-reservado" class="dynamic-fields" style="display:none;">
+                        <div class="alert alert-warning">
+                            Vas a marcar este equipo como RESERVADO. Es obligatorio generar su número de certificado.
+                        </div>
+                        <div class="form-group">
+                            <label>Nº de Certificado</label>
+                            <input type="text" id="estado-certificado" placeholder="Ej. CERT-2026-X">
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de Calibración Actualizada</label>
+                            <input type="date" id="estado-fecha">
+                        </div>
+                    </div>
+
+                    <div id="fields-entregado" class="dynamic-fields" style="display:none;">
+                        <div class="alert alert-info">
+                            Vas a marcar este equipo como ENTREGADO. Ingresa el nombre del cliente final.
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre del Cliente / Empresa</label>
+                            <input type="text" id="estado-cliente" placeholder="Nombre completo">
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline btn-close-action">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-save-estado">Confirmar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Ficha Técnica Imprimible -->
+    <div id="modal-ficha" class="modal-overlay">
+        <div class="modal-content print-sheet">
+            <div class="modal-header no-print">
+                <h2>Ficha del Instrumento</h2>
+                <div class="header-actions">
+                    <button class="btn btn-outline" onclick="window.print()"><i data-lucide="printer"></i> Imprimir</button>
+                    <button class="btn-close"><i data-lucide="x"></i></button>
+                </div>
+            </div>
+            <div class="modal-body printable-ficha">
+                <!-- Zona Imprimible -->
+                <div class="ficha-header">
+                    <h2>FICHA DE MEDICIONES Y CALIBRACIÓN</h2>
+                    <div class="ficha-id" id="ficha-id">ID: ---</div>
+                </div>
+                
+                <div class="ficha-section">
+                    <h3>1. Información del Equipo</h3>
+                    <div class="ficha-grid">
+                        <div class="ficha-item"><span>Instrumento:</span> <strong id="ficha-instrumento">---</strong></div>
+                        <div class="ficha-item"><span>Marca:</span> <strong id="ficha-marca">---</strong></div>
+                        <div class="ficha-item"><span>Modelo:</span> <strong id="ficha-modelo">---</strong></div>
+                        <div class="ficha-item"><span>Nº Serie:</span> <strong id="ficha-serie">---</strong></div>
+                    </div>
+                </div>
+
+                <div class="ficha-section">
+                    <h3>2. Trazabilidad Operativa</h3>
+                    <div class="ficha-grid">
+                        <div class="ficha-item"><span>Estado:</span> <strong id="ficha-estado">---</strong></div>
+                        <div class="ficha-item"><span>Fecha Calibración:</span> <strong id="ficha-fecha">---</strong></div>
+                        <div class="ficha-item"><span>Certificado:</span> <strong id="ficha-certificado">---</strong></div>
+                        <div class="ficha-item"><span>Cliente:</span> <strong id="ficha-cliente">---</strong></div>
+                    </div>
+                </div>
+
+                <div class="ficha-section">
+                    <h3>3. Resultados de Medición</h3>
+                    <table class="table-puntos ficha-table">
+                        <thead>
+                            <tr>
+                                <th>Punto</th>
+                                <th>Magnitud</th>
+                                <th>Unidad</th>
+                                <th>Valor Referencia</th>
+                                <th>Valor Instrumento</th>
+                            </tr>
+                        </thead>
+                        <tbody id="ficha-tbody-puntos">
+                            <!-- Inyectado por JS -->
+                        </tbody>
+                    </table>
+                </div>
+
+
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
