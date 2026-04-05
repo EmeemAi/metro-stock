@@ -56,17 +56,25 @@ document.addEventListener('DOMContentLoaded', () => {
     // Formularios
     document.getElementById('form-nuevo').addEventListener('submit', handleFormNuevo);
     document.getElementById('form-estado').addEventListener('submit', handleFormEstado);
+    document.getElementById('form-edit').addEventListener('submit', handleFormEdit);
     document.getElementById('btn-add-punto').addEventListener('click', addPuntoRow);
+    document.getElementById('btn-add-punto-edit').addEventListener('click', () => addPuntoRowEdit());
     
     // Tabla de botones dinámicos (Delegación de eventos)
     document.getElementById('table-body').addEventListener('click', (e) => {
-        const btn = e.target.closest('.btn-change-state');
-        if(btn) {
-            const id = btn.getAttribute('data-id');
-            const targetState = btn.getAttribute('data-target-state');
+        const btnState = e.target.closest('.btn-change-state');
+        if(btnState) {
+            const id = btnState.getAttribute('data-id');
+            const targetState = btnState.getAttribute('data-target-state');
             openModalEstado(id, targetState);
         }
         
+        const btnEdit = e.target.closest('.btn-edit-equipo');
+        if(btnEdit) {
+            const id = btnEdit.getAttribute('data-id');
+            openModalEdit(id);
+        }
+
         const btnFicha = e.target.closest('.btn-view-ficha');
         if(btnFicha) {
             const id = btnFicha.getAttribute('data-id');
@@ -128,20 +136,17 @@ async function fetchData() {
     }
 }
 
-async function saveNewRecord(record) {
+async function saveFullUpdate(record) {
     if(GOOGLE_SHEETS_API_URL !== '') {
         const response = await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
-            body: JSON.stringify({ action: 'create', data: record })
-            // Nota de seguridad: Google Apps Script POST requiere 'text/plain' body si hay CORS,
-            // y mode: 'no-cors' pero dificulta leer la respuesta. 
-            // Para simplificar, asumimos configuración abierta.
+            body: JSON.stringify({ action: 'update_full', data: record })
         });
         return await response.json();
     } else {
-        // Guardar en Mock Local
-        await new Promise(r => setTimeout(r, 800)); // Simulando red
-        mockDatabase.unshift(record);
+        await new Promise(r => setTimeout(r, 800));
+        const index = mockDatabase.findIndex(x => x.id === record.id);
+        if(index > -1) mockDatabase[index] = record;
         appState.data = [...mockDatabase];
         return { success: true };
     }
@@ -234,18 +239,14 @@ function renderTable() {
             const certText = item.certificado ? item.certificado : '<span class="null-text">N/A</span>';
             const clienteText = item.cliente ? item.cliente : '<span class="null-text">Sin Asignar</span>';
             
-            // Acciones según estado
-            let actionsHTML = `<div style="display: flex; gap: 0.25rem;">
-                <button class="btn btn-outline btn-icon-only btn-view-ficha" data-id="${item.id}" title="Ver Ficha y Mediciones" style="padding: 0.35rem;"><i data-lucide="eye"></i></button>
+            const actionsHTML = `
+                <div style="display: flex; gap: 0.25rem;">
+                    <button class="btn btn-outline btn-icon-only btn-view-ficha" data-id="${item.id}" title="Ver Ficha"><i data-lucide="eye"></i></button>
+                    <button class="btn btn-outline btn-icon-only btn-edit-equipo" data-id="${item.id}" title="Editar Equipo" style="color: var(--warning); border-color: var(--warning);"><i data-lucide="edit-2"></i></button>
+                    ${item.estado === 'DISPONIBLE' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="RESERVADO" title="Vender">Vender <i data-lucide="arrow-right"></i></button>` : ''}
+                    ${item.estado === 'RESERVADO' ? `<button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar">Entregar <i data-lucide="truck"></i></button>` : ''}
+                </div>
             `;
-            if(item.estado === 'DISPONIBLE') {
-                actionsHTML += `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="RESERVADO" title="Marcar como Reservado y Asignar Certificado">Vender / Reservar <i data-lucide="arrow-right"></i></button>`;
-            } else if (item.estado === 'RESERVADO') {
-                actionsHTML += `<button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar al Cliente">Entregar <i data-lucide="truck"></i></button>`;
-            } else {
-                actionsHTML += `<span class="null-text" style="display:flex; align-items:center;">Ciclo Cerrado</span>`;
-            }
-            actionsHTML += `</div>`;
 
             tr.innerHTML = `
                 <td><strong>${item.id}</strong></td>
@@ -417,9 +418,7 @@ async function handleFormEstado(e) {
 
     closeAllModals();
     renderTable();
-    updateKPIs();
-
-    btn.disabled = false;
+        btn.disabled = false;
     btn.innerText = 'Confirmar';
 }
 
@@ -467,4 +466,86 @@ function openModalFicha(id) {
     }
 
     modal.classList.add('active');
+}
+
+function openModalEdit(id) {
+    const item = appState.data.find(x => x.id === id);
+    if(!item) return;
+
+    document.getElementById('edit-id').value = item.id;
+    document.getElementById('edit-instrumento').value = item.instrumento || '';
+    document.getElementById('edit-marca').value = item.marca || '';
+    document.getElementById('edit-modelo').value = item.modelo || '';
+    document.getElementById('edit-serie').value = item.serie || '';
+    document.getElementById('edit-fecha').value = item.fecha_calibracion || '';
+    document.getElementById('edit-estado').value = item.estado;
+    document.getElementById('edit-certificado').value = item.certificado || '';
+    document.getElementById('edit-cliente').value = item.cliente || '';
+
+    // Puntos
+    const tbody = document.getElementById('edit-tbody-puntos');
+    tbody.innerHTML = '';
+    let puntos = [];
+    try { if(item.puntos) puntos = JSON.parse(item.puntos); } catch(e) {}
+    
+    puntos.forEach((p, idx) => {
+        addPuntoRowEdit(p);
+    });
+
+    document.getElementById('modal-edit').classList.add('active');
+}
+
+function addPuntoRowEdit(existingData = null) {
+    const tbody = document.getElementById('edit-tbody-puntos');
+    const tr = document.createElement('tr');
+    const idx = tbody.children.length + 1;
+    
+    tr.innerHTML = `
+        <td><input type="text" class="input-tiny" name="pt-name" value="${existingData ? existingData.pt : 'PT'+idx}" required></td>
+        <td><input type="text" class="input-med" name="pt-var" value="${existingData ? existingData.variable : ''}" placeholder="Ej. Temp" required></td>
+        <td><input type="text" class="input-tiny" name="pt-unit" value="${existingData ? existingData.unidad : ''}" placeholder="Ej. °C" required></td>
+        <td><input type="number" step="any" name="pt-ref" value="${existingData ? existingData.ref : ''}" required></td>
+        <td><input type="number" step="any" name="pt-inst" value="${existingData ? existingData.inst : ''}" required></td>
+        <td><button type="button" class="btn-icon text-danger" onclick="this.closest('tr').remove()"><i data-lucide="trash-2"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+    lucide.createIcons();
+}
+
+async function handleFormEdit(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-edit');
+    btn.disabled = true;
+    btn.innerText = 'Guardando...';
+
+    const record = {
+        id: document.getElementById('edit-id').value,
+        instrumento: document.getElementById('edit-instrumento').value,
+        marca: document.getElementById('edit-marca').value,
+        modelo: document.getElementById('edit-modelo').value,
+        serie: document.getElementById('edit-serie').value,
+        fecha_calibracion: document.getElementById('edit-fecha').value,
+        estado: document.getElementById('edit-estado').value,
+        certificado: document.getElementById('edit-certificado').value,
+        cliente: document.getElementById('edit-cliente').value
+    };
+
+    const puntos = [];
+    document.querySelectorAll('#edit-tbody-puntos tr').forEach(tr => {
+        puntos.push({
+            pt: tr.querySelector('input[name="pt-name"]').value,
+            variable: tr.querySelector('input[name="pt-var"]').value,
+            unidad: tr.querySelector('input[name="pt-unit"]').value,
+            ref: tr.querySelector('input[name="pt-ref"]').value,
+            inst: tr.querySelector('input[name="pt-inst"]').value
+        });
+    });
+    record.puntos = JSON.stringify(puntos);
+
+    await saveFullUpdate(record);
+    await fetchData(); // Recargar datos frescos
+    
+    closeAllModals();
+    btn.disabled = false;
+    btn.innerText = 'Guardar Cambios';
 }

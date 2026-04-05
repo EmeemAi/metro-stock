@@ -241,6 +241,88 @@
         </div>
     </div>
 
+    <!-- Modal Edición de Equipo (Nuevo) -->
+    <div id="modal-edit" class="modal-overlay">
+        <div class="modal-content large">
+            <div class="modal-header">
+                <h2>Editar Información del Equipo</h2>
+                <button class="btn-close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <form id="form-edit">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label>ID del Equipo (Solo Lectura)</label>
+                            <input type="text" id="edit-id" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label>Instrumento / Magnitud</label>
+                            <input type="text" id="edit-instrumento" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Marca</label>
+                            <input type="text" id="edit-marca" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Modelo</label>
+                            <input type="text" id="edit-modelo" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Número de Serie</label>
+                            <input type="text" id="edit-serie" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Fecha de Calibración</label>
+                            <input type="date" id="edit-fecha" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Estado Activo</label>
+                            <select id="edit-estado">
+                                <option value="DISPONIBLE">DISPONIBLE</option>
+                                <option value="RESERVADO">RESERVADO</option>
+                                <option value="ENTREGADO">ENTREGADO</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Nº de Certificado</label>
+                            <input type="text" id="edit-certificado" placeholder="Ej. CERT-123">
+                        </div>
+                        <div class="form-group">
+                            <label>Nombre del Cliente</label>
+                            <input type="text" id="edit-cliente" placeholder="---">
+                        </div>
+                    </div>
+                    
+                    <h3 class="section-title">Actualizar Puntos de Medición</h3>
+                    <div class="table-puntos-container">
+                        <table class="table-puntos">
+                            <thead>
+                                <tr>
+                                    <th>Punto</th>
+                                    <th>Variable</th>
+                                    <th>Unidad</th>
+                                    <th>Referencia</th>
+                                    <th>Instrumento</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody id="edit-tbody-puntos">
+                                <!-- Generado dinámicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-outline" id="btn-add-punto-edit" style="margin-top: 0.5rem; font-size: 0.75rem;">
+                        <i data-lucide="plus"></i> Añadir otro punto
+                    </button>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline btn-close-action">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-save-edit">Guardar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Ficha Técnica Imprimible -->
     <div id="modal-ficha" class="modal-overlay">
         <div class="modal-content print-sheet">
