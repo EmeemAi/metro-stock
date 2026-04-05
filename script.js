@@ -132,7 +132,6 @@ async function fetchData() {
         appState.loading = false;
         updateUIState();
         renderTable();
-        updateKPIs();
     }
 }
 
@@ -191,23 +190,7 @@ function updateUIState() {
     }
 }
 
-function updateKPIs() {
-    const dis = appState.data.filter(i => i.estado === 'DISPONIBLE').length;
-    const res = appState.data.filter(i => i.estado === 'RESERVADO').length;
-    const ent = appState.data.filter(i => i.estado === 'ENTREGADO').length;
 
-    document.getElementById('count-disponible').textContent = dis;
-    document.getElementById('count-reservado').textContent = res;
-    document.getElementById('count-entregado').textContent = ent;
-
-    // Lógica de alerta (Ejemplo: menos de 2 equipos disponibles en stock total)
-    // En una app real, agruparíamos por modelo.
-    if(dis < 2 && dis > 0) {
-        document.getElementById('low-stock-alert').style.display = 'flex';
-    } else {
-        document.getElementById('low-stock-alert').style.display = 'none';
-    }
-}
 
 function renderTable() {
     const tbody = document.getElementById('table-body');
@@ -391,7 +374,6 @@ async function handleFormNuevo(e) {
     
     closeAllModals();
     renderTable();
-    updateKPIs();
     
     btn.disabled = false;
     btn.innerText = 'Generar Entrada';
@@ -418,7 +400,7 @@ async function handleFormEstado(e) {
 
     closeAllModals();
     renderTable();
-        btn.disabled = false;
+    btn.disabled = false;
     btn.innerText = 'Confirmar';
 }
 
