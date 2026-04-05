@@ -3217,11 +3217,21 @@ let appState = {
     loading: false,
     filter: 'ALL',
     search: '',
+    displayLimit: 50,
     charts: {
         states: null,
         instruments: null
     }
 };
+
+// Función auxiliar para debounce
+function debounce(func, timeout = 300) {
+    let timer;
+    return (...args) => {
+        clearTimeout(timer);
+        timer = setTimeout(() => { func.apply(this, args); }, timeout);
+    };
+}
 
 // ==========================================
 // INICIALIZACIÓN
@@ -3244,10 +3254,13 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', closeAllModals);
     });
 
-    // Búsqueda y Filtros
+    // Búsqueda y Filtros con Debounce
+    const debouncedRender = debounce(() => renderTable());
+    
     document.getElementById('search-input').addEventListener('input', (e) => {
         appState.search = e.target.value.toLowerCase();
-        renderTable();
+        appState.displayLimit = 50; // Resetear límite al buscar
+        debouncedRender();
     });
 
     document.querySelectorAll('.filter-btn').forEach(btn => {
@@ -3255,6 +3268,7 @@ document.addEventListener('DOMContentLoaded', () => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             appState.filter = e.target.getAttribute('data-filter');
+            appState.displayLimit = 50; // Resetear límite al filtrar
             renderTable();
         });
     });
@@ -3462,7 +3476,10 @@ function renderTable() {
     } else {
         emptyState.style.display = 'none';
         
-        filtered.forEach(item => {
+        // Aplicar límite de visualización
+        const itemsToShow = filtered.slice(0, appState.displayLimit);
+        
+        itemsToShow.forEach(item => {
             const tr = document.createElement('tr');
             
             // Textos vacíos
@@ -3495,8 +3512,28 @@ function renderTable() {
             `;
             tbody.appendChild(tr);
         });
-        // Reinicializar iconos para los nuevos botones inyectados
-        lucide.createIcons();
+
+        // Botón Cargar Más si hay más por mostrar
+        if (filtered.length > appState.displayLimit) {
+            const trLoad = document.createElement('tr');
+            trLoad.innerHTML = `
+                <td colspan="8" style="text-align: center; background: var(--bg-soft);">
+                    <button class="btn btn-outline" id="btn-load-more" style="width: 200px; margin: 1rem auto;">
+                        Cargar más (${filtered.length - appState.displayLimit} restantes)
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(trLoad);
+            document.getElementById('btn-load-more').addEventListener('click', () => {
+                appState.displayLimit += 50;
+                renderTable();
+            });
+        }
+
+        // Reinicializar iconos SOLO en el tbody para no escanear toda la página
+        lucide.createIcons({
+            parent: tbody
+        });
     }
 }
 
