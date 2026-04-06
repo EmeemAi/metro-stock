@@ -174,6 +174,23 @@ async function updateStateRecord(id, newState, extraData) {
     }
 }
 
+async function saveNewRecord(record) {
+    if(GOOGLE_SHEETS_API_URL !== '') {
+        const response = await fetch(GOOGLE_SHEETS_API_URL, {
+            method: 'POST',
+            body: JSON.stringify({ action: 'create', data: record })
+        });
+        return await response.json();
+    } else {
+        // En Mock Local
+        await new Promise(r => setTimeout(r, 800));
+        mockDatabase.push(record);
+        appState.data = [...mockDatabase];
+        return { success: true };
+    }
+}
+
+
 // ==========================================
 // RENDERIZADO UI
 // ==========================================
@@ -344,40 +361,47 @@ async function handleFormNuevo(e) {
     btn.disabled = true;
     btn.innerText = 'Guardando...';
 
-    const record = {
-        id: document.getElementById('nuevo-id').value,
-        instrumento: document.getElementById('nuevo-nombre').value,
-        marca: document.getElementById('nuevo-marca').value,
-        modelo: document.getElementById('nuevo-modelo').value,
-        serie: document.getElementById('nuevo-serie').value,
-        fecha_calibracion: document.getElementById('nuevo-fecha').value,
-        estado: 'DISPONIBLE',
-        certificado: '',
-        cliente: ''
-    };
+    try {
+        const record = {
+            id: document.getElementById('nuevo-id').value,
+            instrumento: document.getElementById('nuevo-nombre').value,
+            marca: document.getElementById('nuevo-marca').value,
+            modelo: document.getElementById('nuevo-modelo').value,
+            serie: document.getElementById('nuevo-serie').value,
+            fecha_calibracion: document.getElementById('nuevo-fecha').value,
+            estado: 'DISPONIBLE',
+            certificado: '',
+            cliente: ''
+        };
 
-    // Recoger puntos 
-    const puntos = [];
-    const trs = document.querySelectorAll('#tbody-puntos tr');
-    trs.forEach((tr) => {
-        puntos.push({
-            pt: tr.querySelector('input[name="pt-name"]').value,
-            variable: tr.querySelector('input[name="pt-var"]').value,
-            unidad: tr.querySelector('input[name="pt-unit"]').value,
-            ref: tr.querySelector('input[name="pt-ref"]').value,
-            inst: tr.querySelector('input[name="pt-inst"]').value
+        // Recoger puntos 
+        const puntos = [];
+        const trs = document.querySelectorAll('#tbody-puntos tr');
+        trs.forEach((tr) => {
+            puntos.push({
+                pt: tr.querySelector('input[name="pt-name"]').value,
+                variable: tr.querySelector('input[name="pt-var"]').value,
+                unidad: tr.querySelector('input[name="pt-unit"]').value,
+                ref: tr.querySelector('input[name="pt-ref"]').value,
+                inst: tr.querySelector('input[name="pt-inst"]').value
+            });
         });
-    });
-    record.puntos = JSON.stringify(puntos); // JSON de puntos con magnitudes
+        record.puntos = JSON.stringify(puntos); // JSON de puntos con magnitudes
 
-    await saveNewRecord(record);
-    
-    closeAllModals();
-    renderTable();
-    
-    btn.disabled = false;
-    btn.innerText = 'Generar Entrada';
+        await saveNewRecord(record);
+        
+        closeAllModals();
+        renderTable();
+        alert("Equipo guardado con éxito.");
+    } catch (error) {
+        console.error("Error al guardar nuevo registro:", error);
+        alert("Hubo un error al guardar el registro. Por favor, inténtalo de nuevo.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Generar Entrada';
+    }
 }
+
 
 async function handleFormEstado(e) {
     e.preventDefault();
@@ -385,24 +409,32 @@ async function handleFormEstado(e) {
     btn.disabled = true;
     btn.innerText = 'Procesando...';
 
-    const id = document.getElementById('estado-id').value;
-    const targetState = document.getElementById('estado-target').value;
-    
-    let extraData = {};
-    if(targetState === 'RESERVADO') {
-        extraData.certificado = document.getElementById('estado-certificado').value;
-        extraData.fecha = document.getElementById('estado-fecha').value;
-    } else if (targetState === 'ENTREGADO') {
-        extraData.cliente = document.getElementById('estado-cliente').value;
+    try {
+        const id = document.getElementById('estado-id').value;
+        const targetState = document.getElementById('estado-target').value;
+        
+        let extraData = {};
+        if(targetState === 'RESERVADO') {
+            extraData.certificado = document.getElementById('estado-certificado').value;
+            extraData.fecha = document.getElementById('estado-fecha').value;
+        } else if (targetState === 'ENTREGADO') {
+            extraData.cliente = document.getElementById('estado-cliente').value;
+        }
+
+        await updateStateRecord(id, targetState, extraData);
+
+        closeAllModals();
+        renderTable();
+        alert("Estado actualizado con éxito.");
+    } catch (error) {
+        console.error("Error al actualizar estado:", error);
+        alert("Hubo un error al actualizar el estado. Por favor, inténtalo de nuevo.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Confirmar';
     }
-
-    await updateStateRecord(id, targetState, extraData);
-
-    closeAllModals();
-    renderTable();
-    btn.disabled = false;
-    btn.innerText = 'Confirmar';
 }
+
 
 function openModalFicha(id) {
     const modal = document.getElementById('modal-ficha');
@@ -500,34 +532,41 @@ async function handleFormEdit(e) {
     btn.disabled = true;
     btn.innerText = 'Guardando...';
 
-    const record = {
-        id: document.getElementById('edit-id').value,
-        instrumento: document.getElementById('edit-instrumento').value,
-        marca: document.getElementById('edit-marca').value,
-        modelo: document.getElementById('edit-modelo').value,
-        serie: document.getElementById('edit-serie').value,
-        fecha_calibracion: document.getElementById('edit-fecha').value,
-        estado: document.getElementById('edit-estado').value,
-        certificado: document.getElementById('edit-certificado').value,
-        cliente: document.getElementById('edit-cliente').value
-    };
+    try {
+        const record = {
+            id: document.getElementById('edit-id').value,
+            instrumento: document.getElementById('edit-instrumento').value,
+            marca: document.getElementById('edit-marca').value,
+            modelo: document.getElementById('edit-modelo').value,
+            serie: document.getElementById('edit-serie').value,
+            fecha_calibracion: document.getElementById('edit-fecha').value,
+            estado: document.getElementById('edit-estado').value,
+            certificado: document.getElementById('edit-certificado').value,
+            cliente: document.getElementById('edit-cliente').value
+        };
 
-    const puntos = [];
-    document.querySelectorAll('#edit-tbody-puntos tr').forEach(tr => {
-        puntos.push({
-            pt: tr.querySelector('input[name="pt-name"]').value,
-            variable: tr.querySelector('input[name="pt-var"]').value,
-            unidad: tr.querySelector('input[name="pt-unit"]').value,
-            ref: tr.querySelector('input[name="pt-ref"]').value,
-            inst: tr.querySelector('input[name="pt-inst"]').value
+        const puntos = [];
+        document.querySelectorAll('#edit-tbody-puntos tr').forEach(tr => {
+            puntos.push({
+                pt: tr.querySelector('input[name="pt-name"]').value,
+                variable: tr.querySelector('input[name="pt-var"]').value,
+                unidad: tr.querySelector('input[name="pt-unit"]').value,
+                ref: tr.querySelector('input[name="pt-ref"]').value,
+                inst: tr.querySelector('input[name="pt-inst"]').value
+            });
         });
-    });
-    record.puntos = JSON.stringify(puntos);
+        record.puntos = JSON.stringify(puntos);
 
-    await saveFullUpdate(record);
-    await fetchData(); // Recargar datos frescos
-    
-    closeAllModals();
-    btn.disabled = false;
-    btn.innerText = 'Guardar Cambios';
+        await saveFullUpdate(record);
+        await fetchData(); // Recargar datos frescos
+        
+        closeAllModals();
+        alert("Cambios guardados con éxito.");
+    } catch (error) {
+        console.error("Error al editar registro:", error);
+        alert("Hubo un error al guardar los cambios. Por favor, inténtalo de nuevo.");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Guardar Cambios';
+    }
 }
