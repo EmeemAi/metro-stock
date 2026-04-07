@@ -277,8 +277,22 @@ function closeAllModals() {
 function openModalNuevo() {
     const modal = document.getElementById('modal-nuevo');
     
-    // Generar ID
-    const newId = 'INST-' + Math.floor(Math.random() * 10000).toString().padStart(4, '0');
+    // Generar ID Correlativo
+    let lastNum = 999;
+    if(appState.data && appState.data.length > 0) {
+        const ids = appState.data.map(item => {
+            const match = String(item.id).match(/\d+/);
+            return match ? parseInt(match[0]) : 0;
+        });
+        const maxIdNum = Math.max(...ids);
+        if(maxIdNum >= 1000) lastNum = maxIdNum;
+        else if (maxIdNum > 0 && maxIdNum < 1000) {
+             // Si hay IDs menores a 1000, seguimos desde el mayor o desde 999.
+             // El usuario pidió que empiecen con 1000.
+             lastNum = 999; 
+        }
+    }
+    const newId = 'INST-' + (lastNum + 1);
     document.getElementById('nuevo-id').value = newId;
 
     // Generar Tabla Puntos (Ej: 1 punto inicial por defecto)
@@ -300,7 +314,6 @@ function addPuntoRow() {
     tr.id = `punto-row-${window.puntoCount}`;
     tr.innerHTML = `
         <td><input type="text" class="input-tiny" name="pt-name" value="PT${window.puntoCount}" required></td>
-        <td><input type="text" class="input-med" name="pt-var" placeholder="Ej. Temp" required></td>
         <td><input type="text" class="input-tiny" name="pt-unit" placeholder="Ej. °C" required></td>
         <td><input type="number" step="any" name="pt-ref" required></td>
         <td><input type="number" step="any" name="pt-inst" required></td>
@@ -380,7 +393,7 @@ async function handleFormNuevo(e) {
         trs.forEach((tr) => {
             puntos.push({
                 pt: tr.querySelector('input[name="pt-name"]').value,
-                variable: tr.querySelector('input[name="pt-var"]').value,
+                variable: '', // Se deja vacío ya que se eliminó del form
                 unidad: tr.querySelector('input[name="pt-unit"]').value,
                 ref: tr.querySelector('input[name="pt-ref"]').value,
                 inst: tr.querySelector('input[name="pt-inst"]').value
@@ -470,7 +483,6 @@ function openModalFicha(id) {
             const tr = document.createElement('tr');
             tr.innerHTML = `
                 <td><strong>${p.pt}</strong></td>
-                <td>${p.variable || '---'}</td>
                 <td>${p.unidad || '-'}</td>
                 <td>${p.ref || '-'}</td>
                 <td>${p.inst || '-'}</td>
@@ -516,7 +528,6 @@ function addPuntoRowEdit(existingData = null) {
     
     tr.innerHTML = `
         <td><input type="text" class="input-tiny" name="pt-name" value="${existingData ? existingData.pt : 'PT'+idx}" required></td>
-        <td><input type="text" class="input-med" name="pt-var" value="${existingData ? existingData.variable : ''}" placeholder="Ej. Temp" required></td>
         <td><input type="text" class="input-tiny" name="pt-unit" value="${existingData ? existingData.unidad : ''}" placeholder="Ej. °C" required></td>
         <td><input type="number" step="any" name="pt-ref" value="${existingData ? existingData.ref : ''}" required></td>
         <td><input type="number" step="any" name="pt-inst" value="${existingData ? existingData.inst : ''}" required></td>
@@ -549,7 +560,7 @@ async function handleFormEdit(e) {
         document.querySelectorAll('#edit-tbody-puntos tr').forEach(tr => {
             puntos.push({
                 pt: tr.querySelector('input[name="pt-name"]').value,
-                variable: tr.querySelector('input[name="pt-var"]').value,
+                variable: '', // Se deja vacío ya que se eliminó del form
                 unidad: tr.querySelector('input[name="pt-unit"]').value,
                 ref: tr.querySelector('input[name="pt-ref"]').value,
                 inst: tr.querySelector('input[name="pt-inst"]').value
