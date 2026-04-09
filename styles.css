@@ -1093,7 +1093,15 @@ td:nth-child(6)  /* Cert */ {
     display: flex;
     flex-direction: column;
     gap: 1rem;
+    height: 340px; /* Altura fija para estabilidad */
+    overflow: hidden;
 }
+
+.chart-container-card canvas {
+    max-height: 260px !important;
+    width: 100% !important;
+}
+
 
 .chart-container-card h3 {
     font-size: 0.8rem;

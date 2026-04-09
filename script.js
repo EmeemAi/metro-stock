@@ -298,7 +298,7 @@ function updateDashboard() {
                         <span class="alert-model">${item.name}</span>
                         <span class="alert-reason">${reason}</span>
                     </div>
-                    <div class="alert-action-badge">${item.disponible === 0 ? 'Reponer Ya' : 'Comprar'}</div>
+                    <div class="alert-action-badge">${item.disponible === 0 ? 'Reponer Ya' : 'Reponer'}</div>
                 `;
                 replenishmentList.appendChild(div);
             });
@@ -313,8 +313,8 @@ function updateDashboard() {
             .map(([name, s]) => ({ name, count: s.entregado }))
             .filter(s => s.count > 0)
             .sort((a, b) => b.count - a.count)
-            .slice(0, 8); // Top 8
-
+            .slice(0, 5); // Top 5 para mayor estabilidad
+        
         if(salesChart) salesChart.destroy();
         
         salesChart = new Chart(ctx, {
@@ -332,12 +332,25 @@ function updateDashboard() {
                 indexAxis: 'y',
                 responsive: true,
                 maintainAspectRatio: false,
+                animation: {
+                    duration: 500 // Animación más rápida para evitar percepción de lentitud
+                },
                 plugins: {
                     legend: { display: false }
                 },
                 scales: {
-                    x: { beginAtZero: true, grid: { display: false } },
-                    y: { grid: { display: false } }
+                    x: { 
+                        beginAtZero: true, 
+                        grid: { display: false },
+                        ticks: { stepSize: 1 } 
+                    },
+                    y: { 
+                        grid: { display: false },
+                        ticks: {
+                            autoSkip: false,
+                            font: { size: 10 }
+                        }
+                    }
                 }
             }
         });
