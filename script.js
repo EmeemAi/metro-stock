@@ -212,6 +212,7 @@ function updateUIState() {
 function renderTable() {
     const tbody = document.getElementById('table-body');
     const emptyState = document.getElementById('empty-state');
+    const summaryContainer = document.getElementById('available-summary');
     tbody.innerHTML = '';
 
     // Filtrar
@@ -226,6 +227,39 @@ function renderTable() {
         }
         return true;
     });
+
+    // Gestión del Resumen de Disponibles
+    if (appState.filter === 'DISPONIBLE' && filtered.length > 0) {
+        const counts = {};
+        filtered.forEach(item => {
+            const key = `${item.marca} ${item.modelo}`.toUpperCase();
+            counts[key] = (counts[key] || 0) + 1;
+        });
+
+        let summaryHTML = `
+            <div class="summary-title"><i data-lucide="bar-chart-2" style="width:14px;"></i> Resumen de Stock Disponible</div>
+            <div class="summary-grid">
+        `;
+        
+        // Ordenar por cantidad descendente
+        Object.entries(counts)
+            .sort((a, b) => b[1] - a[1])
+            .forEach(([key, count]) => {
+                summaryHTML += `
+                    <div class="summary-card" title="${key}">
+                        <span class="summary-label">${key}</span>
+                        <span class="summary-count">${count} ${count === 1 ? 'u' : 'u'}</span>
+                    </div>
+                `;
+            });
+        
+        summaryHTML += `</div>`;
+        summaryContainer.innerHTML = summaryHTML;
+        summaryContainer.style.display = 'flex';
+    } else {
+        summaryContainer.style.display = 'none';
+        summaryContainer.innerHTML = '';
+    }
 
     if (filtered.length === 0 && !appState.loading) {
         emptyState.style.display = 'flex';
