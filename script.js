@@ -105,7 +105,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
         });
     }
+
+    // Navegación del Sistema (Vistas)
+    document.getElementById('nav-gestion').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchView('gestion');
+    });
+    document.getElementById('nav-stats').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchView('stats');
+    });
 });
+
 
 // ==========================================
 // OPERACIONES DE DATOS (Simulando API)
@@ -132,8 +143,10 @@ async function fetchData() {
         appState.loading = false;
         updateUIState();
         renderTable();
+        updateDashboard(); // Actualizar indicadores globales
     }
 }
+
 
 async function saveFullUpdate(record) {
     if(GOOGLE_SHEETS_API_URL !== '') {
@@ -189,6 +202,148 @@ async function saveNewRecord(record) {
         return { success: true };
     }
 }
+
+// ==========================================
+// VISTAS Y NAVEGACIÓN
+// ==========================================
+function switchView(view) {
+    const gestionView = [
+        document.querySelector('.toolbar'),
+        document.querySelector('.table-container'),
+        document.getElementById('available-summary')
+    ];
+    const statsView = document.getElementById('bi-dashboard');
+    const navItems = document.querySelectorAll('.nav-item');
+    const pageTitle = document.getElementById('page-title');
+    const pageSubtitle = document.getElementById('page-subtitle');
+    const btnNew = document.getElementById('btn-new-equipo');
+    
+    navItems.forEach(n => n.classList.remove('active'));
+
+    if(view === 'gestion') {
+        document.getElementById('nav-gestion').classList.add('active');
+        gestionView.forEach(v => { if(v) v.style.display = 'flex'; });
+        statsView.style.display = 'none';
+        btnNew.style.display = 'inline-flex';
+        pageTitle.innerText = "Gestión de Inventario";
+        pageSubtitle.innerText = "gestiona el stock de instrumentos con certificado para entrega inmediata";
+    } else {
+        document.getElementById('nav-stats').classList.add('active');
+        gestionView.forEach(v => { if(v) v.style.display = 'none'; });
+        statsView.style.display = 'flex';
+        btnNew.style.display = 'none';
+        pageTitle.innerText = "Inteligencia de Negocio";
+        pageSubtitle.innerText = "Análisis de demanda y necesidades de reposición";
+        updateDashboard();
+    }
+    lucide.createIcons();
+}
+
+let salesChart = null;
+
+function updateDashboard() {
+    const biSection = document.getElementById('bi-dashboard');
+    if(biSection.style.display === 'none' && !appState.loading) {
+         // Si no estamos viendo el dashboard, solo calculamos los números básicos para los KPIs si fuera necesario, 
+         // pero los gráficos Chart.js requieren que el canvas sea visible.
+    }
+
+    if(!appState.data || appState.data.length === 0) return;
+
+    // 1. Cálculos de Ventas y Reposición
+    const stats = {};
+    let totalAvailable = 0;
+    let totalVentas = 0;
+
+    appState.data.forEach(item => {
+        const key = `${item.marca} ${item.modelo}`.toUpperCase();
+        if(!stats[key]) stats[key] = { disponible: 0, entregado: 0 };
+        
+        if(item.estado === 'DISPONIBLE') {
+            stats[key].disponible++;
+            totalAvailable++;
+        } else if (item.estado === 'ENTREGADO') {
+            stats[key].entregado++;
+            totalVentas++;
+        }
+    });
+
+    // 2. Actualizar KPIs
+    document.getElementById('kpi-disponible').innerText = totalAvailable;
+    document.getElementById('kpi-ventas').innerText = totalVentas;
+
+    // 3. Radar de Reposición (Lógica Crítica)
+    const replenishmentList = document.getElementById('replenishment-list');
+    replenishmentList.innerHTML = '';
+    
+    const criticalItems = Object.entries(stats)
+        .map(([name, s]) => ({ name, ...s }))
+        .filter(s => s.entregado > 0 && s.disponible < 2) // Menos de 2 unidades y con historial de ventas
+        .sort((a,b) => b.entregado - a.entregado); // Ordenar por demanda
+
+    document.getElementById('kpi-reposicion').innerText = criticalItems.length;
+
+    if(biSection.style.display !== 'none') {
+        if(criticalItems.length === 0) {
+            replenishmentList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted);">No hay alertas críticas de reposición.</p>';
+        } else {
+            criticalItems.forEach(item => {
+                const priorityClass = item.disponible === 0 ? 'priority-high' : 'priority-medium';
+                const reason = item.disponible === 0 ? `Sin stock y se han vendido ${item.entregado}` : `Solo ${item.disponible} en stock y se han vendido ${item.entregado}`;
+                
+                const div = document.createElement('div');
+                div.className = `alert-item ${priorityClass}`;
+                div.innerHTML = `
+                    <div class="alert-info-text">
+                        <span class="alert-model">${item.name}</span>
+                        <span class="alert-reason">${reason}</span>
+                    </div>
+                    <div class="alert-action-badge">${item.disponible === 0 ? 'Reponer Ya' : 'Comprar'}</div>
+                `;
+                replenishmentList.appendChild(div);
+            });
+        }
+
+        // 4. Gráfico de Ventas (Top Demand)
+        const canvas = document.getElementById('chart-sales');
+        if(!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        const salesData = Object.entries(stats)
+            .map(([name, s]) => ({ name, count: s.entregado }))
+            .filter(s => s.count > 0)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 8); // Top 8
+
+        if(salesChart) salesChart.destroy();
+        
+        salesChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: salesData.map(d => d.name),
+                datasets: [{
+                    label: 'Unidades Vendidas',
+                    data: salesData.map(d => d.count),
+                    backgroundColor: '#2563eb',
+                    borderRadius: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { beginAtZero: true, grid: { display: false } },
+                    y: { grid: { display: false } }
+                }
+            }
+        });
+    }
+}
+
 
 
 // ==========================================

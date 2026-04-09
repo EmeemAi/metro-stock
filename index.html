@@ -11,6 +11,8 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <!-- Icons (Lucide) -->
     <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Charts (Chart.js) -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -23,7 +25,8 @@
                 <h2>MetroMLStock</h2>
             </div>
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active"><i data-lucide="layout-dashboard"></i> Gestión de Equipos</a>
+                <a href="#" class="nav-item active" id="nav-gestion"><i data-lucide="layout-dashboard"></i> Gestión de Equipos</a>
+                <a href="#" class="nav-item" id="nav-stats"><i data-lucide="bar-chart-3"></i> Inteligencia de Negocio</a>
             </nav>
             <div class="sidebar-footer">
                 <button class="btn btn-outline" id="btn-export">
@@ -41,17 +44,58 @@
                         <i data-lucide="menu"></i>
                     </button>
                     <div>
-                        <h1>Estado de Calibraciones</h1>
-                        <p class="subtitle">gestiona el stock de instrumentos con certificado para entrega inmediata</p>
+                        <h1 id="page-title">Gestión de Inventario</h1>
+                        <p class="subtitle" id="page-subtitle">gestiona el stock de instrumentos con certificado para entrega inmediata</p>
                     </div>
                 </div>
                 <div class="header-actions">
-
                     <button class="btn btn-primary" id="btn-new-equipo">
                         <i data-lucide="plus"></i> Nuevo Equipo
                     </button>
                 </div>
             </header>
+
+            <!-- Dashboard de Inteligencia de Negocio (BI) -->
+            <section id="bi-dashboard" style="display: none; flex-direction: column; gap: 1.5rem;">
+                <!-- KPIs Rápidos -->
+                <div class="kpi-grid">
+                    <div class="kpi-card stock-disponible">
+                        <div class="kpi-icon"><i data-lucide="package"></i></div>
+                        <div class="kpi-info">
+                            <h3>En Stock</h3>
+                            <div class="kpi-value" id="kpi-disponible">0</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card stock-entregado">
+                        <div class="kpi-icon"><i data-lucide="shopping-cart"></i></div>
+                        <div class="kpi-info">
+                            <h3>Ventas Totales</h3>
+                            <div class="kpi-value" id="kpi-ventas">0</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card stock-reservado">
+                        <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
+                        <div class="kpi-info">
+                            <h3>Sugerencia Reposición</h3>
+                            <div class="kpi-value" id="kpi-reposicion">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gráficos y Alertas -->
+                <div class="bi-charts-grid">
+                    <div class="chart-container-card">
+                        <h3><i data-lucide="trending-up"></i> Equipos Más Vendidos (Demanda)</h3>
+                        <canvas id="chart-sales"></canvas>
+                    </div>
+                    <div class="chart-container-card">
+                        <h3><i data-lucide="alert-octagon"></i> Radar de Reposición (Críticos)</h3>
+                        <div id="replenishment-list" class="alert-list">
+                            <!-- Inyectado por JS -->
+                        </div>
+                    </div>
+                </div>
+            </section>
 
 
 
