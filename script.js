@@ -207,12 +207,8 @@ async function saveNewRecord(record) {
 // VISTAS Y NAVEGACIÓN
 // ==========================================
 function switchView(view) {
-    const gestionView = [
-        document.querySelector('.toolbar'),
-        document.querySelector('.table-container'),
-        document.getElementById('available-summary')
-    ];
-    const statsView = document.getElementById('bi-dashboard');
+    const viewGestion = document.getElementById('view-gestion');
+    const viewStats = document.getElementById('bi-dashboard');
     const navItems = document.querySelectorAll('.nav-item');
     const pageTitle = document.getElementById('page-title');
     const pageSubtitle = document.getElementById('page-subtitle');
@@ -222,16 +218,16 @@ function switchView(view) {
 
     if(view === 'gestion') {
         document.getElementById('nav-gestion').classList.add('active');
-        gestionView.forEach(v => { if(v) v.style.display = 'flex'; });
-        statsView.style.display = 'none';
-        btnNew.style.display = 'inline-flex';
+        if(viewGestion) viewGestion.style.display = 'flex';
+        if(viewStats) viewStats.style.display = 'none';
+        if(btnNew) btnNew.style.display = 'inline-flex';
         pageTitle.innerText = "Gestión de Inventario";
         pageSubtitle.innerText = "gestiona el stock de instrumentos con certificado para entrega inmediata";
     } else {
         document.getElementById('nav-stats').classList.add('active');
-        gestionView.forEach(v => { if(v) v.style.display = 'none'; });
-        statsView.style.display = 'flex';
-        btnNew.style.display = 'none';
+        if(viewGestion) viewGestion.style.display = 'none';
+        if(viewStats) viewStats.style.display = 'flex';
+        if(btnNew) btnNew.style.display = 'none';
         pageTitle.innerText = "Inteligencia de Negocio";
         pageSubtitle.innerText = "Análisis de demanda y necesidades de reposición";
         updateDashboard();

@@ -99,54 +99,57 @@
 
 
 
-            <!-- Table Controls -->
-            <section class="toolbar">
-                <div class="search-box">
-                    <i data-lucide="search"></i>
-                    <input type="text" id="search-input" placeholder="Buscar por ID, Modelo, Serie, Cliente o Certificado...">
-                </div>
-                <div class="filters">
-                    <button class="filter-btn active" data-filter="ALL">Todos</button>
-                    <button class="filter-btn" data-filter="DISPONIBLE">Disponibles</button>
-                    <button class="filter-btn" data-filter="RESERVADO">Reservados</button>
-                    <button class="filter-btn" data-filter="ENTREGADO">Entregados</button>
-                </div>
+            <!-- Vista de Gestión -->
+            <section id="view-gestion" style="display: flex; flex-direction: column; gap: 1.5rem;">
+                <!-- Table Controls -->
+                <section class="toolbar">
+                    <div class="search-box">
+                        <i data-lucide="search"></i>
+                        <input type="text" id="search-input" placeholder="Buscar por ID, Modelo, Serie, Cliente o Certificado...">
+                    </div>
+                    <div class="filters">
+                        <button class="filter-btn active" data-filter="ALL">Todos</button>
+                        <button class="filter-btn" data-filter="DISPONIBLE">Disponibles</button>
+                        <button class="filter-btn" data-filter="RESERVADO">Reservados</button>
+                        <button class="filter-btn" data-filter="ENTREGADO">Entregados</button>
+                    </div>
+                </section>
+
+                <!-- Resumen de Disponibles (Dinámico) -->
+                <section id="available-summary" class="summary-container" style="display: none;">
+                    <!-- Inyectado por JS -->
+                </section>
+
+                <!-- Datatable -->
+                <section class="table-container">
+                    <table id="instrumentos-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Marca / Modelo</th>
+                                <th>Nº Serie</th>
+                                <th>Estado</th>
+                                <th>Fecha Cal.</th>
+                                <th>Certificado</th>
+                                <th>Cliente</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-body">
+                            <!-- Rows will be populated by JS -->
+                        </tbody>
+                    </table>
+                    <div id="loading-state" class="empty-state">
+                        <div class="spinner"></div>
+                        <p>Sincronizando con Google Sheets...</p>
+                    </div>
+                    <div id="empty-state" class="empty-state" style="display: none;">
+                        <i data-lucide="folder-open"></i>
+                        <p>No se encontraron registros.</p>
+                    </div>
+                </section>
             </section>
 
-            <!-- Resumen de Disponibles (Dinámico) -->
-            <section id="available-summary" class="summary-container" style="display: none;">
-                <!-- Inyectado por JS -->
-            </section>
-
-
-            <!-- Datatable -->
-            <section class="table-container">
-                <table id="instrumentos-table">
-                    <thead>
-                        <tr>
-                            <th>ID</th>
-                            <th>Marca / Modelo</th>
-                            <th>Nº Serie</th>
-                            <th>Estado</th>
-                            <th>Fecha Cal.</th>
-                            <th>Certificado</th>
-                            <th>Cliente</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody id="table-body">
-                        <!-- Rows will be populated by JS -->
-                    </tbody>
-                </table>
-                <div id="loading-state" class="empty-state">
-                    <div class="spinner"></div>
-                    <p>Sincronizando con Google Sheets...</p>
-                </div>
-                <div id="empty-state" class="empty-state" style="display: none;">
-                    <i data-lucide="folder-open"></i>
-                    <p>No se encontraron registros.</p>
-                </div>
-            </section>
         </main>
     </div>
 
