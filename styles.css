@@ -67,7 +67,7 @@ body {
     border-right: 1px solid var(--border-color);
     display: flex;
     flex-direction: column;
-    z-index: 10;
+    z-index: 100;
 }
 
 .sidebar-header {
@@ -901,6 +901,7 @@ td:nth-child(6)  /* Cert */ {
         bottom: 0;
         transition: left 0.3s ease;
         box-shadow: 10px 0 30px rgba(0,0,0,0.1);
+        z-index: 100;
     }
 
     .sidebar.active {
@@ -983,7 +984,7 @@ td:nth-child(6)  /* Cert */ {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
     background: rgba(0,0,0,0.3);
-    z-index: 5;
+    z-index: 90;
 }
 
 .sidebar-overlay.active {
