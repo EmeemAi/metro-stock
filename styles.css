@@ -1,35 +1,39 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    /* Linear-Inspired Dark Palette */
-    --bg-main: #0A0A0B;
-    --bg-card: #121214;
-    --bg-sidebar: #0A0A0B;
+    /* Enterprise / Corporate Tech Palette */
+    --bg-main: #f3f4f6;       /* Solid gray background */
+    --bg-card: #ffffff;       /* Pure white for panels */
+    --bg-sidebar: #ffffff;    /* White sidebar for cleaner look */
     
-    --text-primary: #EDEDED;
-    --text-secondary: #A1A1AA;
-    --text-muted: #52525B;
+    --text-primary: #111827;  /* High contrast black/gray */
+    --text-secondary: #4b5563;/* Medium gray for labels */
+    --text-muted: #9ca3af;    /* Light gray for disabled/subtle text */
     
-    --border-color: #27272A;
-    --border-strong: #3F3F46;
+    --border-color: #d1d5db;  /* Crisp borders */
+    --border-strong: #9ca3af;
     
-    --primary: #3B82F6;
-    --primary-hover: #4F46E5;
+    /* Brand Accent - Deep Corporate Navy */
+    --primary: #0f4c81;       /* Classic Pantone Classic Blue / Navy */
+    --primary-hover: #0a365c;
     
-    --state-disponible: #10B981;
-    --state-disponible-bg: rgba(16, 185, 129, 0.15);
+    /* Strict State Colors */
+    --state-disponible: #059669; /* Solid Emerald */
+    --state-disponible-bg: #ecfdf5;
     
-    --state-reservado: #F59E0B;
-    --state-reservado-bg: rgba(245, 158, 11, 0.15);
+    --state-reservado: #d97706; /* Solid Amber/Orange */
+    --state-reservado-bg: #fffbeb;
     
-    --state-entregado: #3B82F6;
-    --state-entregado-bg: rgba(59, 130, 246, 0.15);
+    --state-entregado: #2563eb; /* Corporate Blue */
+    --state-entregado-bg: #eff6ff;
 
-    --radius-sm: 8px;
-    --radius-md: 16px;
-    --shadow-solid: 0 4px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-    --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    /* Metrics: Geometric and Solid */
+    --radius-sm: 2px; /* Very sharp corners */
+    --radius-md: 4px; /* Slight rounding for some containers */
+    --shadow-solid: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+    --transition: 0.15s ease-in-out;
     
+    /* Typography */
     --font-ui: 'Inter', system-ui, sans-serif;
     --font-data: 'JetBrains Mono', monospace;
 }
@@ -108,12 +112,12 @@ body {
 }
 
 .nav-item:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: #f9fafb;
     color: var(--text-primary);
 }
 
 .nav-item.active {
-    background-color: rgba(59, 130, 246, 0.15);
+    background-color: #eff6ff;
     color: var(--primary);
     border-left: 3px solid var(--primary);
 }
@@ -197,14 +201,14 @@ body {
 }
 
 .btn-outline {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: #ffffff;
     border-color: var(--border-color);
     color: var(--text-primary);
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .btn-outline:hover {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: #f9fafb;
     border-color: var(--border-strong);
 }
 
@@ -233,7 +237,7 @@ body {
 }
 
 .kpi-card.stock-disponible { border-left-color: var(--state-disponible); }
-.kpi-card.stock-reservado { border-left-color: var(--state-reservado); }
+.kpi-card.stock-reservado { border-left-color: #f59e0b; }
 .kpi-card.stock-entregado { border-left-color: var(--state-entregado); }
 
 .kpi-icon {
@@ -300,7 +304,7 @@ body {
 
 .search-box input {
     width: 100%;
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: #ffffff;
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 0.4rem 1rem 0.4rem 2rem;
@@ -342,7 +346,7 @@ body {
 }
 
 .filter-btn.active {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: #ffffff;
     color: var(--text-primary);
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
@@ -368,7 +372,7 @@ table {
 thead {
     position: sticky;
     top: 0;
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: #f9fafb;
     z-index: 10;
 }
 
@@ -406,7 +410,7 @@ tbody tr:nth-child(even) {
 }
 
 tbody tr:hover {
-    background-color: rgba(59, 130, 246, 0.15); /* Highlight row on hover */
+    background-color: #eff6ff; /* Highlight row on hover */
 }
 
 /* Monospaced Data columns */
@@ -550,7 +554,7 @@ td:nth-child(6)  /* Cert */ {
     gap: 0.5rem;
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--border-color);
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: #f9fafb;
     border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
@@ -577,7 +581,7 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .form-group input {
-    background-color: rgba(255, 255, 255, 0.08);
+    background-color: #ffffff;
     border: 1px solid var(--border-strong);
     color: var(--text-primary);
     padding: 0.4rem 0.5rem;
@@ -678,19 +682,19 @@ td:nth-child(6)  /* Cert */ {
 .alert-warning {
     background-color: #fffbeb;
     border: 1px solid #fde68a;
-    border-left-color: var(--state-reservado);
+    border-left-color: #f59e0b;
     color: #92400e;
 }
 
 .alert-info {
-    background-color: rgba(59, 130, 246, 0.15);
+    background-color: #eff6ff;
     border: 1px solid #bfdbfe;
     border-left-color: #3b82f6;
     color: #1e3a8a;
 }
 
 .context-info {
-    background: var(--bg-main);
+    background: #f8fafc;
     padding: 0.75rem;
     border-radius: var(--radius-sm);
     margin-bottom: 1.25rem;
@@ -787,7 +791,7 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .ficha-table th {
-    background-color: rgba(255, 255, 255, 0.05);
+    background-color: #f9fafb;
     color: var(--text-secondary);
 }
 
@@ -1037,7 +1041,7 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .summary-card {
-    background: var(--bg-main);
+    background: #f8fafc;
     border: 1px solid var(--border-color);
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-sm);
@@ -1048,7 +1052,7 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .summary-card:hover {
-    background: rgba(255,255,255,0.1);
+    background: #f1f5f9;
     border-color: #cbd5e1;
 }
 
@@ -1125,14 +1129,14 @@ td:nth-child(6)  /* Cert */ {
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem;
-    background: var(--bg-card);
+    background: #fff;
     border: 1px solid var(--border-color);
     border-left: 4px solid #ef4444;
     border-radius: var(--radius-sm);
 }
 
-.alert-item.priority-high { border-left-color: #f87171; background: rgba(248, 113, 113, 0.1); }
-.alert-item.priority-medium { border-left-color: var(--state-reservado); background: var(--state-reservado-bg); }
+.alert-item.priority-high { border-left-color: #ef4444; background: #fef2f2; }
+.alert-item.priority-medium { border-left-color: #f59e0b; background: #fffbeb; }
 
 .alert-info-text {
     display: flex;

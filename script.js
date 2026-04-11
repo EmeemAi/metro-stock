@@ -320,7 +320,7 @@ function updateDashboard() {
                 datasets: [{
                     label: 'Unidades Vendidas',
                     data: salesData.map(d => d.count),
-                    backgroundColor: '#3B82F6', /* Dark mode blue */
+                    backgroundColor: '#2563eb',
                     borderRadius: 4
                 }]
             },
@@ -338,13 +338,12 @@ function updateDashboard() {
                     x: { 
                         beginAtZero: true, 
                         grid: { display: false },
-                        ticks: { stepSize: 1, color: '#A1A1AA' } 
+                        ticks: { stepSize: 1 } 
                     },
                     y: { 
                         grid: { display: false },
                         ticks: {
                             autoSkip: false,
-                            color: '#EDEDED',
                             font: { size: 10 }
                         }
                     }
