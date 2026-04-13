@@ -602,7 +602,7 @@ async function handleFormNuevo(e) {
         await saveNewRecord(record);
         
         closeAllModals();
-        renderTable();
+        await fetchData(); // Recargar datos para evitar duplicados en memoria
         alert("Equipo guardado con éxito.");
     } catch (error) {
         console.error("Error al guardar nuevo registro:", error);
@@ -635,7 +635,7 @@ async function handleFormEstado(e) {
         await updateStateRecord(id, targetState, extraData);
 
         closeAllModals();
-        renderTable();
+        await fetchData(); // Recargar datos frescos
         alert("Estado actualizado con éxito.");
     } catch (error) {
         console.error("Error al actualizar estado:", error);
