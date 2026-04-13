@@ -80,6 +80,12 @@ document.addEventListener('DOMContentLoaded', () => {
             const id = btnFicha.getAttribute('data-id');
             openModalFicha(id);
         }
+
+        const btnDuplicate = e.target.closest('.btn-duplicate-equipo');
+        if(btnDuplicate) {
+            const id = btnDuplicate.getAttribute('data-id');
+            openModalDuplicate(id);
+        }
     });
     // Mobile Menu Toggle
     const btnMenu = document.getElementById('btn-menu-toggle');
@@ -441,6 +447,7 @@ function renderTable() {
                 <div style="display: flex; gap: 0.25rem;">
                     <button class="btn btn-outline btn-icon-only btn-view-ficha" data-id="${item.id}" title="Ver Ficha"><i data-lucide="eye"></i></button>
                     <button class="btn btn-outline btn-icon-only btn-edit-equipo" data-id="${item.id}" title="Editar Equipo" style="color: var(--warning); border-color: var(--warning);"><i data-lucide="edit-2"></i></button>
+                    <button class="btn btn-outline btn-icon-only btn-duplicate-equipo" data-id="${item.id}" title="Duplicar Equipo"><i data-lucide="copy"></i></button>
                     ${item.estado === 'DISPONIBLE' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="RESERVADO" title="Vender">Vender <i data-lucide="arrow-right"></i></button>` : ''}
                     ${item.estado === 'RESERVADO' ? `<button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar">Entregar <i data-lucide="truck"></i></button>` : ''}
                 </div>
@@ -519,6 +526,44 @@ function addPuntoRow() {
     `;
     tbody.appendChild(tr);
     lucide.createIcons();
+}
+
+function openModalDuplicate(id) {
+    const item = appState.data.find(x => x.id === id);
+    if(!item) return;
+
+    openModalNuevo(); 
+    
+    document.getElementById('nuevo-nombre').value = item.instrumento || '';
+    document.getElementById('nuevo-marca').value = item.marca || '';
+    document.getElementById('nuevo-modelo').value = item.modelo || '';
+    document.getElementById('nuevo-serie').value = ''; 
+    
+    const tbody = document.getElementById('tbody-puntos');
+    tbody.innerHTML = '';
+    window.puntoCount = 0;
+    
+    let puntos = [];
+    try { if (item.puntos) puntos = JSON.parse(item.puntos); } catch(e) {}
+    
+    if (puntos.length === 0) {
+        addPuntoRow();
+    } else {
+        puntos.forEach((p) => {
+            window.puntoCount++;
+            const tr = document.createElement('tr');
+            tr.id = `punto-row-${window.puntoCount}`;
+            tr.innerHTML = `
+                <td><input type="text" class="input-tiny" name="pt-name" value="${p.pt}" required></td>
+                <td><input type="text" class="input-tiny" name="pt-unit" value="${p.unidad || ''}" placeholder="Ej. °C" required></td>
+                <td><input type="number" step="any" name="pt-ref" value="${p.ref || ''}" required></td>
+                <td><input type="number" step="any" name="pt-inst" value="${p.inst || ''}" required></td>
+                <td><button type="button" class="btn-icon text-danger" onclick="this.closest('tr').remove()" title="Eliminar"><i data-lucide="trash-2"></i></button></td>
+            `;
+            tbody.appendChild(tr);
+        });
+        lucide.createIcons();
+    }
 }
 
 function openModalEstado(id, targetState) {
