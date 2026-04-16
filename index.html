@@ -29,6 +29,9 @@
                 <a href="#" class="nav-item" id="nav-stats"><i data-lucide="bar-chart-3"></i> Inteligencia de Negocio</a>
             </nav>
             <div class="sidebar-footer">
+                <button class="btn btn-outline" id="btn-toggle-theme" style="margin-bottom: 0.5rem; width: 100%;">
+                    <i data-lucide="moon"></i> <span id="theme-text">Modo Mate</span>
+                </button>
                 <button class="btn btn-outline" id="btn-export">
                     <i data-lucide="download"></i> Exportar CSV
                 </button>
@@ -243,8 +246,9 @@
                             <input type="text" id="estado-certificado" placeholder="Ej. CERT-2026-X">
                         </div>
                         <div class="form-group">
-                            <label>Fecha de Calibración Actualizada</label>
+                            <label>Verificar / Actualizar Fecha de Calibración</label>
                             <input type="date" id="estado-fecha">
+                            <small style="color:var(--text-secondary); font-size:0.75rem;">Asegúrate de que esta sea la fecha correcta.</small>
                         </div>
                     </div>
 

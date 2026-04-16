@@ -84,7 +84,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const btnDuplicate = e.target.closest('.btn-duplicate-equipo');
         if(btnDuplicate) {
             const id = btnDuplicate.getAttribute('data-id');
-            openModalDuplicate(id);
+            const index = btnDuplicate.getAttribute('data-index');
+            openModalDuplicate(id, index);
         }
     });
     // Mobile Menu Toggle
@@ -121,7 +122,37 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         switchView('stats');
     });
+
+    // Gestión de Tema (Modo Mate)
+    const btnTheme = document.getElementById('btn-toggle-theme');
+    const savedTheme = localStorage.getItem('theme');
+    
+    if (savedTheme === 'matte') {
+        document.body.classList.add('theme-matte');
+        updateThemeToggleUI(true);
+    }
+
+    btnTheme.addEventListener('click', () => {
+        const isMatte = document.body.classList.toggle('theme-matte');
+        localStorage.setItem('theme', isMatte ? 'matte' : 'light');
+        updateThemeToggleUI(isMatte);
+    });
 });
+
+function updateThemeToggleUI(isMatte) {
+    const themeText = document.getElementById('theme-text');
+    const btnTheme = document.getElementById('btn-toggle-theme');
+    if (themeText && btnTheme) {
+        if (isMatte) {
+            themeText.innerText = 'Modo Claro';
+            btnTheme.querySelector('i').setAttribute('data-lucide', 'sun');
+        } else {
+            themeText.innerText = 'Modo Mate';
+            btnTheme.querySelector('i').setAttribute('data-lucide', 'moon');
+        }
+        lucide.createIcons();
+    }
+}
 
 
 // ==========================================
@@ -447,7 +478,7 @@ function renderTable() {
                 <div style="display: flex; gap: 0.25rem;">
                     <button class="btn btn-outline btn-icon-only btn-view-ficha" data-id="${item.id}" title="Ver Ficha"><i data-lucide="eye"></i></button>
                     <button class="btn btn-outline btn-icon-only btn-edit-equipo" data-id="${item.id}" title="Editar Equipo" style="color: var(--warning); border-color: var(--warning);"><i data-lucide="edit-2"></i></button>
-                    <button class="btn btn-outline btn-icon-only btn-duplicate-equipo" data-id="${item.id}" title="Duplicar Equipo"><i data-lucide="copy"></i></button>
+                    <button class="btn btn-outline btn-icon-only btn-duplicate-equipo" data-id="${item.id}" data-index="${appState.data.indexOf(item)}" title="Duplicar Equipo"><i data-lucide="copy"></i></button>
                     ${item.estado === 'DISPONIBLE' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="RESERVADO" title="Vender">Vender <i data-lucide="arrow-right"></i></button>` : ''}
                     ${item.estado === 'RESERVADO' ? `<button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar">Entregar <i data-lucide="truck"></i></button>` : ''}
                 </div>
@@ -528,8 +559,14 @@ function addPuntoRow() {
     lucide.createIcons();
 }
 
-function openModalDuplicate(id) {
-    const item = appState.data.find(x => x.id === id);
+function openModalDuplicate(id, index = null) {
+    let item;
+    if (index !== null) {
+        item = appState.data[parseInt(index)];
+    } else {
+        item = appState.data.find(x => x.id === id);
+    }
+    
     if(!item) return;
 
     openModalNuevo(); 
@@ -591,14 +628,27 @@ function openModalEstado(id, targetState) {
 
     // Deshacer requerimientos previos
     document.getElementById('estado-certificado').required = false;
-    document.getElementById('estado-fecha').required = false;
     document.getElementById('estado-cliente').required = false;
+    document.getElementById('estado-fecha').required = false;
+
+    // Pre-poblar fecha actual si existe
+    if (item.fecha_calibracion) {
+        if (item.fecha_calibracion.includes('-')) {
+            document.getElementById('estado-fecha').value = item.fecha_calibracion;
+        } else if (item.fecha_calibracion.includes('/')) {
+            const parts = item.fecha_calibracion.split('/');
+            if (parts.length === 3) {
+                document.getElementById('estado-fecha').value = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+        }
+    } else {
+        document.getElementById('estado-fecha').valueAsDate = new Date();
+    }
 
     if (targetState === 'RESERVADO') {
         fReservado.style.display = 'block';
         document.getElementById('estado-certificado').required = true;
         document.getElementById('estado-fecha').required = true;
-        document.getElementById('estado-fecha').valueAsDate = new Date();
     } 
     else if (targetState === 'ENTREGADO') {
         fEntregado.style.display = 'block';

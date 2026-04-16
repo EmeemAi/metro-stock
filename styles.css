@@ -1,41 +1,89 @@
 @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-    /* Enterprise / Corporate Tech Palette */
-    --bg-main: #f3f4f6;       /* Solid gray background */
-    --bg-card: #ffffff;       /* Pure white for panels */
-    --bg-sidebar: #ffffff;    /* White sidebar for cleaner look */
+    /* Main Backgrounds */
+    --bg-main: #f3f4f6;
+    --bg-card: #ffffff;
+    --bg-sidebar: #ffffff;
+    --bg-sidebar-active: #eff6ff;
+    --bg-sidebar-hover: #f9fafb;
     
-    --text-primary: #111827;  /* High contrast black/gray */
-    --text-secondary: #4b5563;/* Medium gray for labels */
-    --text-muted: #9ca3af;    /* Light gray for disabled/subtle text */
+    /* Text Colors */
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #9ca3af;
     
-    --border-color: #d1d5db;  /* Crisp borders */
+    /* Borders */
+    --border-color: #d1d5db;
     --border-strong: #9ca3af;
+    --border-focus: rgba(15, 76, 129, 0.15);
     
-    /* Brand Accent - Deep Corporate Navy */
-    --primary: #0f4c81;       /* Classic Pantone Classic Blue / Navy */
+    /* Brand Accent */
+    --primary: #0f4c81;
     --primary-hover: #0a365c;
     
-    /* Strict State Colors */
-    --state-disponible: #059669; /* Solid Emerald */
+    /* State Colors */
+    --state-disponible: #059669;
     --state-disponible-bg: #ecfdf5;
-    
-    --state-reservado: #d97706; /* Solid Amber/Orange */
+    --state-reservado: #d97706;
     --state-reservado-bg: #fffbeb;
-    
-    --state-entregado: #2563eb; /* Corporate Blue */
+    --state-entregado: #2563eb;
     --state-entregado-bg: #eff6ff;
 
-    /* Metrics: Geometric and Solid */
-    --radius-sm: 2px; /* Very sharp corners */
-    --radius-md: 4px; /* Slight rounding for some containers */
+    /* Metrics */
+    --radius-sm: 2px;
+    --radius-md: 4px;
     --shadow-solid: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+    --modal-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    --modal-overlay-bg: rgba(17, 24, 39, 0.4);
+    
+    /* Table specific */
+    --table-zebra: #f8fafc;
+    --table-hover: #eff6ff;
+    --table-header-bg: #f9fafb;
+    
     --transition: 0.15s ease-in-out;
     
     /* Typography */
     --font-ui: 'Inter', system-ui, sans-serif;
     --font-data: 'JetBrains Mono', monospace;
+}
+
+/* Matte Premium Theme (Serio, Mate, Profesional) */
+.theme-matte {
+    --bg-main: #0f0f0f;
+    --bg-card: #1a1a1a;
+    --bg-sidebar: #141414;
+    --bg-sidebar-active: #262626;
+    --bg-sidebar-hover: #1e1e1e;
+    
+    --text-primary: #eeeeee;
+    --text-secondary: #a1a1aa;
+    --text-muted: #52525b;
+    
+    --border-color: #262626;
+    --border-strong: #404040;
+    --border-focus: rgba(37, 99, 235, 0.2);
+    
+    --primary: #2b59c3;
+    --primary-hover: #1e40af;
+    
+    --state-disponible: #10b981;
+    --state-disponible-bg: rgba(16, 185, 129, 0.1);
+    --state-reservado: #f59e0b;
+    --state-reservado-bg: rgba(245, 158, 11, 0.1);
+    --state-entregado: #3b82f6;
+    --state-entregado-bg: rgba(59, 130, 246, 0.1);
+
+    --shadow-solid: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
+    --modal-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+    --modal-overlay-bg: rgba(0, 0, 0, 0.85);
+    
+    --table-zebra: #161616;
+    --table-hover: #222222;
+    --table-header-bg: #1c1c1c;
+
+    background-color: var(--bg-main);
 }
 
 * {
@@ -112,12 +160,12 @@ body {
 }
 
 .nav-item:hover {
-    background-color: #f9fafb;
+    background-color: var(--bg-sidebar-hover);
     color: var(--text-primary);
 }
 
 .nav-item.active {
-    background-color: #eff6ff;
+    background-color: var(--bg-sidebar-active);
     color: var(--primary);
     border-left: 3px solid var(--primary);
 }
@@ -201,14 +249,14 @@ body {
 }
 
 .btn-outline {
-    background-color: #ffffff;
+    background-color: var(--bg-card);
     border-color: var(--border-color);
     color: var(--text-primary);
     box-shadow: 0 1px 2px rgba(0,0,0,0.05);
 }
 
 .btn-outline:hover {
-    background-color: #f9fafb;
+    background-color: var(--bg-sidebar-hover);
     border-color: var(--border-strong);
 }
 
@@ -304,7 +352,7 @@ body {
 
 .search-box input {
     width: 100%;
-    background-color: #ffffff;
+    background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     color: var(--text-primary);
     padding: 0.4rem 1rem 0.4rem 2rem;
@@ -346,7 +394,7 @@ body {
 }
 
 .filter-btn.active {
-    background-color: #ffffff;
+    background-color: var(--bg-card);
     color: var(--text-primary);
     box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
@@ -372,7 +420,7 @@ table {
 thead {
     position: sticky;
     top: 0;
-    background-color: #f9fafb;
+    background-color: var(--table-header-bg);
     z-index: 10;
 }
 
@@ -406,11 +454,11 @@ td {
 
 /* Zebra striping for datagrid */
 tbody tr:nth-child(even) {
-    background-color: #f8fafc;
+    background-color: var(--table-zebra);
 }
 
 tbody tr:hover {
-    background-color: #eff6ff; /* Highlight row on hover */
+    background-color: var(--table-hover); /* Highlight row on hover */
 }
 
 /* Monospaced Data columns */
@@ -495,7 +543,7 @@ td:nth-child(6)  /* Cert */ {
     position: fixed;
     backdrop-filter: blur(10px);
     top: 0; left: 0; right: 0; bottom: 0;
-    background-color: rgba(17, 24, 39, 0.4); /* Solid dim */
+    background-color: var(--modal-overlay-bg);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -511,7 +559,7 @@ td:nth-child(6)  /* Cert */ {
     border-radius: var(--radius-md);
     width: 90%;
     max-width: 500px;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--modal-shadow);
     border: 1px solid var(--border-strong);
     display: flex;
     flex-direction: column;
@@ -581,7 +629,7 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .form-group input {
-    background-color: #ffffff;
+    background-color: var(--bg-card);
     border: 1px solid var(--border-strong);
     color: var(--text-primary);
     padding: 0.4rem 0.5rem;
@@ -641,7 +689,7 @@ td:nth-child(6)  /* Cert */ {
 .table-puntos td { 
     padding: 0.35rem 0.5rem; 
     border-bottom: 1px solid var(--border-color); 
-    background: #ffffff;
+    background: var(--bg-card);
 }
 .table-puntos input {
     width: 100%;
@@ -1041,7 +1089,7 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .summary-card {
-    background: #f8fafc;
+    background: var(--table-zebra);
     border: 1px solid var(--border-color);
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-sm);
@@ -1129,7 +1177,7 @@ td:nth-child(6)  /* Cert */ {
     justify-content: space-between;
     align-items: center;
     padding: 0.75rem;
-    background: #fff;
+    background: var(--bg-card);
     border: 1px solid var(--border-color);
     border-left: 4px solid #ef4444;
     border-radius: var(--radius-sm);
