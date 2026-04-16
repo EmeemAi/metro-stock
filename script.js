@@ -143,12 +143,13 @@ function updateThemeToggleUI(isMatte) {
     const themeText = document.getElementById('theme-text');
     const btnTheme = document.getElementById('btn-toggle-theme');
     if (themeText && btnTheme) {
+        const icon = btnTheme.querySelector('[data-lucide]');
         if (isMatte) {
             themeText.innerText = 'Modo Claro';
-            btnTheme.querySelector('i').setAttribute('data-lucide', 'sun');
+            if (icon) icon.setAttribute('data-lucide', 'sun');
         } else {
             themeText.innerText = 'Modo Mate';
-            btnTheme.querySelector('i').setAttribute('data-lucide', 'moon');
+            if (icon) icon.setAttribute('data-lucide', 'moon');
         }
         lucide.createIcons();
     }
