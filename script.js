@@ -322,7 +322,9 @@ function updateDashboard() {
         } else {
             criticalItems.forEach(item => {
                 const priorityClass = item.disponible === 0 ? 'priority-high' : 'priority-medium';
-                const reason = item.disponible === 0 ? `Sin stock y se han vendido ${item.entregado}` : `Solo ${item.disponible} en stock y se han vendido ${item.entregado}`;
+                const reason = item.disponible === 0 
+                    ? `SIN STOCK. Ventas registradas: ${item.entregado}u` 
+                    : `STOCK CRÍTICO (${item.disponible}u). Ventas: ${item.entregado}u`;
                 
                 const div = document.createElement('div');
                 div.className = `alert-item ${priorityClass}`;
@@ -331,7 +333,7 @@ function updateDashboard() {
                         <span class="alert-model">${item.name}</span>
                         <span class="alert-reason">${reason}</span>
                     </div>
-                    <div class="alert-action-badge">${item.disponible === 0 ? 'Reponer Ya' : 'Reponer'}</div>
+                    <div class="alert-action-badge">${item.disponible === 0 ? 'Reponer' : 'Pedir'}</div>
                 `;
                 replenishmentList.appendChild(div);
             });
@@ -342,6 +344,11 @@ function updateDashboard() {
         if(!canvas) return;
         const ctx = canvas.getContext('2d');
         
+        const isMatte = document.body.classList.contains('theme-matte');
+        const chartColor = isMatte ? '#60a5fa' : '#2563eb';
+        const gridColor = isMatte ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+        const textColor = isMatte ? '#a1a1aa' : '#4b5563';
+
         const salesData = Object.entries(stats)
             .map(([name, s]) => ({ name, count: s.entregado }))
             .filter(s => s.count > 0)
@@ -357,7 +364,7 @@ function updateDashboard() {
                 datasets: [{
                     label: 'Unidades Vendidas',
                     data: salesData.map(d => d.count),
-                    backgroundColor: '#2563eb',
+                    backgroundColor: chartColor,
                     borderRadius: 4
                 }]
             },
@@ -366,7 +373,7 @@ function updateDashboard() {
                 responsive: true,
                 maintainAspectRatio: false,
                 animation: {
-                    duration: 500 // Animación más rápida para evitar percepción de lentitud
+                    duration: 500
                 },
                 plugins: {
                     legend: { display: false }
@@ -374,14 +381,15 @@ function updateDashboard() {
                 scales: {
                     x: { 
                         beginAtZero: true, 
-                        grid: { display: false },
-                        ticks: { stepSize: 1 } 
+                        grid: { color: gridColor },
+                        ticks: { stepSize: 1, color: textColor } 
                     },
                     y: { 
                         grid: { display: false },
                         ticks: {
                             autoSkip: false,
-                            font: { size: 10 }
+                            font: { size: 10 },
+                            color: textColor
                         }
                     }
                 }

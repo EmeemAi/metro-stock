@@ -44,6 +44,14 @@
     
     --transition: 0.15s ease-in-out;
     
+    /* Alerts */
+    --alert-high-bg: #fef2f2;
+    --alert-high-border: #ef4444;
+    --alert-high-text: #991b1b;
+    --alert-medium-bg: #fffbeb;
+    --alert-medium-border: #f59e0b;
+    --alert-medium-text: #92400e;
+    
     /* Typography */
     --font-ui: 'Inter', system-ui, sans-serif;
     --font-data: 'JetBrains Mono', monospace;
@@ -82,6 +90,14 @@
     --table-zebra: #161616;
     --table-hover: #222222;
     --table-header-bg: #1c1c1c;
+
+    /* Alerts Mate */
+    --alert-high-bg: rgba(220, 38, 38, 0.15);
+    --alert-high-border: #dc2626;
+    --alert-high-text: #fca5a5;
+    --alert-medium-bg: rgba(217, 119, 6, 0.15);
+    --alert-medium-border: #d97706;
+    --alert-medium-text: #fcd34d;
 
     background-color: var(--bg-main);
 }
@@ -572,7 +588,7 @@ td:nth-child(6)  /* Cert */ {
     justify-content: space-between;
     align-items: center;
     padding: 1rem 1.5rem;
-    background-color: var(--border-color);
+    background-color: var(--table-header-bg);
     border-bottom: 1px solid var(--border-color);
     border-radius: var(--radius-md) var(--radius-md) 0 0;
 }
@@ -1100,8 +1116,8 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .summary-card:hover {
-    background: #f1f5f9;
-    border-color: #cbd5e1;
+    background: var(--table-hover);
+    border-color: var(--border-strong);
 }
 
 .summary-label {
@@ -1179,26 +1195,31 @@ td:nth-child(6)  /* Cert */ {
     padding: 0.75rem;
     background: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-left: 4px solid #ef4444;
+    border-left: 5px solid var(--border-color);
     border-radius: var(--radius-sm);
 }
 
-.alert-item.priority-high { border-left-color: #ef4444; background: #fef2f2; }
-.alert-item.priority-medium { border-left-color: #f59e0b; background: #fffbeb; }
-
-.alert-info-text {
-    display: flex;
-    flex-direction: column;
+.alert-item.priority-high { 
+    border-left-color: var(--alert-high-border); 
+    background-color: var(--alert-high-bg); 
+    color: var(--alert-high-text);
+}
+.alert-item.priority-medium { 
+    border-left-color: var(--alert-medium-border); 
+    background-color: var(--alert-medium-bg); 
+    color: var(--alert-medium-text);
 }
 
 .alert-model {
     font-weight: 700;
     font-size: 0.85rem;
+    color: inherit;
 }
 
 .alert-reason {
     font-size: 0.7rem;
-    color: var(--text-secondary);
+    color: inherit;
+    opacity: 0.8;
 }
 
 .alert-action-badge {
