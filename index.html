@@ -26,7 +26,13 @@
             </div>
             <nav class="sidebar-nav">
                 <a href="#" class="nav-item active" id="nav-gestion"><i data-lucide="layout-dashboard"></i> Gestión de Equipos</a>
-                <a href="#" class="nav-item" id="nav-stats"><i data-lucide="bar-chart-3"></i> Inteligencia de Negocio</a>
+                <a href="#" class="nav-item" id="nav-stats">
+                    <i data-lucide="line-chart"></i> Inteligencia de Negocio
+                </a>
+                <a href="#" class="nav-item" id="nav-solicitudes">
+                    <i data-lucide="inbox"></i> Solicitudes
+                    <span class="notification-badge" id="badge-solicitudes" style="display: none;">0</span>
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <button class="btn btn-outline" id="btn-toggle-theme" style="margin-bottom: 0.5rem; width: 100%;">
@@ -153,6 +159,27 @@
                 </section>
             </section>
 
+            <!-- Vista: Solicitudes Externas -->
+            <section id="view-solicitudes" class="dashboard-view" style="display: none;">
+                <div class="table-container shadow-sm">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Empresa / Cliente</th>
+                                <th>Certificado Solicitado</th>
+                                <th>Email</th>
+                                <th>Estado</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-solicitudes">
+                            <!-- Inyectado por JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
         </main>
     </div>
 
@@ -245,8 +272,6 @@
                             <label>Nº de Certificado</label>
                             <input type="text" id="estado-certificado" placeholder="Ej. CERT-2026-X">
                         </div>
-                        <div class="form-group">
-                            <label>Verificar / Actualizar Fecha de Calibración</label>
                             <input type="date" id="estado-fecha">
                             <small style="color:var(--text-secondary); font-size:0.75rem;">Asegúrate de que esta sea la fecha correcta.</small>
                         </div>

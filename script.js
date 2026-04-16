@@ -3,7 +3,7 @@
  * Cuando tengas tu Web App de Google Apps Script publicada, 
  * pega el enlace aquí.
  */
-const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbzzACLbJLiNwKh9PBkUMi_WZsoXL_WGjsG-5q7KzBpOupXjuXMn3nrDxNs_hAJdJ8jn/exec'; // Ej: 'https://script.google.com/macros/s/AKfycb.../exec'
+const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbxSbic1KW8T9bBgxee4_nhlMpuvj387D37COoyUO9Qs6cS_cERYR_g5ey2fHshxh4ed/exec';
 
 // ==========================================
 // MOCK DATA (Para probar sin Google Sheets)
