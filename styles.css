@@ -709,6 +709,8 @@ td:nth-child(6)  /* Cert */ {
 }
 .table-puntos input {
     width: 100%;
+    background-color: var(--bg-card);
+    color: var(--text-primary);
     border: 1px solid var(--border-color);
     padding: 0.25rem 0.4rem;
     border-radius: var(--radius-sm);
@@ -744,17 +746,17 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .alert-warning {
-    background-color: #fffbeb;
-    border: 1px solid #fde68a;
-    border-left-color: #f59e0b;
-    color: #92400e;
+    background-color: var(--alert-medium-bg);
+    border: 1px solid var(--alert-medium-border);
+    border-left: 3px solid var(--alert-medium-border);
+    color: var(--alert-medium-text);
 }
 
 .alert-info {
-    background-color: #eff6ff;
-    border: 1px solid #bfdbfe;
-    border-left-color: #3b82f6;
-    color: #1e3a8a;
+    background-color: var(--state-entregado-bg);
+    border: 1px solid var(--state-entregado);
+    border-left: 3px solid var(--state-entregado);
+    color: var(--state-entregado);
 }
 
 .context-info {
