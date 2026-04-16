@@ -15,6 +15,7 @@ let mockDatabase = [];
 // ==========================================
 let appState = {
     data: [],
+    solicitudes: [],
     loading: false,
     filter: 'ALL',
     search: ''
@@ -123,6 +124,20 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('stats');
     });
 
+    document.getElementById('nav-solicitudes').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchView('solicitudes');
+    });
+
+    // Delegación para Tabla de Solicitudes
+    document.getElementById('table-solicitudes').addEventListener('click', (e) => {
+        const btnAtender = e.target.closest('.btn-atender-solicitud');
+        if (btnAtender) {
+            const index = btnAtender.getAttribute('data-index');
+            handleAtenderSolicitud(index);
+        }
+    });
+
     // Gestión de Tema (Modo Mate)
     const btnTheme = document.getElementById('btn-toggle-theme');
     const savedTheme = localStorage.getItem('theme');
@@ -165,23 +180,26 @@ async function fetchData() {
 
     try {
         if(GOOGLE_SHEETS_API_URL !== '') {
-            // Real fetch a Google Sheets
             const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get');
             const data = await response.json();
             appState.data = data.items || [];
+            appState.solicitudes = data.solicitudes || [];
         } else {
-            // Usar Mock Data con retraso simulado (1s)
+            // Mock
             await new Promise(r => setTimeout(r, 1000));
             appState.data = [...mockDatabase];
+            appState.solicitudes = [];
         }
     } catch (err) {
         console.error("Error al cargar datos:", err);
-        alert("Hubo un error cargando los datos. Verifica la URL de Google Sheets.");
+        alert("Hubo un error cargando los datos.");
     } finally {
         appState.loading = false;
         updateUIState();
         renderTable();
-        updateDashboard(); // Actualizar indicadores globales
+        renderSolicitudes();
+        updateBadge();
+        updateDashboard(); 
     }
 }
 
@@ -247,6 +265,7 @@ async function saveNewRecord(record) {
 function switchView(view) {
     const viewGestion = document.getElementById('view-gestion');
     const viewStats = document.getElementById('bi-dashboard');
+    const viewSolicitudes = document.getElementById('view-solicitudes');
     const navItems = document.querySelectorAll('.nav-item');
     const pageTitle = document.getElementById('page-title');
     const pageSubtitle = document.getElementById('page-subtitle');
@@ -254,21 +273,30 @@ function switchView(view) {
     
     navItems.forEach(n => n.classList.remove('active'));
 
+    // Ocultar todas
+    if(viewGestion) viewGestion.style.display = 'none';
+    if(viewStats) viewStats.style.display = 'none';
+    if(viewSolicitudes) viewSolicitudes.style.display = 'none';
+    if(btnNew) btnNew.style.display = 'none';
+
     if(view === 'gestion') {
         document.getElementById('nav-gestion').classList.add('active');
         if(viewGestion) viewGestion.style.display = 'flex';
-        if(viewStats) viewStats.style.display = 'none';
         if(btnNew) btnNew.style.display = 'inline-flex';
         pageTitle.innerText = "Gestión de Inventario";
         pageSubtitle.innerText = "gestiona el stock de instrumentos con certificado para entrega inmediata";
-    } else {
+    } else if (view === 'stats') {
         document.getElementById('nav-stats').classList.add('active');
-        if(viewGestion) viewGestion.style.display = 'none';
         if(viewStats) viewStats.style.display = 'flex';
-        if(btnNew) btnNew.style.display = 'none';
         pageTitle.innerText = "Inteligencia de Negocio";
         pageSubtitle.innerText = "Análisis de demanda y necesidades de reposición";
         updateDashboard();
+    } else if (view === 'solicitudes') {
+        document.getElementById('nav-solicitudes').classList.add('active');
+        if(viewSolicitudes) viewSolicitudes.style.display = 'block';
+        pageTitle.innerText = "Solicitudes Externas";
+        pageSubtitle.innerText = "Pedidos de certificados recibidos vía Google Form";
+        renderSolicitudes();
     }
     lucide.createIcons();
 }
@@ -532,8 +560,6 @@ function openModalNuevo() {
         const maxIdNum = Math.max(...ids);
         if(maxIdNum >= 1000) lastNum = maxIdNum;
         else if (maxIdNum > 0 && maxIdNum < 1000) {
-             // Si hay IDs menores a 1000, seguimos desde el mayor o desde 999.
-             // El usuario pidió que empiecen con 1000.
              lastNum = 999; 
         }
     }
@@ -689,19 +715,18 @@ async function handleFormNuevo(e) {
             cliente: ''
         };
 
-        // Recoger puntos 
         const puntos = [];
         const trs = document.querySelectorAll('#tbody-puntos tr');
         trs.forEach((tr) => {
             puntos.push({
                 pt: tr.querySelector('input[name="pt-name"]').value,
-                variable: '', // Se deja vacío ya que se eliminó del form
+                variable: '', 
                 unidad: tr.querySelector('input[name="pt-unit"]').value,
                 ref: tr.querySelector('input[name="pt-ref"]').value,
                 inst: tr.querySelector('input[name="pt-inst"]').value
             });
         });
-        record.puntos = JSON.stringify(puntos); // JSON de puntos con magnitudes
+        record.puntos = JSON.stringify(puntos);
 
         await saveNewRecord(record);
         
@@ -779,7 +804,7 @@ function openModalFicha(id) {
     } catch(e) { console.error("Error leyendo puntos Json", e); }
 
     if(puntosArray.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: #9ca3af;">Sin puntos de medición registrados.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #9ca3af;">Sin puntos de medición registrados.</td></tr>';
     } else {
         puntosArray.forEach(p => {
             const tr = document.createElement('tr');
@@ -816,9 +841,10 @@ function openModalEdit(id) {
     let puntos = [];
     try { if(item.puntos) puntos = JSON.parse(item.puntos); } catch(e) {}
     
-    puntos.forEach((p, idx) => {
+    puntos.forEach((p) => {
         addPuntoRowEdit(p);
     });
+    if (puntos.length === 0) addPuntoRowEdit();
 
     document.getElementById('modal-edit').classList.add('active');
 }
@@ -827,7 +853,6 @@ function addPuntoRowEdit(existingData = null) {
     const tbody = document.getElementById('edit-tbody-puntos');
     const tr = document.createElement('tr');
     const idx = tbody.children.length + 1;
-    
     tr.innerHTML = `
         <td><input type="text" class="input-tiny" name="pt-name" value="${existingData ? existingData.pt : 'PT'+idx}" required></td>
         <td><input type="text" class="input-tiny" name="pt-unit" value="${existingData ? existingData.unidad : ''}" placeholder="Ej. °C" required></td>
@@ -862,7 +887,7 @@ async function handleFormEdit(e) {
         document.querySelectorAll('#edit-tbody-puntos tr').forEach(tr => {
             puntos.push({
                 pt: tr.querySelector('input[name="pt-name"]').value,
-                variable: '', // Se deja vacío ya que se eliminó del form
+                variable: '', 
                 unidad: tr.querySelector('input[name="pt-unit"]').value,
                 ref: tr.querySelector('input[name="pt-ref"]').value,
                 inst: tr.querySelector('input[name="pt-inst"]').value
@@ -881,5 +906,75 @@ async function handleFormEdit(e) {
     } finally {
         btn.disabled = false;
         btn.innerText = 'Guardar Cambios';
+    }
+}
+
+function updateBadge() {
+    const badge = document.getElementById('badge-solicitudes');
+    if (!badge) return;
+    const pendientes = appState.solicitudes.filter(s => s.estado !== 'enviado').length;
+    if (pendientes > 0) {
+        badge.innerText = pendientes;
+        badge.style.display = 'inline-block';
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function renderSolicitudes() {
+    const tbody = document.getElementById('table-solicitudes');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    
+    if (appState.solicitudes.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem; color:var(--text-secondary);">No hay solicitudes registradas.</td></tr>';
+        return;
+    }
+
+    appState.solicitudes.forEach((s, index) => {
+        const isEnviado = s.estado === 'enviado';
+        const tr = document.createElement('tr');
+        if (isEnviado) tr.style.opacity = '0.6';
+        
+        tr.innerHTML = `
+            <td>${s.timestamp}</td>
+            <td><strong>${s.empresa}</strong><br><small>${s.contacto}</small></td>
+            <td><code>${s.certificado}</code></td>
+            <td>${s.email}</td>
+            <td><span class="badge ${isEnviado ? 'entregado' : 'reservado'}">${s.estado || 'pendiente'}</span></td>
+            <td>
+                ${isEnviado ? '-' : `<button class="btn btn-primary btn-sm btn-atender-solicitud" data-index="${index}"><i data-lucide="external-link" style="width:14px; height:14px;"></i> Atender</button>`}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    lucide.createIcons();
+}
+
+function handleAtenderSolicitud(index) {
+    const s = appState.solicitudes[index];
+    if (!s) return;
+
+    // Buscar el equipo en el inventario por código de certificado
+    const equipo = appState.data.find(e => {
+        // Limpiamos espacios y pasamos a mayúsculas para asegurar el matching
+        const certEquipo = String(e.certificado || '').trim().toUpperCase();
+        const certSolicitud = String(s.certificado || '').trim().toUpperCase();
+        return certEquipo === certSolicitud && certEquipo !== '';
+    });
+    
+    if (equipo) {
+        switchView('gestion');
+        openModalEstado(equipo.id, 'ENTREGADO');
+        
+        // Poblamos el cliente automáticamente en el modal de despacho
+        const inputCliente = document.getElementById('estado-cliente');
+        if (inputCliente) {
+            inputCliente.value = s.empresa;
+        }
+        
+        alert(`Solicitud vinculada correctamente.\n\nEquipo: ${equipo.marca} ${equipo.modelo}\nID: ${equipo.id}\n\nSe ha precargado el cliente: ${s.empresa}`);
+    } else {
+        alert(`Atención: No se encontró ningún equipo en el inventario que tenga asignado el Certificado: "${s.certificado}".\n\nAsegúrate de que el equipo esté cargado y tenga su número de certificado en la columna correspondiente.`);
     }
 }
