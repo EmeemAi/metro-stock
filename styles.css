@@ -618,7 +618,7 @@ td:nth-child(6)  /* Cert */ {
     gap: 0.5rem;
     padding: 1rem 1.5rem;
     border-top: 1px solid var(--border-color);
-    background-color: #f9fafb;
+    background-color: var(--table-header-bg);
     border-radius: 0 0 var(--radius-md) var(--radius-md);
 }
 
@@ -644,7 +644,7 @@ td:nth-child(6)  /* Cert */ {
     letter-spacing: 0.02em;
 }
 
-.form-group input {
+.form-group input, .form-group select {
     background-color: var(--bg-card);
     border: 1px solid var(--border-strong);
     color: var(--text-primary);
@@ -695,7 +695,7 @@ td:nth-child(6)  /* Cert */ {
 
 .table-puntos { width: 100%; border-collapse: collapse; }
 .table-puntos th { 
-    background: #f9fafb; 
+    background: var(--table-header-bg); 
     padding: 0.4rem 0.5rem; 
     font-size: 0.65rem; 
     text-align: left;
@@ -778,7 +778,7 @@ td:nth-child(6)  /* Cert */ {
    ========================================== */
 .print-sheet {
     max-width: 800px;
-    background-color: white;
+    background-color: var(--bg-card);
 }
 
 .ficha-header {
@@ -855,7 +855,7 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .ficha-table th {
-    background-color: #f9fafb;
+    background-color: var(--table-header-bg);
     color: var(--text-secondary);
 }
 
