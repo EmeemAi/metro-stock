@@ -99,6 +99,11 @@
     --alert-medium-border: #d97706;
     --alert-medium-text: #fcd34d;
 
+    /* Inputs y Textareas Mate */
+    --input-bg: #262626;
+    --input-text: #ffffff;
+    --input-border: #404040;
+
     background-color: var(--bg-main);
 }
 
@@ -402,6 +407,40 @@ body {
 .search-box input:focus {
     border-color: var(--primary);
     box-shadow: 0 0 0 2px rgba(15, 76, 129, 0.1);
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    width: 100%;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    font-family: inherit;
+    font-size: 0.85rem;
+    transition: var(--transition);
+}
+
+.theme-matte .form-group input,
+.theme-matte .form-group textarea {
+    background-color: var(--input-bg);
+    color: var(--input-text);
+    border-color: var(--input-border);
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: var(--primary);
+    background-color: var(--bg-card); /* Reset if needed */
+    box-shadow: 0 0 0 3px var(--border-focus);
+}
+
+.theme-matte .form-group input:focus,
+.theme-matte .form-group textarea:focus {
+    background-color: #2a2a2a;
 }
 
 .filters {
@@ -1263,3 +1302,55 @@ td:nth-child(6)  /* Cert */ {
         grid-template-columns: 1fr;
     }
 }
+
+/* --- Estilos Fase 8: Modal de Envío de Email --- */
+.status-check-box {
+    background-color: var(--bg-main);
+    border: 1px solid var(--border-color);
+    padding: 1rem;
+    border-radius: var(--radius-sm);
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: var(--transition);
+    color: var(--text-primary);
+}
+
+.status-check-box.success {
+    background-color: var(--state-disponible-bg);
+    border-color: var(--state-disponible);
+    color: var(--state-disponible);
+}
+
+.status-check-box.danger {
+    background-color: var(--alert-high-bg);
+    border-color: var(--alert-high-border);
+    color: var(--alert-high-text);
+}
+
+.spin {
+    animation: spin 1s linear infinite;
+}
+
+#email-body {
+    font-family: var(--font-ui);
+    line-height: 1.5;
+    resize: none;
+    background-color: var(--bg-main);
+}
+
+.alert {
+    padding: 0.75rem 1rem;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+}
+
+.alert-danger {
+    background-color: var(--alert-high-bg);
+    border: 1px solid var(--alert-high-border);
+    color: var(--alert-high-text);
+}

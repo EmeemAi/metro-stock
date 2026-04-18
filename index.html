@@ -443,6 +443,46 @@
         </div>
     </div>
 
+    <!-- Modal: Confirmar Envío de Email -->
+    <div id="modal-email-confirm" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Verificación de Envío</h2>
+                <button class="btn-icon" onclick="closeModal('modal-email-confirm')"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="status-check-box" id="email-file-status">
+                    <i data-lucide="loader-2" class="spin"></i> Buscando certificado en Drive...
+                </div>
+                
+                <div class="form-group">
+                    <label>Destinatario</label>
+                    <input type="text" id="email-to" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label>Asunto</label>
+                    <input type="text" id="email-subject" readonly value="Envío de Certificado de Calibración">
+                </div>
+                
+                <div class="form-group">
+                    <label>Mensaje (Previsualización)</label>
+                    <textarea id="email-body" rows="6" readonly></textarea>
+                </div>
+
+                <div id="email-error-msg" class="alert alert-danger" style="display:none; margin-top:1rem;">
+                    No se puede enviar: El archivo PDF no existe en la carpeta configurada.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('modal-email-confirm')">Cancelar</button>
+                <button class="btn btn-primary" id="btn-confirm-send" disabled>
+                    <i data-lucide="send"></i> Confirmar y Enviar Mail
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>

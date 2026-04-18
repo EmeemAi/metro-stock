@@ -3,7 +3,7 @@
  * Cuando tengas tu Web App de Google Apps Script publicada, 
  * pega el enlace aquí.
  */
-const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbwFSgrE79ng80wD1ckHPTJ7cX0lnkNR110xm9S8OtW2rLKF34G65hXWlzOqXjWM-Ozk/exec';
+const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbxbx8DhQaxp_lHH_pGm7uBBoYyvh7nZWxlkpH-UvAXH-Py0nVAp4UiAE4iAP6CLVAmO/exec';
 
 // ==========================================
 // MOCK DATA (Para probar sin Google Sheets)
@@ -138,19 +138,25 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('solicitudes');
     });
 
-    // Delegación para Tabla de Solicitudes
-    document.getElementById('table-solicitudes').addEventListener('click', (e) => {
-        const btnAtender = e.target.closest('.btn-atender-solicitud');
-        if (btnAtender) {
-            const index = btnAtender.getAttribute('data-index');
-            handleAtenderSolicitud(index);
-        }
-    });
+    // Delegación para Tabla de Solicitudes (Protección contra null)
+    const tableSolicitudes = document.getElementById('table-solicitudes');
+    if (tableSolicitudes) {
+        tableSolicitudes.addEventListener('click', (e) => {
+            const btnAtender = e.target.closest('.btn-atender-solicitud');
+            if (btnAtender) {
+                const index = btnAtender.getAttribute('data-index');
+                handleAtenderSolicitud(index);
+            }
+        });
+    }
 
-    // Botón Confirmar Envío Email
-    document.getElementById('btn-confirm-send').addEventListener('click', () => {
-        confirmSendEmail();
-    });
+    // Botón Confirmar Envío Email (Protección contra null)
+    const btnConfirmSend = document.getElementById('btn-confirm-send');
+    if (btnConfirmSend) {
+        btnConfirmSend.addEventListener('click', () => {
+            confirmSendEmail();
+        });
+    }
 
     // Gestión de Tema (Modo Mate)
     const btnTheme = document.getElementById('btn-toggle-theme');
@@ -556,9 +562,19 @@ function renderTable() {
 // LOGICA DE MODALES
 // ==========================================
 function closeAllModals() {
-    document.querySelectorAll('.modal-overlay').forEach(m => m.classList.remove('active'));
+    document.querySelectorAll('.modal-overlay, .modal').forEach(m => m.classList.remove('active'));
     document.getElementById('form-nuevo').reset();
     document.getElementById('form-estado').reset();
+}
+
+function openModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.add('active');
+}
+
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('active');
 }
 
 function openModalNuevo() {
@@ -966,20 +982,29 @@ function renderSolicitudes() {
 }
 
 function handleAtenderSolicitud(index) {
+    console.log("Atendiendo solicitud index:", index);
     const s = appState.solicitudes[index];
-    if (!s) return;
+    if (!s) {
+        console.error("Solicitud no encontrada en appState");
+        return;
+    }
 
-    // Buscar el equipo en el inventario por código de certificado
+    // Buscar el equipo en el inventario por código de certificado (limpio)
+    const certSolicitud = String(s.certificado || '').trim().toUpperCase();
+    console.log("Buscando matching para certificado:", certSolicitud);
+
     const equipo = appState.data.find(e => {
         const certEquipo = String(e.certificado || '').trim().toUpperCase();
-        const certSolicitud = String(s.certificado || '').trim().toUpperCase();
         return certEquipo === certSolicitud && certEquipo !== '';
     });
     
     if (!equipo) {
-        alert(`Atención: No se encontró ningún equipo en el inventario con el Certificado: "${s.certificado}".`);
+        console.warn("No se encontró equipo en el inventario.");
+        alert(`Atención: No se encontró ningún equipo en el inventario con el Certificado: "${s.certificado}".\n\nAsegúrate de que el equipo esté cargado en 'Gestión de Equipos' con este mismo código.`);
         return;
     }
+
+    console.log("Equipo encontrado:", equipo);
 
     // Almacenar datos temporalmente para el envío
     appState.pendingEmail = {
@@ -989,9 +1014,19 @@ function handleAtenderSolicitud(index) {
     };
 
     // Poblar modal
-    document.getElementById('email-to').value = s.email;
-    document.getElementById('email-body').value = `Hola ${s.contacto || s.empresa},\n\nAdjuntamos el certificado de calibración solicitado para su equipo (${equipo.marca} ${equipo.modelo}). El número de certificado es ${s.certificado}.\n\nSaludos,\nMetroML`;
+    const emailTo = document.getElementById('email-to');
+    const emailBody = document.getElementById('email-body');
     
+    if (!emailTo || !emailBody) {
+        console.error("Error: No se encontró el modal de email en el HTML.");
+        alert("Error técnico: El modal de envío no existe en el HTML.");
+        return;
+    }
+
+    emailTo.value = s.email;
+    emailBody.value = `Hola ${s.contacto || s.empresa},\n\nAdjuntamos el certificado de calibración solicitado para su equipo (${equipo.marca} ${equipo.modelo}). El número de certificado es ${s.certificado}.\n\nSaludos,\nMetroML`;
+    
+    console.log("Abriendo modal confirmación...");
     openModal('modal-email-confirm');
     checkFileInDrive(s.certificado);
 }
@@ -1008,7 +1043,7 @@ async function checkFileInDrive(certificado) {
     lucide.createIcons();
 
     try {
-        const response = await fetch(`${GOOGLE_SHEETS_API_URL}?action=check_file&certificado=${certificado}`);
+        const response = await fetch(`${GOOGLE_SHEETS_API_URL}?action=check_file&certificado=${encodeURIComponent(certificado)}`);
         const result = await response.json();
 
         if (result.found) {
@@ -1016,12 +1051,16 @@ async function checkFileInDrive(certificado) {
             statusBox.classList.add('success');
             btnSend.disabled = false;
         } else {
-            statusBox.innerHTML = `<i data-lucide="alert-circle" style="color:var(--danger);"></i> Archivo NO encontrado en el sistema.`;
+            let debugInfo = "";
+            if (result.filesInRoot && result.filesInRoot.length > 0) {
+                debugInfo = `<br><small style="display:block; margin-top:0.5rem; opacity:0.7;">Visto en Drive: ${result.filesInRoot.join(', ')}</small>`;
+            }
+            statusBox.innerHTML = `<i data-lucide="alert-circle" style="color:var(--danger);"></i> No encontrado.<br><small>${result.msg || 'Verifica el nombre.'}</small>${debugInfo}`;
             statusBox.classList.add('danger');
             errorMsg.style.display = 'block';
         }
     } catch (e) {
-        statusBox.innerHTML = `<i data-lucide="x-circle"></i> Error de conexión con el servidor.`;
+        statusBox.innerHTML = `<i data-lucide="x-circle"></i> Error de conexión: ${e.message}`;
     }
     lucide.createIcons();
 }
