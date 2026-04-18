@@ -28,6 +28,15 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicializar Iconos Lucide
     lucide.createIcons();
 
+    // Registrar Service Worker para PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js')
+                .then(reg => console.log('Service Worker registrado.', reg))
+                .catch(err => console.log('Error al registrar Service Worker.', err));
+        });
+    }
+
     // Cargar datos
     fetchData();
 
@@ -136,6 +145,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const index = btnAtender.getAttribute('data-index');
             handleAtenderSolicitud(index);
         }
+    });
+
+    // Botón Confirmar Envío Email
+    document.getElementById('btn-confirm-send').addEventListener('click', () => {
+        confirmSendEmail();
     });
 
     // Gestión de Tema (Modo Mate)
@@ -957,24 +971,90 @@ function handleAtenderSolicitud(index) {
 
     // Buscar el equipo en el inventario por código de certificado
     const equipo = appState.data.find(e => {
-        // Limpiamos espacios y pasamos a mayúsculas para asegurar el matching
         const certEquipo = String(e.certificado || '').trim().toUpperCase();
         const certSolicitud = String(s.certificado || '').trim().toUpperCase();
         return certEquipo === certSolicitud && certEquipo !== '';
     });
     
-    if (equipo) {
-        switchView('gestion');
-        openModalEstado(equipo.id, 'ENTREGADO');
-        
-        // Poblamos el cliente automáticamente en el modal de despacho
-        const inputCliente = document.getElementById('estado-cliente');
-        if (inputCliente) {
-            inputCliente.value = s.empresa;
+    if (!equipo) {
+        alert(`Atención: No se encontró ningún equipo en el inventario con el Certificado: "${s.certificado}".`);
+        return;
+    }
+
+    // Almacenar datos temporalmente para el envío
+    appState.pendingEmail = {
+        ...s,
+        instrumento: `${equipo.marca} ${equipo.modelo}`,
+        equipoId: equipo.id
+    };
+
+    // Poblar modal
+    document.getElementById('email-to').value = s.email;
+    document.getElementById('email-body').value = `Hola ${s.contacto || s.empresa},\n\nAdjuntamos el certificado de calibración solicitado para su equipo (${equipo.marca} ${equipo.modelo}). El número de certificado es ${s.certificado}.\n\nSaludos,\nMetroML`;
+    
+    openModal('modal-email-confirm');
+    checkFileInDrive(s.certificado);
+}
+
+async function checkFileInDrive(certificado) {
+    const statusBox = document.getElementById('email-file-status');
+    const btnSend = document.getElementById('btn-confirm-send');
+    const errorMsg = document.getElementById('email-error-msg');
+    
+    statusBox.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Buscando certificado en Drive...';
+    statusBox.className = 'status-check-box';
+    btnSend.disabled = true;
+    errorMsg.style.display = 'none';
+    lucide.createIcons();
+
+    try {
+        const response = await fetch(`${GOOGLE_SHEETS_API_URL}?action=check_file&certificado=${certificado}`);
+        const result = await response.json();
+
+        if (result.found) {
+            statusBox.innerHTML = `<i data-lucide="check-circle" style="color:var(--success);"></i> Archivo localizado: <strong>${result.fileName}</strong>`;
+            statusBox.classList.add('success');
+            btnSend.disabled = false;
+        } else {
+            statusBox.innerHTML = `<i data-lucide="alert-circle" style="color:var(--danger);"></i> Archivo NO encontrado en el sistema.`;
+            statusBox.classList.add('danger');
+            errorMsg.style.display = 'block';
         }
-        
-        alert(`Solicitud vinculada correctamente.\n\nEquipo: ${equipo.marca} ${equipo.modelo}\nID: ${equipo.id}\n\nSe ha precargado el cliente: ${s.empresa}`);
-    } else {
-        alert(`Atención: No se encontró ningún equipo en el inventario que tenga asignado el Certificado: "${s.certificado}".\n\nAsegúrate de que el equipo esté cargado y tenga su número de certificado en la columna correspondiente.`);
+    } catch (e) {
+        statusBox.innerHTML = `<i data-lucide="x-circle"></i> Error de conexión con el servidor.`;
+    }
+    lucide.createIcons();
+}
+
+async function confirmSendEmail() {
+    const btn = document.getElementById('btn-confirm-send');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Enviando...';
+    lucide.createIcons();
+
+    try {
+        const response = await fetch(GOOGLE_SHEETS_API_URL, {
+            method: 'POST',
+            body: JSON.stringify({
+                action: 'send_email',
+                data: appState.pendingEmail
+            })
+        });
+        const result = await response.json();
+
+        if (result.success) {
+            await fetchData();
+            closeModal('modal-email-confirm');
+            alert("¡Certificado enviado con éxito al cliente!");
+        } else {
+            alert("Error al enviar el email: " + (result.error || "Desconocido"));
+        }
+    } catch (e) {
+        alert("Error de conexión al intentar enviar el correo.");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        lucide.createIcons();
     }
 }
