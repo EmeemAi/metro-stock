@@ -794,11 +794,15 @@ async function handleFormEstado(e) {
             extraData.cliente = document.getElementById('estado-cliente').value;
         }
 
-        await updateStateRecord(id, targetState, extraData);
+        const result = await updateStateRecord(id, targetState, extraData);
 
-        closeAllModals();
-        await fetchData(); // Recargar datos frescos
-        alert("Estado actualizado con éxito.");
+        if (result && result.success) {
+            closeAllModals();
+            await fetchData(); // Recargar datos frescos
+            alert("Estado actualizado con éxito.");
+        } else {
+            alert("Error al actualizar: " + (result ? result.error : "Sin respuesta del servidor"));
+        }
     } catch (error) {
         console.error("Error al actualizar estado:", error);
         alert("Hubo un error al actualizar el estado. Por favor, inténtalo de nuevo.");
