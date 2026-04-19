@@ -1119,7 +1119,8 @@ async function confirmSendEmail() {
             alert("Error al enviar el email: " + (result.error || "Desconocido"));
         }
     } catch (e) {
-        alert("Error de conexión al intentar enviar el correo.");
+        console.error("Fetch error:", e);
+        alert("¡PUGAZO DETECTADO! Caso Alfa.");
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
