@@ -1107,13 +1107,12 @@ async function confirmSendEmail() {
             body: JSON.stringify(requestData)
         });
 
-        // Como usamos no-cors, el navegador no nos deja leer la respuesta de Google,
-        // pero si llegamos aquí es porque la petición salió.
+        // Aumentamos a 3 segundos para dar tiempo a Sheets de guardar
         setTimeout(async () => {
             await fetchData();
             closeModal('modal-email-confirm');
             alert("¡Envío de certificado procesado con éxito!");
-        }, 1500);
+        }, 3000);
 
     } catch (e) {
         console.error("Fetch error:", e);
