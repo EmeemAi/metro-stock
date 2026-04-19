@@ -1084,13 +1084,20 @@ async function confirmSendEmail() {
     btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Enviando...';
     lucide.createIcons();
 
+    const requestData = {
+        action: 'send_email',
+        data: appState.pendingEmail
+    };
+
     try {
+        console.log(">>> Datos enviados al servidor:", requestData);
+
         const response = await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
-            body: JSON.stringify({
-                action: 'send_email',
-                data: appState.pendingEmail
-            })
+            mode: 'no-cors',
+            cache: 'no-cache',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData)
         });
         const result = await response.json();
 
