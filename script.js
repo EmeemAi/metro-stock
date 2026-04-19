@@ -241,16 +241,19 @@ async function saveFullUpdate(record) {
 }
 
 async function updateStateRecord(id, newState, extraData) {
+    console.log(">>> Solicitando cambio de estado:", { id, newState, extraData });
     if(GOOGLE_SHEETS_API_URL !== '') {
         const requestData = { 
             action: 'update_status', 
-            data: { id: id, estado: newState, ...extraData } 
+            data: { id: String(id).trim(), estado: newState, ...extraData } 
         };
         const response = await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
             body: JSON.stringify(requestData)
         });
-        return await response.json();
+        const result = await response.json();
+        console.log("<<< Respuesta del servidor:", result);
+        return result;
     } else {
         // En Mock Local
         await new Promise(r => setTimeout(r, 800));
