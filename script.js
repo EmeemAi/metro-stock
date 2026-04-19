@@ -1017,6 +1017,7 @@ function handleAtenderSolicitud(index) {
     console.log("Equipo encontrado:", equipo);
 
     // Almacenar datos temporalmente para el envío
+    appState.currentSolicitudIndex = index; 
     appState.pendingEmail = {
         ...s,
         instrumento: `${equipo.marca} ${equipo.modelo}`,
@@ -1094,7 +1095,9 @@ async function confirmSendEmail() {
         data: {
             email: document.getElementById('email-to').value,
             certificado: certificado,
-            body: document.getElementById('email-body').value
+            body: document.getElementById('email-body').value,
+            empresa: appState.pendingEmail ? appState.pendingEmail.empresa : '',
+            originalEmail: appState.pendingEmail ? appState.pendingEmail.email : ''
         }
     };
 
@@ -1107,7 +1110,14 @@ async function confirmSendEmail() {
             body: JSON.stringify(requestData)
         });
 
-        // Aumentamos a 3 segundos para dar tiempo a Sheets de guardar
+        // FORZADO LOCAL: Marcamos como enviado en la memoria de la web para cambio instantáneo
+        if (appState.currentSolicitudIndex !== undefined) {
+            appState.solicitudes[appState.currentSolicitudIndex].estado = 'enviado';
+            renderSolicitudes();
+            updateBadge();
+        }
+
+        // Refrescar datos reales en 3 segundos
         setTimeout(async () => {
             await fetchData();
             closeModal('modal-email-confirm');
