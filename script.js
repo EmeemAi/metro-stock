@@ -1034,7 +1034,7 @@ function handleAtenderSolicitud(index) {
     }
 
     emailTo.value = s.email;
-    emailBody.value = `Hola ${s.contacto || s.empresa},\n\nAdjuntamos el certificado de calibración solicitado para su equipo (${equipo.marca} ${equipo.modelo}). El número de certificado es ${s.certificado}.\n\nSaludos,\nMetroML`;
+    emailBody.value = `Hola ${s.contacto || s.empresa},\n\nAdjunto encontrarás el certificado con el código ${s.certificado} que has solicitado.\nPor favor, confírmanos la correcta recepción de este correo y del archivo adjunto.\n\nSi tienes alguna otra consulta, no dudes en contactarnos.\n\nSaludos,\n\nDarío Del Real\n\nCR MEDICION\nPerú 1297 - CABA - Argentina\nTel.: +54 11 4361-3499 / 3680\nFax.: +54 11 4362-7082\nWp: +54 11-4971-7053\nwww.todomedicion.com\nSchwyzLab Laboratorio de Metrología`;
     
     console.log("Abriendo modal confirmación...");
     openModal('modal-email-confirm');
