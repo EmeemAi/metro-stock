@@ -1061,11 +1061,13 @@ async function checkFileInDrive(certificado) {
             statusBox.classList.add('success');
             btnSend.disabled = false;
         } else {
-            let debugInfo = "";
-            if (result.filesInRoot && result.filesInRoot.length > 0) {
-                debugInfo = `<br><small style="display:block; margin-top:0.5rem; opacity:0.7;">Visto en Drive: ${result.filesInRoot.join(', ')}</small>`;
+            let diagInfo = `<br><small style="color:var(--warning); font-size:0.7rem;">Carpeta: ${result.folderName || 'No detectada'}</small>`;
+            if (result.files && result.files.length > 0) {
+                diagInfo += `<br><small style="display:block; margin-top:0.3rem; opacity:0.8; font-size:0.65rem;">Visto en Drive: ${result.files.join(', ')}</small>`;
+            } else {
+                diagInfo += `<br><small style="color:var(--danger); font-size:0.65rem;">(Carpeta vacía o sin acceso)</small>`;
             }
-            statusBox.innerHTML = `<i data-lucide="alert-circle" style="color:var(--danger);"></i> No encontrado.<br><small>${result.msg || 'Verifica el nombre.'}</small>${debugInfo}`;
+            statusBox.innerHTML = `<i data-lucide="alert-circle" style="color:var(--danger);"></i> No encontrado.${diagInfo}`;
             statusBox.classList.add('danger');
             errorMsg.style.display = 'block';
         }
