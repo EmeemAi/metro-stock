@@ -242,7 +242,10 @@ async function saveFullUpdate(record) {
 
 async function updateStateRecord(id, newState, extraData) {
     if(GOOGLE_SHEETS_API_URL !== '') {
-        const requestData = { action: 'update_state', id: id, state: newState, ...extraData };
+        const requestData = { 
+            action: 'update_status', 
+            data: { id: id, estado: newState, ...extraData } 
+        };
         const response = await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
             body: JSON.stringify(requestData)
