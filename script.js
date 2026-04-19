@@ -1104,7 +1104,9 @@ async function confirmSendEmail() {
 
         const response = await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
+            mode: 'no-cors',
             cache: 'no-cache',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestData)
         });
         const result = await response.json();
