@@ -111,6 +111,19 @@
     background-color: var(--bg-main);
 }
 
+.theme-matte .context-info {
+    background-color: #1a1a1a;
+    border-color: #333333;
+}
+
+.theme-matte .context-info p {
+    color: var(--text-secondary);
+}
+
+.theme-matte .context-info strong {
+    color: var(--text-primary);
+}
+
 * {
     margin: 0;
     padding: 0;
