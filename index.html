@@ -96,6 +96,13 @@
                             <div class="kpi-value" id="kpi-reposicion">0</div>
                         </div>
                     </div>
+                    <div class="kpi-card stock-certificando">
+                        <div class="kpi-icon" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;"><i data-lucide="cog"></i></div>
+                        <div class="kpi-info">
+                            <h3>En Certificación</h3>
+                            <div class="kpi-value" id="kpi-certificando">0</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Gráficos y Alertas -->
@@ -125,6 +132,7 @@
                     </div>
                     <div class="filters">
                         <button class="filter-btn active" data-filter="ALL">Todos</button>
+                        <button class="filter-btn" data-filter="CERTIFICANDO">Certificando</button>
                         <button class="filter-btn" data-filter="DISPONIBLE">Disponibles</button>
                         <button class="filter-btn" data-filter="RESERVADO">Reservados</button>
                         <button class="filter-btn" data-filter="ENTREGADO">Entregados</button>
@@ -342,6 +350,7 @@
                         <div class="form-group">
                             <label>Estado Activo</label>
                             <select id="edit-estado">
+                                <option value="CERTIFICANDO">CERTIFICANDO</option>
                                 <option value="DISPONIBLE">DISPONIBLE</option>
                                 <option value="RESERVADO">RESERVADO</option>
                                 <option value="ENTREGADO">ENTREGADO</option>

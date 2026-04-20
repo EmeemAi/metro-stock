@@ -343,6 +343,7 @@ function updateDashboard() {
     let totalAvailable = 0;
     let totalVentas = 0;
 
+    let totalCertificando = 0;
     appState.data.forEach(item => {
         const key = `${item.marca} ${item.modelo}`.toUpperCase();
         if(!stats[key]) stats[key] = { disponible: 0, entregado: 0 };
@@ -353,12 +354,15 @@ function updateDashboard() {
         } else if (item.estado === 'ENTREGADO') {
             stats[key].entregado++;
             totalVentas++;
+        } else if (item.estado === 'CERTIFICANDO') {
+            totalCertificando++;
         }
     });
 
     // 2. Actualizar KPIs
     document.getElementById('kpi-disponible').innerText = totalAvailable;
     document.getElementById('kpi-ventas').innerText = totalVentas;
+    document.getElementById('kpi-certificando').innerText = totalCertificando;
 
     // 3. Radar de Reposición (Lógica Crítica)
     const replenishmentList = document.getElementById('replenishment-list');
@@ -542,6 +546,7 @@ function renderTable() {
                     <button class="btn btn-outline btn-icon-only btn-view-ficha" data-id="${item.id}" title="Ver Ficha"><i data-lucide="eye"></i></button>
                     <button class="btn btn-outline btn-icon-only btn-edit-equipo" data-id="${item.id}" title="Editar Equipo" style="color: var(--warning); border-color: var(--warning);"><i data-lucide="edit-2"></i></button>
                     <button class="btn btn-outline btn-icon-only btn-duplicate-equipo" data-id="${item.id}" data-index="${appState.data.indexOf(item)}" title="Duplicar Equipo"><i data-lucide="copy"></i></button>
+                    ${item.estado === 'CERTIFICANDO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Finalizar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Finalizar <i data-lucide="check"></i></button>` : ''}
                     ${item.estado === 'DISPONIBLE' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="RESERVADO" title="Vender">Vender <i data-lucide="arrow-right"></i></button>` : ''}
                     ${item.estado === 'RESERVADO' ? `<button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar">Entregar <i data-lucide="truck"></i></button>` : ''}
                 </div>
@@ -746,7 +751,7 @@ async function handleFormNuevo(e) {
             modelo: document.getElementById('nuevo-modelo').value,
             serie: document.getElementById('nuevo-serie').value,
             fecha_calibracion: document.getElementById('nuevo-fecha').value,
-            estado: 'DISPONIBLE',
+            estado: 'CERTIFICANDO',
             certificado: '',
             cliente: ''
         };
