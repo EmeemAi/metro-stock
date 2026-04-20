@@ -2,25 +2,26 @@
 
 :root {
     /* Main Backgrounds */
-    --bg-main: #f3f4f6;
+    --bg-main: #f8fafc;
     --bg-card: #ffffff;
     --bg-sidebar: #ffffff;
-    --bg-sidebar-active: #eff6ff;
-    --bg-sidebar-hover: #f9fafb;
+    --bg-sidebar-active: #f1f5f9;
+    --bg-sidebar-hover: #f8fafc;
     
     /* Text Colors */
-    --text-primary: #111827;
-    --text-secondary: #4b5563;
-    --text-muted: #9ca3af;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #94a3b8;
     
     /* Borders */
-    --border-color: #d1d5db;
-    --border-strong: #9ca3af;
-    --border-focus: rgba(15, 76, 129, 0.15);
+    --border-color: rgba(0, 0, 0, 0.04);
+    --border-strong: rgba(0, 0, 0, 0.08);
+    --border-focus: rgba(59, 130, 246, 0.15);
     
     /* Brand Accent */
-    --primary: #0f4c81;
-    --primary-hover: #0a365c;
+    --primary: #3b82f6;
+    --primary-hover: #2563eb;
+    --critical: #dc2626;
     
     /* State Colors */
     --state-disponible: #059669;
@@ -33,16 +34,18 @@
     --state-certificando-bg: #f5f3ff;
 
     /* Metrics */
-    --radius-sm: 2px;
-    --radius-md: 4px;
-    --shadow-solid: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
-    --modal-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
-    --modal-overlay-bg: rgba(17, 24, 39, 0.4);
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-card: 12px;
+    --shadow-solid: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* Tailwind shadow-sm */
+    --modal-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --modal-overlay-bg: rgba(0, 0, 0, 0.4);
     
     /* Table specific */
-    --table-zebra: #f8fafc;
-    --table-hover: #eff6ff;
-    --table-header-bg: #f9fafb;
+    --table-zebra: transparent;
+    --table-hover: rgba(0, 0, 0, 0.01);
+    --table-header-bg: transparent;
+    --table-divide: rgba(0, 0, 0, 0.02);
     
     --transition: 0.15s ease-in-out;
     
@@ -59,24 +62,25 @@
     --font-data: 'JetBrains Mono', monospace;
 }
 
-/* Matte Premium Theme (Serio, Mate, Profesional) */
+/* Matte Premium Theme (Tech Minimalist) */
 .theme-matte {
-    --bg-main: #0f0f0f;
-    --bg-card: #1a1a1a;
-    --bg-sidebar: #141414;
-    --bg-sidebar-active: #262626;
-    --bg-sidebar-hover: #1e1e1e;
+    --bg-main: #050608;
+    --bg-card: #0f1115;
+    --bg-sidebar: #050608;
+    --bg-sidebar-active: #0f1115;
+    --bg-sidebar-hover: #0a0b0e;
     
-    --text-primary: #eeeeee;
-    --text-secondary: #a1a1aa;
-    --text-muted: #52525b;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #475569;
     
-    --border-color: #262626;
-    --border-strong: #404040;
-    --border-focus: rgba(37, 99, 235, 0.2);
+    --border-color: rgba(255, 255, 255, 0.06);
+    --border-strong: rgba(255, 255, 255, 0.12);
+    --border-focus: rgba(59, 130, 246, 0.2);
     
-    --primary: #2b59c3;
-    --primary-hover: #1e40af;
+    --primary: #3b82f6;
+    --primary-hover: #60a5fa;
+    --critical: #dc2626;
     
     --state-disponible: #10b981;
     --state-disponible-bg: rgba(16, 185, 129, 0.1);
@@ -87,13 +91,14 @@
     --state-certificando: #a855f7;
     --state-certificando-bg: rgba(168, 85, 247, 0.1);
 
-    --shadow-solid: 0 4px 6px -1px rgba(0, 0, 0, 0.5);
-    --modal-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
+    --shadow-solid: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+    --modal-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
     --modal-overlay-bg: rgba(0, 0, 0, 0.85);
     
-    --table-zebra: #161616;
-    --table-hover: #222222;
-    --table-header-bg: #1c1c1c;
+    --table-zebra: transparent;
+    --table-hover: rgba(255, 255, 255, 0.01);
+    --table-header-bg: transparent;
+    --table-divide: rgba(255, 255, 255, 0.02);
 
     /* Alerts Mate */
     --alert-high-bg: rgba(220, 38, 38, 0.15);
@@ -124,6 +129,11 @@
     color: var(--text-primary);
 }
 
+/* Efecto Glow en Gráficos para Modo Mate */
+.theme-matte canvas {
+    filter: drop-shadow(0 0 5px rgba(59, 130, 246, 0.4));
+}
+
 * {
     margin: 0;
     padding: 0;
@@ -137,6 +147,13 @@ body {
     font-size: 14px; /* Smaller base font for professional density */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+}
+
+/* Forzar Estética de Iconografía (Global) */
+svg.lucide {
+    stroke-width: 1.5px !important;
+    width: 16px !important;
+    height: 16px !important;
 }
 
 /* Layout */
@@ -333,7 +350,7 @@ body {
 .kpi-card {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
+    border-radius: var(--radius-card);
     padding: 1.25rem;
     display: flex;
     align-items: center;
@@ -367,17 +384,17 @@ body {
 }
 
 .kpi-info h3 {
-    font-size: 0.7rem;
+    font-size: 10px;
     color: var(--text-secondary);
     text-transform: uppercase;
-    letter-spacing: 0.05em;
-    font-weight: 600;
-    margin-bottom: 0.15rem;
+    letter-spacing: 0.2em;
+    font-weight: 700;
+    margin-bottom: 0.25rem;
 }
 
 .kpi-value {
-    font-size: 1.75rem;
-    font-weight: 700;
+    font-size: 2rem;
+    font-weight: 300;
     font-family: var(--font-data);
     color: var(--text-primary);
     line-height: 1;
@@ -523,20 +540,20 @@ thead::after {
     left: 0;
     right: 0;
     bottom: 0;
-    border-bottom: 2px solid var(--border-strong);
+    border-bottom: 1px solid var(--table-divide);
 }
 
 th, td {
     padding: 0.65rem 1rem;
-    border-bottom: 1px solid var(--border-color);
+    border-bottom: 1px solid var(--table-divide);
 }
 
 th {
     color: var(--text-secondary);
-    font-weight: 600;
-    font-size: 0.7rem;
+    font-weight: 700;
+    font-size: 10px;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.2em;
     white-space: nowrap;
 }
 
@@ -720,11 +737,11 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .form-group label {
-    font-size: 0.7rem;
+    font-size: 10px;
     color: var(--text-secondary);
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.2em;
 }
 
 .form-group input, .form-group select {
@@ -758,10 +775,10 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .section-title {
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: 10px;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.05em;
+    letter-spacing: 0.2em;
     margin: 1.5rem 0 0.75rem;
     color: var(--text-primary);
     border-bottom: 1px solid var(--border-color);

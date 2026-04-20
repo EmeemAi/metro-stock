@@ -429,7 +429,8 @@ function updateDashboard() {
                     label: 'Unidades Vendidas',
                     data: salesData.map(d => d.count),
                     backgroundColor: chartColor,
-                    borderRadius: 4
+                    borderRadius: 4,
+                    barThickness: 4
                 }]
             },
             options: {
@@ -445,7 +446,7 @@ function updateDashboard() {
                 scales: {
                     x: { 
                         beginAtZero: true, 
-                        grid: { color: gridColor },
+                        grid: { display: false },
                         ticks: { stepSize: 1, color: textColor } 
                     },
                     y: { 
