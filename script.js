@@ -739,6 +739,7 @@ function openModalEstado(id, targetState) {
 // ==========================================
 async function handleFormNuevo(e) {
     e.preventDefault();
+    console.log(">>> SISTEMA V16 UP: Iniciando alta en CERTIFICANDO");
     const btn = document.getElementById('btn-save-nuevo');
     btn.disabled = true;
     btn.innerText = 'Guardando...';
