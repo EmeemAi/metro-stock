@@ -201,9 +201,14 @@ async function fetchData() {
     try {
         if(GOOGLE_SHEETS_API_URL !== '') {
             const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get');
-            const data = await response.json();
-            appState.data = data.items || [];
-            appState.solicitudes = data.solicitudes || [];
+            const result = await response.json();
+            appState.data = result.items || [];
+            appState.solicitudes = result.solicitudes || [];
+            
+            console.log(">>> DATOS RECIBIDOS DEL SERVIDOR:");
+            console.table(appState.data.slice(0, 5).map(i => ({ID: i.id, Modelo: i.modelo, Estado: i.estado})));
+            
+            renderTable();
         } else {
             // Mock
             await new Promise(r => setTimeout(r, 1000));
