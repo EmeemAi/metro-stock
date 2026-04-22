@@ -554,8 +554,8 @@ function renderTable() {
                     <button class="btn btn-outline btn-icon-only btn-edit-equipo" data-id="${item.id}" title="Editar Equipo" style="color: var(--warning); border-color: var(--warning);"><i data-lucide="edit-2"></i></button>
                     <button class="btn btn-outline btn-icon-only btn-duplicate-equipo" data-id="${item.id}" data-index="${appState.data.indexOf(item)}" title="Duplicar Equipo"><i data-lucide="copy"></i></button>
                     ${item.estado === 'CERTIFICANDO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Finalizar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Finalizar <i data-lucide="check"></i></button>` : ''}
-                    ${item.estado === 'DISPONIBLE' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="RESERVADO" title="Vender">Vender <i data-lucide="arrow-right"></i></button>` : ''}
-                    ${item.estado === 'RESERVADO' ? `<button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar">Entregar <i data-lucide="truck"></i></button>` : ''}
+                    ${item.estado === 'DISPONIBLE' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="RESERVADO" title="Despachar">Despachar <i data-lucide="arrow-right"></i></button>` : ''}
+                    ${item.estado === 'RESERVADO' ? `<button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Asignar Cliente">Asignar Cliente <i data-lucide="user-check"></i></button>` : ''}
                 </div>
             `;
 
