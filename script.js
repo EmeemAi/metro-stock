@@ -200,7 +200,8 @@ async function fetchData() {
 
     try {
         if(GOOGLE_SHEETS_API_URL !== '') {
-            const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get');
+            // Se inyecta un Timestamp para forzar al navegador a ignorar el caché (Cache-Busting)
+            const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
             const result = await response.json();
             appState.data = result.items || [];
             appState.solicitudes = result.solicitudes || [];
@@ -783,7 +784,7 @@ async function handleFormNuevo(e) {
         alert("Equipo guardado con éxito.");
     } catch (error) {
         console.error("Error al guardar nuevo registro:", error);
-        alert("Hubo un error al guardar el registro. Por favor, inténtalo de nuevo.");
+        alert("⚠️ ATENCIÓN FALLA CRÍTICA:\nEl servidor o Google Sheets rechazó el guardado. Motivo técnico: " + error.toString() + "\n\nDario, por favor pasame este mensaje exacto para saber dónde apretar.");
     } finally {
         btn.disabled = false;
         btn.innerText = 'Generar Entrada';
