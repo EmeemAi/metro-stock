@@ -1386,4 +1386,29 @@ td:nth-child(6)  /* Cert */ {
     background-color: var(--alert-high-bg);
     border: 1px solid var(--alert-high-border);
     color: var(--alert-high-text);
-}
+}
+
+/* --- Estilos CRM Vencimientos --- */
+.badge.crm-vencido {
+    background-color: var(--alert-high-bg);
+    color: var(--alert-high-border);
+    border: 1px solid var(--alert-high-border);
+}
+
+.badge.crm-proximo {
+    background-color: var(--alert-medium-bg);
+    color: var(--alert-medium-border);
+    border: 1px solid var(--alert-medium-border);
+}
+
+.badge.crm-aldia {
+    background-color: var(--state-disponible-bg);
+    color: var(--state-disponible);
+    border: 1px solid var(--state-disponible);
+}
+
+#view-crm .btn-primary {
+    font-size: 0.75rem;
+    padding: 0.35rem 0.65rem;
+}
+

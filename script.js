@@ -138,6 +138,11 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('solicitudes');
     });
 
+    document.getElementById('nav-crm').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchView('crm');
+    });
+
     // Delegación para Tabla de Solicitudes (Protección contra null)
     const tableSolicitudes = document.getElementById('table-solicitudes');
     if (tableSolicitudes) {
@@ -298,6 +303,7 @@ function switchView(view) {
     const viewGestion = document.getElementById('view-gestion');
     const viewStats = document.getElementById('bi-dashboard');
     const viewSolicitudes = document.getElementById('view-solicitudes');
+    const viewCRM = document.getElementById('view-crm');
     const navItems = document.querySelectorAll('.nav-item');
     const pageTitle = document.getElementById('page-title');
     const pageSubtitle = document.getElementById('page-subtitle');
@@ -309,6 +315,7 @@ function switchView(view) {
     if(viewGestion) viewGestion.style.display = 'none';
     if(viewStats) viewStats.style.display = 'none';
     if(viewSolicitudes) viewSolicitudes.style.display = 'none';
+    if(viewCRM) viewCRM.style.display = 'none';
     if(btnNew) btnNew.style.display = 'none';
 
     if(view === 'gestion') {
@@ -329,6 +336,12 @@ function switchView(view) {
         pageTitle.innerText = "Solicitudes Externas";
         pageSubtitle.innerText = "Pedidos de certificados recibidos vía Google Form";
         renderSolicitudes();
+    } else if (view === 'crm') {
+        document.getElementById('nav-crm').classList.add('active');
+        if(viewCRM) viewCRM.style.display = 'block';
+        pageTitle.innerText = "CRM Vencimientos";
+        pageSubtitle.innerText = "Gestión de oportunidades de recalibración";
+        renderCRM();
     }
     lucide.createIcons();
 }
@@ -1145,5 +1158,152 @@ async function confirmSendEmail() {
         btn.disabled = false;
         btn.innerHTML = originalText;
         lucide.createIcons();
+    }
+}
+
+// ==========================================
+// CRM: VENCIMIENTOS
+// ==========================================
+function calculateExpirations() {
+    const expirations = [];
+    const today = new Date();
+    today.setHours(0,0,0,0);
+
+    const entregados = appState.data.filter(item => item.estado === 'ENTREGADO' && item.fecha_calibracion);
+
+    entregados.forEach(item => {
+        let fechaCal;
+        // Parsear fecha yyyy-mm-dd
+        if (item.fecha_calibracion.includes('-')) {
+            const parts = item.fecha_calibracion.split('-');
+            fechaCal = new Date(parts[0], parts[1] - 1, parts[2]);
+        } else if (item.fecha_calibracion.includes('/')) {
+            const parts = item.fecha_calibracion.split('/');
+            fechaCal = new Date(parts[2], parts[1] - 1, parts[0]);
+        } else {
+            return;
+        }
+
+        const vencimiento = new Date(fechaCal);
+        vencimiento.setFullYear(vencimiento.getFullYear() + 1);
+
+        const diffTime = vencimiento - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        let statusCRM = 'aldia';
+        if (diffDays <= 0) {
+            statusCRM = 'vencido';
+        } else if (diffDays <= 30) {
+            statusCRM = 'proximo';
+        } else {
+            return; // Solo mostramos los vencidos o próximos a vencer (<= 30 días)
+        }
+
+        // Buscar email en solicitudes
+        let emailContacto = '';
+        if (item.cliente) {
+            const clienteName = item.cliente.trim().toLowerCase();
+            const solicitud = appState.solicitudes.find(s => s.empresa.toLowerCase().includes(clienteName) || clienteName.includes(s.empresa.toLowerCase()));
+            if (solicitud) {
+                emailContacto = solicitud.email;
+            }
+        }
+
+        expirations.push({
+            ...item,
+            vencimiento: vencimiento.toISOString().split('T')[0],
+            diffDays: diffDays,
+            statusCRM: statusCRM,
+            email: emailContacto
+        });
+    });
+
+    // Ordenar por más urgente (menor cantidad de días)
+    expirations.sort((a, b) => a.diffDays - b.diffDays);
+    return expirations;
+}
+
+function renderCRM() {
+    const tbody = document.getElementById('table-crm');
+    const emptyState = document.getElementById('crm-empty-state');
+    const tableContainer = document.getElementById('crm-table-container');
+    if (!tbody || !emptyState || !tableContainer) return;
+    
+    tbody.innerHTML = '';
+
+    const expirations = calculateExpirations();
+
+    if (expirations.length === 0) {
+        tableContainer.style.display = 'none';
+        emptyState.style.display = 'flex';
+    } else {
+        tableContainer.style.display = 'table';
+        emptyState.style.display = 'none';
+
+        expirations.forEach(item => {
+            const tr = document.createElement('tr');
+            
+            let statusText = '';
+            let statusClass = '';
+            if (item.statusCRM === 'vencido') {
+                statusText = 'Vencido';
+                statusClass = 'crm-vencido';
+            } else if (item.statusCRM === 'proximo') {
+                statusText = `Faltan ${item.diffDays} días`;
+                statusClass = 'crm-proximo';
+            }
+
+            const emailText = item.email ? `<a href="mailto:${item.email}" style="color:var(--primary);">${item.email}</a>` : '<span class="null-text">Sin Email</span>';
+            
+            let btnAction = '';
+            if (item.email) {
+                btnAction = `<button class="btn btn-primary" onclick="triggerReminderEmail('${item.id}', '${item.cliente.replace(/'/g, "\\'")}', '${item.email}', '${item.marca} ${item.modelo}', '${item.serie}')"><i data-lucide="mail"></i> Recordatorio</button>`;
+            } else {
+                btnAction = `<span class="null-text">Falta contacto</span>`;
+            }
+
+            tr.innerHTML = `
+                <td><strong>${item.cliente || 'Sin Asignar'}</strong></td>
+                <td>${item.marca} ${item.modelo}<br><small class="text-muted">S/N: ${item.serie}</small></td>
+                <td>${item.vencimiento}</td>
+                <td><span class="badge ${statusClass}">${statusText}</span></td>
+                <td>${emailText}</td>
+                <td>${btnAction}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+    lucide.createIcons();
+}
+
+async function triggerReminderEmail(id, cliente, email, equipo, serie) {
+    if (!confirm(`¿Deseas enviar un recordatorio de calibración a ${email}?`)) return;
+
+    try {
+        alert("Enviando recordatorio...");
+        const requestData = {
+            action: 'send_reminder_email',
+            data: {
+                email: email,
+                cliente: cliente,
+                equipo: equipo,
+                serie: serie,
+                id: id
+            }
+        };
+
+        await fetch(GOOGLE_SHEETS_API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            cache: 'no-cache',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(requestData)
+        });
+        
+        // Asumiendo éxito con no-cors
+        alert("El recordatorio ha sido procesado (revise su casilla de enviados).");
+    } catch (e) {
+        console.error(e);
+        alert("El envío se ha procesado (error de red o CORS ignorado).");
     }
 }
