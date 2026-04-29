@@ -1098,10 +1098,8 @@ async function confirmSendEmail() {
     btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Enviando...';
     lucide.createIcons();
 
-    // Capturamos el certificado del texto que ya buscamos arriba
-    const statusText = document.getElementById('email-file-status').innerText;
-    const certMatch = statusText.match(/Archivo localizado: (.*)\.pdf/);
-    const certificado = certMatch ? certMatch[1] : '';
+    // Obtenemos el certificado del estado en lugar de extraerlo del HTML
+    const certificado = appState.pendingEmail ? appState.pendingEmail.certificado : '';
 
     const requestData = {
         action: 'send_email',
