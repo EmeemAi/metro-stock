@@ -1121,6 +1121,28 @@ async function confirmSendEmail() {
             body: JSON.stringify(requestData)
         });
 
+        // AUTO-ACTUALIZACIÓN DEL EQUIPO ASOCIADO: De RESERVADO a ENTREGADO con asignación de cliente
+        if (appState.pendingEmail && appState.pendingEmail.equipoId) {
+            const equipoId = appState.pendingEmail.equipoId;
+            const clienteName = appState.pendingEmail.empresa || '';
+            console.log(">>> Auto-actualizando equipo tras envío de email:", { equipoId, clienteName });
+            
+            // 1. Forzar actualización en memoria local de inmediato para feedback instantáneo
+            const eqIndex = appState.data.findIndex(e => e.id === equipoId);
+            if (eqIndex > -1) {
+                appState.data[eqIndex].estado = 'ENTREGADO';
+                appState.data[eqIndex].cliente = clienteName;
+                renderTable(); // Re-renderizar la tabla del inventario
+            }
+            
+            // 2. Enviar actualización al servidor Google Sheets
+            try {
+                await updateStateRecord(equipoId, 'ENTREGADO', { cliente: clienteName });
+            } catch (errState) {
+                console.error("Error al actualizar el estado en Google Sheets automáticamente:", errState);
+            }
+        }
+
         // FORZADO LOCAL: Marcamos como enviado en la memoria de la web para cambio instantáneo
         if (appState.currentSolicitudIndex !== undefined) {
             appState.solicitudes[appState.currentSolicitudIndex].estado = 'enviado';
@@ -1132,11 +1154,32 @@ async function confirmSendEmail() {
         setTimeout(async () => {
             await fetchData();
             closeModal('modal-email-confirm');
-            alert("¡Envío de certificado procesado con éxito!");
+            alert("¡Envío de certificado y actualización de equipo procesados con éxito!");
         }, 3000);
 
     } catch (e) {
         console.error("Fetch error:", e);
+        
+        // Intentar actualizar el equipo incluso si el fetch de mail reportó error (por ejemplo, por CORS)
+        if (appState.pendingEmail && appState.pendingEmail.equipoId) {
+            const equipoId = appState.pendingEmail.equipoId;
+            const clienteName = appState.pendingEmail.empresa || '';
+            console.log(">>> Auto-actualizando equipo tras reporte de error de email (CORS/Red):", { equipoId, clienteName });
+            
+            const eqIndex = appState.data.findIndex(e => e.id === equipoId);
+            if (eqIndex > -1) {
+                appState.data[eqIndex].estado = 'ENTREGADO';
+                appState.data[eqIndex].cliente = clienteName;
+                renderTable();
+            }
+            
+            try {
+                await updateStateRecord(equipoId, 'ENTREGADO', { cliente: clienteName });
+            } catch (errState) {
+                console.error("Error al actualizar el estado en Google Sheets automáticamente tras fallo:", errState);
+            }
+        }
+
         alert("El envío se ha procesado (verifique su casilla CC por confirmación).");
         closeModal('modal-email-confirm');
     } finally {
