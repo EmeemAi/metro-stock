@@ -777,11 +777,16 @@ async function handleFormNuevo(e) {
         });
         record.puntos = JSON.stringify(puntos);
 
-        await saveNewRecord(record);
+        const result = await saveNewRecord(record);
         
-        closeAllModals();
-        await fetchData(); // Recargar datos para evitar duplicados en memoria
-        alert("Equipo guardado con éxito.");
+        if (result && result.success) {
+            closeAllModals();
+            await fetchData(); // Recargar datos para evitar duplicados en memoria
+            alert("Equipo guardado con éxito.");
+        } else {
+            const errorMsg = result && result.error ? result.error : "Respuesta de guardado vacía o inválida del servidor.";
+            alert("⚠️ ATENCIÓN FALLA CRÍTICA:\nEl servidor o Google Sheets rechazó el guardado.\n\nMotivo técnico: " + errorMsg + "\n\nDario, por favor pasame este mensaje exacto para saber dónde apretar.");
+        }
     } catch (error) {
         console.error("Error al guardar nuevo registro:", error);
         alert("⚠️ ATENCIÓN FALLA CRÍTICA:\nEl servidor o Google Sheets rechazó el guardado. Motivo técnico: " + error.toString() + "\n\nDario, por favor pasame este mensaje exacto para saber dónde apretar.");
@@ -948,11 +953,15 @@ async function handleFormEdit(e) {
         });
         record.puntos = JSON.stringify(puntos);
 
-        await saveFullUpdate(record);
-        await fetchData(); // Recargar datos frescos
-        
-        closeAllModals();
-        alert("Cambios guardados con éxito.");
+        const result = await saveFullUpdate(record);
+        if (result && result.success) {
+            await fetchData(); // Recargar datos frescos
+            closeAllModals();
+            alert("Cambios guardados con éxito.");
+        } else {
+            const errorMsg = result && result.error ? result.error : "Respuesta de guardado vacía o inválida del servidor.";
+            alert("⚠️ ERROR AL EDITAR:\nEl servidor rechazó los cambios.\n\nMotivo técnico: " + errorMsg);
+        }
     } catch (error) {
         console.error("Error al editar registro:", error);
         alert("Hubo un error al guardar los cambios. Por favor, inténtalo de nuevo.");
@@ -1048,7 +1057,7 @@ function handleAtenderSolicitud(index) {
     }
 
     emailTo.value = s.email;
-    emailBody.value = `Hola ${s.contacto || s.empresa},\n\nAdjunto encontrarás el certificado con el código ${s.certificado} que has solicitado.\nPor favor, confírmanos la correcta recepción de este correo y del archivo adjunto.\n\nSi tienes alguna otra consulta, no dudes en contactarnos.\n\nSaludos,\n\nDarío Del Real\n\nCR MEDICION\nPerú 1297 - CABA - Argentina\nTel.: +54 11 4361-3499 / 3680\nFax.: +54 11 4362-7082\nWp: +54 11-4971-7053\nwww.todomedicion.com\nSchwyzLab Laboratorio de Metrología`;
+    emailBody.value = `Estimado/a ${s.contacto || s.empresa || 'Cliente'},\n\nAdjunto al presente correo encontrará el certificado de calibración solicitado, correspondiente al código ${s.certificado}. Agradecemos confirmar la correcta recepción de este mensaje.\n\nLe informamos que somos proveedores de instrumentos de medición y certificamos. Puede consultarnos de manera directa si:\n* Tiene otros instrumentos para certificar: Realizamos la calibración y emisión de certificados para todo su equipamiento.\n* Quiere consultar por equipo nuevo: Lo asesoramos y proveemos en la adquisición de nuevo instrumental.\n\nPara cualquier consulta técnica o cotización, puede responder a este correo o escribirnos vía WhatsApp al +54 11 4971-7053.\n\nQuedamos a su entera disposición.\n\nSaludos cordiales,\n\nDarío Del Real\nCR MEDICION | SchwyzLab Laboratorio de Metrología\nPerú 1297 - CABA - Argentina\nTel.: +54 11 4361-3499 / 3680\nWeb: www.todomedicion.com`;
     
     console.log("Abriendo modal confirmación...");
     openModal('modal-email-confirm');
