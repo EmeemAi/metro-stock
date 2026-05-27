@@ -138,6 +138,11 @@ document.addEventListener('DOMContentLoaded', () => {
         switchView('solicitudes');
     });
 
+    document.getElementById('nav-vencimientos').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchView('vencimientos');
+    });
+
     // Delegación para Tabla de Solicitudes (Protección contra null)
     const tableSolicitudes = document.getElementById('table-solicitudes');
     if (tableSolicitudes) {
@@ -155,6 +160,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnConfirmSend) {
         btnConfirmSend.addEventListener('click', () => {
             confirmSendEmail();
+        });
+    }
+
+    // Botón Confirmar Recordatorio Vencimiento
+    const btnConfirmReminder = document.getElementById('btn-confirm-reminder');
+    if (btnConfirmReminder) {
+        btnConfirmReminder.addEventListener('click', () => {
+            confirmSendReminder();
         });
     }
 
@@ -224,6 +237,7 @@ async function fetchData() {
         updateUIState();
         renderTable();
         renderSolicitudes();
+        renderVencimientos();
         updateBadge();
         updateDashboard(); 
     }
@@ -298,6 +312,7 @@ function switchView(view) {
     const viewGestion = document.getElementById('view-gestion');
     const viewStats = document.getElementById('bi-dashboard');
     const viewSolicitudes = document.getElementById('view-solicitudes');
+    const viewVencimientos = document.getElementById('view-vencimientos');
     const navItems = document.querySelectorAll('.nav-item');
     const pageTitle = document.getElementById('page-title');
     const pageSubtitle = document.getElementById('page-subtitle');
@@ -309,6 +324,7 @@ function switchView(view) {
     if(viewGestion) viewGestion.style.display = 'none';
     if(viewStats) viewStats.style.display = 'none';
     if(viewSolicitudes) viewSolicitudes.style.display = 'none';
+    if(viewVencimientos) viewVencimientos.style.display = 'none';
     if(btnNew) btnNew.style.display = 'none';
 
     if(view === 'gestion') {
@@ -329,6 +345,12 @@ function switchView(view) {
         pageTitle.innerText = "Solicitudes Externas";
         pageSubtitle.innerText = "Pedidos de certificados recibidos vía Google Form";
         renderSolicitudes();
+    } else if (view === 'vencimientos') {
+        document.getElementById('nav-vencimientos').classList.add('active');
+        if(viewVencimientos) viewVencimientos.style.display = 'flex';
+        pageTitle.innerText = "CRM Vencimientos";
+        pageSubtitle.innerText = "Control automático de calibraciones próximas a vencer";
+        renderVencimientos();
     }
     lucide.createIcons();
 }
@@ -1191,6 +1213,212 @@ async function confirmSendEmail() {
 
         alert("El envío se ha procesado (verifique su casilla CC por confirmación).");
         closeModal('modal-email-confirm');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        lucide.createIcons();
+    }
+}
+
+// ==========================================
+// CRM VENCIMIENTOS
+// ==========================================
+function renderVencimientos() {
+    const tbody = document.getElementById('table-vencimientos');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    
+    let kpiVigentes = 0;
+    let kpiProximos = 0;
+    let kpiVencidos = 0;
+
+    // Filtrar los equipos para quedarnos solo con aquellos que tienen una solicitud asociada (en base a coincidencia de certificado)
+    const filteredEquipos = appState.data.filter(item => {
+        const certLimpio = String(item.certificado || '').trim().toUpperCase();
+        if (!certLimpio) return false;
+        return appState.solicitudes.some(s => String(s.certificado || '').trim().toUpperCase() === certLimpio);
+    });
+
+    const equiposConVencimiento = filteredEquipos.map(item => {
+        let vencimientoDate = null;
+        let vencimientoText = '---';
+        let diasRestantes = null;
+        let estadoVenc = 'vigente'; 
+
+        if (item.fecha_calibracion) {
+            let parts = [];
+            if (item.fecha_calibracion.includes('-')) {
+                parts = item.fecha_calibracion.split('-'); // yyyy-mm-dd
+                vencimientoDate = new Date(parseInt(parts[0]) + 1, parseInt(parts[1]) - 1, parseInt(parts[2]));
+            } else if (item.fecha_calibracion.includes('/')) {
+                parts = item.fecha_calibracion.split('/'); // dd/mm/yyyy
+                if (parts.length === 3) {
+                    vencimientoDate = new Date(parseInt(parts[2]) + 1, parseInt(parts[1]) - 1, parseInt(parts[0]));
+                }
+            }
+
+            if (vencimientoDate) {
+                const dd = String(vencimientoDate.getDate()).padStart(2, '0');
+                const mm = String(vencimientoDate.getMonth() + 1).padStart(2, '0');
+                const yyyy = vencimientoDate.getFullYear();
+                vencimientoText = `${dd}/${mm}/${yyyy}`;
+
+                const diffTime = vencimientoDate.getTime() - today.getTime();
+                diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+                if (diasRestantes < 0) {
+                    estadoVenc = 'vencido';
+                    kpiVencidos++;
+                } else if (diasRestantes <= 30) {
+                    estadoVenc = 'proximo';
+                    kpiProximos++;
+                } else {
+                    estadoVenc = 'vigente';
+                    kpiVigentes++;
+                }
+            }
+        }
+
+        // Buscar email en solicitudes (sabemos que existe al menos una coincidencia)
+        let email = '---';
+        let contacto = item.cliente || '';
+        const certLimpio = String(item.certificado || '').trim().toUpperCase();
+        const solicitud = appState.solicitudes.find(s => String(s.certificado || '').trim().toUpperCase() === certLimpio);
+        if (solicitud) {
+            if (solicitud.email) email = solicitud.email;
+            contacto = solicitud.contacto || contacto;
+        }
+
+        return { ...item, vencimientoDate, vencimientoText, diasRestantes, estadoVenc, email, contacto };
+    }).filter(item => item.vencimientoDate != null);
+
+    // Ordenar por vencimiento más cercano o vencido (ascendente)
+    equiposConVencimiento.sort((a, b) => a.vencimientoDate - b.vencimientoDate);
+
+    // Actualizar KPIs
+    const elVigentes = document.getElementById('kpi-vigentes');
+    const elProximos = document.getElementById('kpi-proximos');
+    const elVencidos = document.getElementById('kpi-vencidos');
+    if (elVigentes) elVigentes.innerText = kpiVigentes;
+    if (elProximos) elProximos.innerText = kpiProximos;
+    if (elVencidos) elVencidos.innerText = kpiVencidos;
+
+    if (equiposConVencimiento.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding:2rem;">No hay equipos con fecha de calibración calculable.</td></tr>';
+        return;
+    }
+
+    equiposConVencimiento.forEach((eq, index) => {
+        const tr = document.createElement('tr');
+        
+        const labelVenc = eq.estadoVenc === 'vencido' ? 'Vencido' 
+                        : (eq.estadoVenc === 'proximo' ? `Vence en ${eq.diasRestantes}d` : 'Vigente');
+        
+        tr.innerHTML = `
+            <td><strong>${eq.id}</strong></td>
+            <td>${eq.marca} ${eq.modelo}</td>
+            <td><strong>${eq.cliente || '---'}</strong><br><small>${eq.email}</small></td>
+            <td>${eq.vencimientoText}</td>
+            <td><span class="badge status-badge ${eq.estadoVenc}">${labelVenc}</span></td>
+            <td>
+                ${eq.email !== '---' && eq.email.includes('@') ? 
+                `<button class="btn btn-outline btn-sm btn-enviar-aviso" onclick="handleEnviarAviso('${eq.id}')">
+                    <i data-lucide="mail" style="width:14px; height:14px;"></i> Avisar
+                </button>` : `<span class="null-text">Sin Email</span>`}
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+    lucide.createIcons();
+}
+
+window.handleEnviarAviso = function(id) {
+    let vencimientoText = '';
+    let email = '';
+    let contacto = '';
+    
+    const eq = appState.data.find(e => e.id === id);
+    if (!eq) return;
+
+    if (eq.fecha_calibracion) {
+        let parts = [];
+        if (eq.fecha_calibracion.includes('-')) {
+            parts = eq.fecha_calibracion.split('-');
+            vencimientoText = `${String(parts[2]).padStart(2,'0')}/${String(parts[1]).padStart(2,'0')}/${parseInt(parts[0])+1}`;
+        } else if (eq.fecha_calibracion.includes('/')) {
+            parts = eq.fecha_calibracion.split('/');
+            vencimientoText = `${String(parts[0]).padStart(2,'0')}/${String(parts[1]).padStart(2,'0')}/${parseInt(parts[2])+1}`;
+        }
+    }
+
+    contacto = eq.cliente || '';
+    const certLimpio = String(eq.certificado || '').trim().toUpperCase();
+    if (certLimpio) {
+        const solicitud = appState.solicitudes.find(s => String(s.certificado || '').trim().toUpperCase() === certLimpio);
+        if (solicitud && solicitud.email) {
+            email = solicitud.email;
+            contacto = solicitud.contacto || contacto;
+        }
+    }
+
+    if (!email || !email.includes('@')) {
+        alert("El equipo no tiene un email válido registrado en las solicitudes.");
+        return;
+    }
+
+    appState.pendingReminder = {
+        email: email,
+        contacto: contacto,
+        empresa: eq.cliente,
+        certificado: eq.certificado,
+        instrumento: `${eq.marca} ${eq.modelo}`,
+        fecha_vencimiento: vencimientoText
+    };
+
+    document.getElementById('reminder-to').value = email;
+    document.getElementById('reminder-body').value = `Estimado/a ${contacto},\n\nSegún nuestro sistema, el certificado de calibración de su equipo (${eq.marca} ${eq.modelo}, Certificado Nº: ${eq.certificado}) se encuentra próximo a vencer el día ${vencimientoText}.\n\nPara reprogramar su recalibración y mantener su equipo al día, por favor póngase en contacto con nosotros.\n\nPuede responder a este correo o escribirnos vía WhatsApp al +54 11 4971-7053.\n\nQuedamos a su entera disposición.\n\nSaludos cordiales,\n\nDarío Del Real\nCR MEDICION | SchwyzLab Laboratorio de Metrología\nPerú 1297 - CABA - Argentina\nTel.: +54 11 4361-3499 / 3680\nWeb: www.todomedicion.com`;
+
+    openModal('modal-reminder-confirm');
+}
+
+async function confirmSendReminder() {
+    const btn = document.getElementById('btn-confirm-reminder');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Enviando...';
+    lucide.createIcons();
+
+    const payload = {
+        action: 'send_reminder_email',
+        data: {
+            email: appState.pendingReminder.email,
+            contacto: appState.pendingReminder.contacto,
+            empresa: appState.pendingReminder.empresa,
+            certificado: appState.pendingReminder.certificado,
+            instrumento: appState.pendingReminder.instrumento,
+            fecha_vencimiento: appState.pendingReminder.fecha_vencimiento,
+            body: document.getElementById('reminder-body').value
+        }
+    };
+
+    try {
+        await fetch(GOOGLE_SHEETS_API_URL, {
+            method: 'POST',
+            mode: 'no-cors',
+            cache: 'no-cache',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        
+        closeModal('modal-reminder-confirm');
+        alert("¡Recordatorio de vencimiento enviado con éxito!");
+    } catch (e) {
+        console.error("Error al enviar recordatorio:", e);
+        closeModal('modal-reminder-confirm');
+        alert("El recordatorio ha sido procesado (revise la bandeja CC).");
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
