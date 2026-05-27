@@ -40,6 +40,9 @@
                     <i data-lucide="inbox"></i> Solicitudes
                     <span class="notification-badge" id="badge-solicitudes" style="display: none;">0</span>
                 </a>
+                <a href="#" class="nav-item" id="nav-vencimientos">
+                    <i data-lucide="clock"></i> CRM Vencimientos
+                </a>
             </nav>
             <div class="sidebar-footer">
                 <button class="btn btn-outline" id="btn-toggle-theme" style="margin-bottom: 0.5rem; width: 100%;">
@@ -189,6 +192,51 @@
                             </tr>
                         </thead>
                         <tbody id="table-solicitudes">
+                            <!-- Inyectado por JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Vista: CRM Vencimientos -->
+            <section id="view-vencimientos" class="dashboard-view" style="display: none; flex-direction: column; gap: 1.5rem;">
+                <div class="kpi-grid">
+                    <div class="kpi-card stock-disponible">
+                        <div class="kpi-icon"><i data-lucide="check-circle"></i></div>
+                        <div class="kpi-info">
+                            <h3>Vigentes</h3>
+                            <div class="kpi-value" id="kpi-vigentes">0</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card stock-reservado">
+                        <div class="kpi-icon"><i data-lucide="alert-circle"></i></div>
+                        <div class="kpi-info">
+                            <h3>Próximos a Vencer</h3>
+                            <div class="kpi-value" id="kpi-proximos">0</div>
+                        </div>
+                    </div>
+                    <div class="kpi-card stock-entregado">
+                        <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;"><i data-lucide="x-octagon"></i></div>
+                        <div class="kpi-info">
+                            <h3>Vencidos</h3>
+                            <div class="kpi-value" id="kpi-vencidos">0</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container shadow-sm">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Instrumento</th>
+                                <th>Cliente</th>
+                                <th>Vencimiento</th>
+                                <th>Estado Cert.</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="table-vencimientos">
                             <!-- Inyectado por JS -->
                         </tbody>
                     </table>
@@ -489,6 +537,38 @@
                 <button class="btn btn-outline" onclick="closeModal('modal-email-confirm')">Cancelar</button>
                 <button class="btn btn-primary" id="btn-confirm-send" disabled>
                     <i data-lucide="send"></i> Confirmar y Enviar Mail
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal: Confirmar Envío de Recordatorio (Vencimientos) -->
+    <div id="modal-reminder-confirm" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Enviar Aviso de Vencimiento</h2>
+                <button class="btn-icon" onclick="closeModal('modal-reminder-confirm')"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Destinatario</label>
+                    <input type="text" id="reminder-to" readonly>
+                </div>
+                
+                <div class="form-group">
+                    <label>Asunto</label>
+                    <input type="text" id="reminder-subject" readonly value="Aviso de Próximo Vencimiento - CR MEDICION">
+                </div>
+                
+                <div class="form-group">
+                    <label>Mensaje (Previsualización)</label>
+                    <textarea id="reminder-body" rows="8" readonly></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-outline" onclick="closeModal('modal-reminder-confirm')">Cancelar</button>
+                <button class="btn btn-primary" id="btn-confirm-reminder">
+                    <i data-lucide="send"></i> Enviar Recordatorio
                 </button>
             </div>
         </div>
