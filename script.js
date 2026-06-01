@@ -42,7 +42,8 @@ document.addEventListener('DOMContentLoaded', () => {
     fetchData();
 
     // Event Listeners Básicos
-    document.getElementById('btn-new-equipo').addEventListener('click', openModalNuevo);
+    const btnNewEquipo = document.getElementById('btn-new-equipo');
+    if (btnNewEquipo) btnNewEquipo.addEventListener('click', openModalNuevo);
     
     // Configurar Modales (Cerrar)
     document.querySelectorAll('.btn-close, .btn-close-action').forEach(btn => {
@@ -50,10 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Búsqueda y Filtros
-    document.getElementById('search-input').addEventListener('input', (e) => {
-        appState.search = e.target.value.toLowerCase();
-        renderTable();
-    });
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            appState.search = e.target.value.toLowerCase();
+            renderTable();
+        });
+    }
 
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -65,40 +69,52 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // Formularios
-    document.getElementById('form-nuevo').addEventListener('submit', handleFormNuevo);
-    document.getElementById('form-estado').addEventListener('submit', handleFormEstado);
-    document.getElementById('form-edit').addEventListener('submit', handleFormEdit);
-    document.getElementById('btn-add-punto').addEventListener('click', addPuntoRow);
-    document.getElementById('btn-add-punto-edit').addEventListener('click', () => addPuntoRowEdit());
+    const formNuevo = document.getElementById('form-nuevo');
+    if (formNuevo) formNuevo.addEventListener('submit', handleFormNuevo);
+    
+    const formEstado = document.getElementById('form-estado');
+    if (formEstado) formEstado.addEventListener('submit', handleFormEstado);
+    
+    const formEdit = document.getElementById('form-edit');
+    if (formEdit) formEdit.addEventListener('submit', handleFormEdit);
+    
+    const btnAddPunto = document.getElementById('btn-add-punto');
+    if (btnAddPunto) btnAddPunto.addEventListener('click', addPuntoRow);
+    
+    const btnAddPuntoEdit = document.getElementById('btn-add-punto-edit');
+    if (btnAddPuntoEdit) btnAddPuntoEdit.addEventListener('click', () => addPuntoRowEdit());
     
     // Tabla de botones dinámicos (Delegación de eventos)
-    document.getElementById('table-body').addEventListener('click', (e) => {
-        const btnState = e.target.closest('.btn-change-state');
-        if(btnState) {
-            const id = btnState.getAttribute('data-id');
-            const targetState = btnState.getAttribute('data-target-state');
-            openModalEstado(id, targetState);
-        }
-        
-        const btnEdit = e.target.closest('.btn-edit-equipo');
-        if(btnEdit) {
-            const id = btnEdit.getAttribute('data-id');
-            openModalEdit(id);
-        }
+    const tableBody = document.getElementById('table-body');
+    if (tableBody) {
+        tableBody.addEventListener('click', (e) => {
+            const btnState = e.target.closest('.btn-change-state');
+            if(btnState) {
+                const id = btnState.getAttribute('data-id');
+                const targetState = btnState.getAttribute('data-target-state');
+                openModalEstado(id, targetState);
+            }
+            
+            const btnEdit = e.target.closest('.btn-edit-equipo');
+            if(btnEdit) {
+                const id = btnEdit.getAttribute('data-id');
+                openModalEdit(id);
+            }
 
-        const btnFicha = e.target.closest('.btn-view-ficha');
-        if(btnFicha) {
-            const id = btnFicha.getAttribute('data-id');
-            openModalFicha(id);
-        }
+            const btnFicha = e.target.closest('.btn-view-ficha');
+            if(btnFicha) {
+                const id = btnFicha.getAttribute('data-id');
+                openModalFicha(id);
+            }
 
-        const btnDuplicate = e.target.closest('.btn-duplicate-equipo');
-        if(btnDuplicate) {
-            const id = btnDuplicate.getAttribute('data-id');
-            const index = btnDuplicate.getAttribute('data-index');
-            openModalDuplicate(id, index);
-        }
-    });
+            const btnDuplicate = e.target.closest('.btn-duplicate-equipo');
+            if(btnDuplicate) {
+                const id = btnDuplicate.getAttribute('data-id');
+                const index = btnDuplicate.getAttribute('data-index');
+                openModalDuplicate(id, index);
+            }
+        });
+    }
     // Mobile Menu Toggle
     const btnMenu = document.getElementById('btn-menu-toggle');
     const sidebar = document.querySelector('.sidebar');
@@ -125,26 +141,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Navegación del Sistema (Vistas)
-    document.getElementById('nav-gestion').addEventListener('click', (e) => {
-        e.preventDefault();
-        switchView('gestion');
-    });
-    document.getElementById('nav-stats').addEventListener('click', (e) => {
-        e.preventDefault();
-        switchView('stats');
-    });
-
-    document.getElementById('nav-solicitudes').addEventListener('click', (e) => {
-        e.preventDefault();
-        switchView('solicitudes');
-    });
-
-    document.getElementById('nav-vencimientos').addEventListener('click', (e) => {
-        e.preventDefault();
-        switchView('vencimientos');
-    });
-
-
+    const navGestion = document.getElementById('nav-gestion');
+    if (navGestion) {
+        navGestion.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('gestion');
+        });
+    }
+    const navStats = document.getElementById('nav-stats');
+    if (navStats) {
+        navStats.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('stats');
+        });
+    }
+    const navSolicitudes = document.getElementById('nav-solicitudes');
+    if (navSolicitudes) {
+        navSolicitudes.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('solicitudes');
+        });
+    }
+    const navVencimientos = document.getElementById('nav-vencimientos');
+    if (navVencimientos) {
+        navVencimientos.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('vencimientos');
+        });
+    };
 
     // Delegación para Tabla de Solicitudes (Protección contra null)
     const tableSolicitudes = document.getElementById('table-solicitudes');
@@ -324,7 +348,9 @@ function switchView(view) {
     const pageSubtitle = document.getElementById('page-subtitle');
     const btnNew = document.getElementById('btn-new-equipo');
     
-    navItems.forEach(n => n.classList.remove('active'));
+    if (navItems) {
+        navItems.forEach(n => n.classList.remove('active'));
+    }
 
     // Ocultar todas
     if(viewGestion) viewGestion.style.display = 'none';
@@ -334,37 +360,46 @@ function switchView(view) {
     if(btnNew) btnNew.style.display = 'none';
 
     if(view === 'gestion') {
-        document.getElementById('nav-gestion').classList.add('active');
+        const elNav = document.getElementById('nav-gestion');
+        if (elNav) elNav.classList.add('active');
         if(viewGestion) viewGestion.style.display = 'flex';
         if(btnNew) btnNew.style.display = 'inline-flex';
-        pageTitle.innerText = "Gestión de Inventario";
-        pageSubtitle.innerText = "gestiona el stock de instrumentos con certificado para entrega inmediata";
+        if(pageTitle) pageTitle.innerText = "Gestión de Inventario";
+        if(pageSubtitle) pageSubtitle.innerText = "gestiona el stock de instrumentos con certificado para entrega inmediata";
     } else if (view === 'stats') {
-        document.getElementById('nav-stats').classList.add('active');
+        const elNav = document.getElementById('nav-stats');
+        if (elNav) elNav.classList.add('active');
         if(viewStats) viewStats.style.display = 'flex';
-        pageTitle.innerText = "Inteligencia de Negocio";
-        pageSubtitle.innerText = "Análisis de demanda y necesidades de reposición";
+        if(pageTitle) pageTitle.innerText = "Inteligencia de Negocio";
+        if(pageSubtitle) pageSubtitle.innerText = "Análisis de demanda y necesidades de reposición";
         updateDashboard();
     } else if (view === 'solicitudes') {
-        document.getElementById('nav-solicitudes').classList.add('active');
+        const elNav = document.getElementById('nav-solicitudes');
+        if (elNav) elNav.classList.add('active');
         if(viewSolicitudes) viewSolicitudes.style.display = 'block';
-        pageTitle.innerText = "Solicitudes Externas";
-        pageSubtitle.innerText = "Pedidos de certificados recibidos vía Google Form";
+        if(pageTitle) pageTitle.innerText = "Solicitudes Externas";
+        if(pageSubtitle) pageSubtitle.innerText = "Pedidos de certificados recibidos vía Google Form";
         renderSolicitudes();
     } else if (view === 'vencimientos') {
-        document.getElementById('nav-vencimientos').classList.add('active');
+        const elNav = document.getElementById('nav-vencimientos');
+        if (elNav) elNav.classList.add('active');
         if(viewVencimientos) viewVencimientos.style.display = 'flex';
-        pageTitle.innerText = "CRM Vencimientos";
-        pageSubtitle.innerText = "Control automático de calibraciones próximas a vencer";
+        if(pageTitle) pageTitle.innerText = "CRM Vencimientos";
+        if(pageSubtitle) pageSubtitle.innerText = "Control automático de calibraciones próximas a vencer";
         renderVencimientos();
     }
-    lucide.createIcons();
+    
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
 }
 
 let salesChart = null;
 
 function updateDashboard() {
     const biSection = document.getElementById('bi-dashboard');
+    if (!biSection) return;
+
     if(biSection.style.display === 'none' && !appState.loading) {
          // Si no estamos viendo el dashboard, solo calculamos los números básicos para los KPIs si fuera necesario, 
          // pero los gráficos Chart.js requieren que el canvas sea visible.
@@ -394,42 +429,48 @@ function updateDashboard() {
     });
 
     // 2. Actualizar KPIs
-    document.getElementById('kpi-disponible').innerText = totalAvailable;
-    document.getElementById('kpi-ventas').innerText = totalVentas;
-    document.getElementById('kpi-certificando').innerText = totalCertificando;
+    const elDisponible = document.getElementById('kpi-disponible');
+    if (elDisponible) elDisponible.innerText = totalAvailable;
+    const elVentas = document.getElementById('kpi-ventas');
+    if (elVentas) elVentas.innerText = totalVentas;
+    const elCertificando = document.getElementById('kpi-certificando');
+    if (elCertificando) elCertificando.innerText = totalCertificando;
 
     // 3. Radar de Reposición (Lógica Crítica)
     const replenishmentList = document.getElementById('replenishment-list');
-    replenishmentList.innerHTML = '';
     
     const criticalItems = Object.entries(stats)
         .map(([name, s]) => ({ name, ...s }))
         .filter(s => s.entregado > 0 && s.disponible < 2) // Menos de 2 unidades y con historial de ventas
         .sort((a,b) => b.entregado - a.entregado); // Ordenar por demanda
 
-    document.getElementById('kpi-reposicion').innerText = criticalItems.length;
+    const elReposicion = document.getElementById('kpi-reposicion');
+    if (elReposicion) elReposicion.innerText = criticalItems.length;
 
     if(biSection.style.display !== 'none') {
-        if(criticalItems.length === 0) {
-            replenishmentList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted);">No hay alertas críticas de reposición.</p>';
-        } else {
-            criticalItems.forEach(item => {
-                const priorityClass = item.disponible === 0 ? 'priority-high' : 'priority-medium';
-                const reason = item.disponible === 0 
-                    ? `SIN STOCK. Ventas registradas: ${item.entregado}u` 
-                    : `STOCK CRÍTICO (${item.disponible}u). Ventas: ${item.entregado}u`;
-                
-                const div = document.createElement('div');
-                div.className = `alert-item ${priorityClass}`;
-                div.innerHTML = `
-                    <div class="alert-info-text">
-                        <span class="alert-model">${item.name}</span>
-                        <span class="alert-reason">${reason}</span>
-                    </div>
-                    <div class="alert-action-badge">${item.disponible === 0 ? 'Reponer' : 'Pedir'}</div>
-                `;
-                replenishmentList.appendChild(div);
-            });
+        if (replenishmentList) {
+            replenishmentList.innerHTML = '';
+            if(criticalItems.length === 0) {
+                replenishmentList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted);">No hay alertas críticas de reposición.</p>';
+            } else {
+                criticalItems.forEach(item => {
+                    const priorityClass = item.disponible === 0 ? 'priority-high' : 'priority-medium';
+                    const reason = item.disponible === 0 
+                        ? `SIN STOCK. Ventas registradas: ${item.entregado}u` 
+                        : `STOCK CRÍTICO (${item.disponible}u). Ventas: ${item.entregado}u`;
+                    
+                    const div = document.createElement('div');
+                    div.className = `alert-item ${priorityClass}`;
+                    div.innerHTML = `
+                        <div class="alert-info-text">
+                            <span class="alert-model">${item.name}</span>
+                            <span class="alert-reason">${reason}</span>
+                        </div>
+                        <div class="alert-action-badge">${item.disponible === 0 ? 'Reponer' : 'Pedir'}</div>
+                    `;
+                    replenishmentList.appendChild(div);
+                });
+            }
         }
 
         // 4. Gráfico de Ventas (Top Demand)
@@ -500,13 +541,14 @@ function updateDashboard() {
 function updateUIState() {
     const tableBody = document.getElementById('table-body');
     const loadingState = document.getElementById('loading-state');
+    const emptyState = document.getElementById('empty-state');
     
     if (appState.loading) {
-        tableBody.innerHTML = '';
-        loadingState.style.display = 'flex';
-        document.getElementById('empty-state').style.display = 'none';
+        if (tableBody) tableBody.innerHTML = '';
+        if (loadingState) loadingState.style.display = 'flex';
+        if (emptyState) emptyState.style.display = 'none';
     } else {
-        loadingState.style.display = 'none';
+        if (loadingState) loadingState.style.display = 'none';
     }
 }
 
@@ -516,6 +558,7 @@ function renderTable() {
     const tbody = document.getElementById('table-body');
     const emptyState = document.getElementById('empty-state');
     const summaryContainer = document.getElementById('available-summary');
+    if (!tbody) return;
     tbody.innerHTML = '';
 
     // Filtrar
@@ -1241,6 +1284,14 @@ function renderVencimientos() {
     let kpiProximos = 0;
     let kpiVencidos = 0;
 
+    // Actualizar KPIs a 0 por defecto antes del retorno por vacío
+    const elVigentes = document.getElementById('kpi-vigentes');
+    const elProximos = document.getElementById('kpi-proximos');
+    const elVencidos = document.getElementById('kpi-vencidos');
+    if (elVigentes) elVigentes.innerText = '0';
+    if (elProximos) elProximos.innerText = '0';
+    if (elVencidos) elVencidos.innerText = '0';
+
     if (!appState.vencimientos || appState.vencimientos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-secondary);">No hay vencimientos registrados en la hoja de cálculo.</td></tr>';
         return;
@@ -1252,9 +1303,18 @@ function renderVencimientos() {
         let estadoVenc = 'vigente'; 
 
         if (item.fecha_vencimiento) {
-            let parts = item.fecha_vencimiento.split('-'); // yyyy-mm-dd
-            if (parts.length === 3) {
-                vencimientoDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            let parts = [];
+            const val = String(item.fecha_vencimiento).trim();
+            if (val.includes('-')) {
+                parts = val.split('-'); // yyyy-mm-dd
+                if (parts.length === 3) {
+                    vencimientoDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                }
+            } else if (val.includes('/')) {
+                parts = val.split('/'); // dd/mm/yyyy
+                if (parts.length === 3) {
+                    vencimientoDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                }
             }
 
             if (vencimientoDate) {
@@ -1284,10 +1344,7 @@ function renderVencimientos() {
         return a.vencimientoDate - b.vencimientoDate;
     });
 
-    // Actualizar KPIs
-    const elVigentes = document.getElementById('kpi-vigentes');
-    const elProximos = document.getElementById('kpi-proximos');
-    const elVencidos = document.getElementById('kpi-vencidos');
+    // Actualizar KPIs reales
     if (elVigentes) elVigentes.innerText = kpiVigentes;
     if (elProximos) elProximos.innerText = kpiProximos;
     if (elVencidos) elVencidos.innerText = kpiVencidos;
