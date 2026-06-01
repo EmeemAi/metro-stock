@@ -1084,6 +1084,35 @@ function renderSolicitudes() {
     lucide.createIcons();
 }
 
+function obtenerIdNumericoCertificado(cert) {
+    const clean = String(cert || '').trim().toUpperCase();
+    const match = clean.match(/\d+$/);
+    return match ? match[0] : clean;
+}
+
+function certificadosCoinciden(certA, certB) {
+    const cleanA = String(certA || '').trim().toUpperCase();
+    const cleanB = String(certB || '').trim().toUpperCase();
+    
+    if (cleanA === '' || cleanB === '') return false;
+    if (cleanA === cleanB) return true;
+    
+    // Quitar todos los caracteres no alfanuméricos
+    const alphaA = cleanA.replace(/[^A-Z0-9]/g, '');
+    const alphaB = cleanB.replace(/[^A-Z0-9]/g, '');
+    if (alphaA === alphaB) return true;
+    
+    // Si uno contiene al otro completo
+    if (cleanA.includes(cleanB) || cleanB.includes(cleanA)) return true;
+    
+    // Extraer el identificador numérico final
+    const numA = obtenerIdNumericoCertificado(cleanA);
+    const numB = obtenerIdNumericoCertificado(cleanB);
+    if (numA && numB && numA === numB && numA.length >= 4) return true;
+    
+    return false;
+}
+
 function handleAtenderSolicitud(index) {
     console.log("Atendiendo solicitud index:", index);
     const s = appState.solicitudes[index];
@@ -1094,11 +1123,10 @@ function handleAtenderSolicitud(index) {
 
     // Buscar el equipo en el inventario por código de certificado (limpio)
     const certSolicitud = String(s.certificado || '').trim().toUpperCase();
-    console.log("Buscando matching para certificado:", certSolicitud);
+    console.log("Buscando matching para certificado (Fuzzy):", certSolicitud);
 
     const equipo = appState.data.find(e => {
-        const certEquipo = String(e.certificado || '').trim().toUpperCase();
-        return certEquipo === certSolicitud && certEquipo !== '';
+        return certificadosCoinciden(e.certificado, certSolicitud);
     });
     
     if (!equipo) {
