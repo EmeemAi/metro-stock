@@ -294,6 +294,7 @@
                                     <th>Unidad</th>
                                     <th>Referencia</th>
                                     <th>Instrumento</th>
+                                    <th>Incertidumbre</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -426,6 +427,7 @@
                                     <th>Unidad</th>
                                     <th>Referencia</th>
                                     <th>Instrumento</th>
+                                    <th>Incertidumbre</th>
                                     <th></th>
                                 </tr>
                             </thead>
@@ -452,7 +454,8 @@
             <div class="modal-header no-print">
                 <h2>Ficha del Instrumento</h2>
                 <div class="header-actions">
-                    <button class="btn btn-outline" onclick="window.print()"><i data-lucide="printer"></i> Imprimir</button>
+                    <button class="btn btn-outline" onclick="window.print()"><i data-lucide="printer"></i> Imprimir Ficha</button>
+                    <button class="btn btn-primary" id="btn-emitir-certificado-pdf"><i data-lucide="file-text"></i> Emitir Certificado</button>
                     <button class="btn-close"><i data-lucide="x"></i></button>
                 </div>
             </div>
@@ -578,6 +581,201 @@
     </div>
 
 
+
+    <!-- Contenedor del Certificado de Calibración Imprimible (Solo visible en impresión) -->
+    <div id="printable-certificate" class="print-only">
+        <!-- Página 1 -->
+        <div class="cert-page cert-page-1">
+            <!-- Marca de agua de fondo -->
+            <div class="cert-watermark cert-watermark-logo">SchwyzLab</div>
+            
+            <header class="cert-header">
+                <div class="cert-logo-container">
+                    <span class="logo-schwyz">Schwyz</span><span class="logo-lab">Lab</span>
+                </div>
+                <div class="cert-title-container">
+                    <h1 class="cert-title">Certificado de Calibración</h1>
+                    <div class="cert-number">Certificado N° <span id="cert-pdf-num">---</span></div>
+                    <div class="cert-page-num">Página 1 de 2</div>
+                </div>
+                <div class="cert-company-details">
+                    <strong>CR Medición</strong><br>
+                    Perú 1297, C1141ACA C.A.B.A<br>
+                    ventas@todomedicion.com<br>
+                    www.todomedicion.com<br>
+                    Tel: 4361-3499 / 3680
+                </div>
+            </header>
+
+            <hr class="cert-divider-thin">
+
+            <main class="cert-main">
+                <div class="cert-intro-text">
+                    <p>Este certificado de calibración documenta la trazabilidad a los patrones nacionales, los cuales representan a las unidades físicas de medida de medición en concordancia con el sistema internacional de Unidades (SI).</p>
+                    <p>Este certificado no podrá ser reproducido parcialmente excepto cuando se haya obtenido previamente permiso por escrito de SCHWYZ LAB. Certificados de calibración sin firma y aclaración, no serán válidos.</p>
+                    <p>El usuario es el responsable de la recalibración del objeto a intervalos apropiados.</p>
+                </div>
+
+                <table class="cert-metadata-table">
+                    <tr>
+                        <td class="meta-label">Objeto</td>
+                        <td class="meta-val" id="cert-pdf-objeto">---</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Fabricante</td>
+                        <td class="meta-val" id="cert-pdf-fabricante">---</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Modelo</td>
+                        <td class="meta-val" id="cert-pdf-modelo">---</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">N° Serie</td>
+                        <td class="meta-val" id="cert-pdf-serie">---</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Identificación</td>
+                        <td class="meta-val" id="cert-pdf-identificacion">---</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Determinación requerida</td>
+                        <td class="meta-val" id="cert-pdf-determinacion">Calibración</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Fecha de calibración</td>
+                        <td class="meta-val" id="cert-pdf-fecha-calib">---</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Fecha de emisión</td>
+                        <td class="meta-val" id="cert-pdf-fecha-emision">---</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Cliente</td>
+                        <td class="meta-val" id="cert-pdf-cliente">---</td>
+                    </tr>
+                </table>
+            </main>
+
+            <footer class="cert-footer">
+                <div class="cert-footer-text">
+                    Los resultados contenidos en el presente certificado se refieren a los equipos o instrumentos sometidos a la calibración o medición, así como al momento y las condiciones en que se realizaron las mediciones. El Laboratorio que emite no se responsabiliza de los perjuicios que puedan derivarse del uso inadecuado de este certificado.
+                </div>
+                <hr class="cert-divider-thick">
+            </footer>
+        </div>
+
+        <!-- Página 2 -->
+        <div class="cert-page cert-page-2">
+            <!-- Marca de agua de fondo -->
+            <div class="cert-watermark cert-watermark-symbol">§</div>
+
+            <header class="cert-header">
+                <div class="cert-logo-container">
+                    <span class="logo-schwyz">Schwyz</span><span class="logo-lab">Lab</span>
+                </div>
+                <div class="cert-title-container">
+                    <h1 class="cert-title">Certificado de Calibración</h1>
+                    <div class="cert-number">Certificado N° <span id="cert-pdf-num-pg2">---</span></div>
+                    <div class="cert-page-num">Página 2 de 2</div>
+                </div>
+                <div class="cert-company-details">
+                    <strong>CR Medición</strong><br>
+                    Perú 1297, C1141ACA C.A.B.A<br>
+                    ventas@todomedicion.com<br>
+                    www.todomedicion.com<br>
+                    Tel: 4361-3499 / 3680
+                </div>
+            </header>
+
+            <hr class="cert-divider-thin">
+
+            <main class="cert-main">
+                <section class="cert-section">
+                    <h2 class="section-title">Metodología empleada</h2>
+                    <p id="cert-pdf-metodologia">---</p>
+                </section>
+
+                <section class="cert-section">
+                    <h2 class="section-title">Condiciones ambientales</h2>
+                    <div class="condiciones-grid">
+                        <div><strong>Temperatura:</strong> <span id="cert-pdf-temp">---</span></div>
+                        <div><strong>Humedad:</strong> <span id="cert-pdf-hum">---</span></div>
+                    </div>
+                </section>
+
+                <section class="cert-section">
+                    <h2 class="section-title">Resultados encontrados</h2>
+                    <table class="cert-results-table">
+                        <thead>
+                            <tr class="table-hdr-top">
+                                <th id="cert-pdf-rango-hdr" colspan="2">Rango de medición: ---</th>
+                                <th id="cert-pdf-resolucion-hdr" colspan="2">Resolución: ---</th>
+                            </tr>
+                            <tr class="table-hdr-sub">
+                                <th>Valor de Referencia</th>
+                                <th>Valor Instrumento</th>
+                                <th>Error Obtenido</th>
+                                <th>Incertidumbre Expandida</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cert-pdf-tbody-resultados">
+                            <!-- Inyectado por JS -->
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="cert-section">
+                    <h2 class="section-title">Patrones utilizados</h2>
+                    <table class="cert-patterns-table">
+                        <thead>
+                            <tr>
+                                <th>Identificación</th>
+                                <th>Descripción</th>
+                                <th>Certificado N°</th>
+                                <th>Emisor</th>
+                            </tr>
+                        </thead>
+                        <tbody id="cert-pdf-tbody-patrones">
+                            <!-- Inyectado por JS -->
+                        </tbody>
+                    </table>
+                </section>
+
+                <section class="cert-section cert-section-info">
+                    <h2 class="section-title">Información:</h2>
+                    <p>La incertidumbre expandida de medición informada fue calculada en conformidad con los requerimientos de la Guía ISO para Expresión de Incertidumbre, según el procedimiento PT-003-LAB, multiplicando la incertidumbre estándar combinada por un factor de cubertura k = 2, lo que corresponde a un nivel aproximado de confianza del 95% bajo distribución normal.</p>
+                    <p>Los resultados encontrados son el promedio de 3 mediciones en cada punto de calibración.</p>
+                </section>
+            </main>
+
+            <footer class="cert-footer cert-footer-pg2">
+                <div class="signatures-container">
+                    <div class="signature-box">
+                        <div class="signature-line">
+                            <!-- SVG Firma Darío -->
+                            <svg viewBox="0 0 100 40" class="sig-svg">
+                                <path d="M 25 35 Q 35 5 45 5 T 60 30 Q 65 35 75 25 Q 85 15 95 15 M 20 20 L 90 20" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div class="signature-name">Calibrado por</div>
+                        <div class="signature-author">Dario Del Real</div>
+                    </div>
+                    <div class="signature-box">
+                        <div class="signature-line">
+                            <!-- SVG Firma Albert -->
+                            <svg viewBox="0 0 100 40" class="sig-svg">
+                                <path d="M 15 30 C 5 30 5 10 15 10 C 30 10 25 30 45 30 C 60 30 70 20 80 10 M 55 30 L 75 2" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <div class="signature-name">Aprobado por</div>
+                        <div class="signature-author">Albert Mesa</div>
+                    </div>
+                </div>
+                <div class="cert-fin"><strong>Fin de Certificado</strong></div>
+                <hr class="cert-divider-thick">
+            </footer>
+        </div>
+    </div>
 
     <script src="script.js?v=20.1"></script>
 </body>

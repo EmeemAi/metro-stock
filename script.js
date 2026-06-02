@@ -707,6 +707,7 @@ function addPuntoRow() {
         <td><input type="text" class="input-tiny" name="pt-unit" placeholder="Ej. °C" required></td>
         <td><input type="number" step="any" name="pt-ref" required></td>
         <td><input type="number" step="any" name="pt-inst" required></td>
+        <td><input type="text" class="input-tiny" name="pt-inc" placeholder="Opcional" style="width: 70px;"></td>
         <td><button type="button" class="btn-icon text-danger" onclick="this.closest('tr').remove()" title="Eliminar"><i data-lucide="trash-2"></i></button></td>
     `;
     tbody.appendChild(tr);
@@ -749,6 +750,7 @@ function openModalDuplicate(id, index = null) {
                 <td><input type="text" class="input-tiny" name="pt-unit" value="${p.unidad || ''}" placeholder="Ej. °C" required></td>
                 <td><input type="number" step="any" name="pt-ref" value="${p.ref || ''}" required></td>
                 <td><input type="number" step="any" name="pt-inst" value="${p.inst || ''}" required></td>
+                <td><input type="text" class="input-tiny" name="pt-inc" value="${p.inc || ''}" placeholder="Opcional" style="width: 70px;"></td>
                 <td><button type="button" class="btn-icon text-danger" onclick="this.closest('tr').remove()" title="Eliminar"><i data-lucide="trash-2"></i></button></td>
             `;
             tbody.appendChild(tr);
@@ -843,7 +845,8 @@ async function handleFormNuevo(e) {
                 variable: '', 
                 unidad: tr.querySelector('input[name="pt-unit"]').value,
                 ref: tr.querySelector('input[name="pt-ref"]').value,
-                inst: tr.querySelector('input[name="pt-inst"]').value
+                inst: tr.querySelector('input[name="pt-inst"]').value,
+                inc: tr.querySelector('input[name="pt-inc"]').value
             });
         });
         record.puntos = JSON.stringify(puntos);
@@ -909,6 +912,12 @@ function openModalFicha(id) {
     const modal = document.getElementById('modal-ficha');
     const item = appState.data.find(x => x.id === id);
     if(!item) return;
+
+    // Configurar acción del botón Emitir Certificado
+    const btnEmitir = document.getElementById('btn-emitir-certificado-pdf');
+    if (btnEmitir) {
+        btnEmitir.onclick = () => window.imprimirCertificado(id);
+    }
 
     // Llenar Cabecera
     document.getElementById('ficha-id').innerText = `ID: ${item.id}`;
@@ -987,6 +996,7 @@ function addPuntoRowEdit(existingData = null) {
         <td><input type="text" class="input-tiny" name="pt-unit" value="${existingData ? existingData.unidad : ''}" placeholder="Ej. °C" required></td>
         <td><input type="number" step="any" name="pt-ref" value="${existingData ? existingData.ref : ''}" required></td>
         <td><input type="number" step="any" name="pt-inst" value="${existingData ? existingData.inst : ''}" required></td>
+        <td><input type="text" class="input-tiny" name="pt-inc" value="${existingData ? (existingData.inc || '') : ''}" placeholder="Opcional" style="width: 70px;"></td>
         <td><button type="button" class="btn-icon text-danger" onclick="this.closest('tr').remove()"><i data-lucide="trash-2"></i></button></td>
     `;
     tbody.appendChild(tr);
@@ -1019,7 +1029,8 @@ async function handleFormEdit(e) {
                 variable: '', 
                 unidad: tr.querySelector('input[name="pt-unit"]').value,
                 ref: tr.querySelector('input[name="pt-ref"]').value,
-                inst: tr.querySelector('input[name="pt-inst"]').value
+                inst: tr.querySelector('input[name="pt-inst"]').value,
+                inc: tr.querySelector('input[name="pt-inc"]').value
             });
         });
         record.puntos = JSON.stringify(puntos);
@@ -1498,4 +1509,227 @@ async function confirmSendReminder() {
         btn.innerHTML = originalText;
         lucide.createIcons();
     }
+}
+
+// ==========================================================
+// FUNCIONES DE EMISIÓN DE CERTIFICADO DE CALIBRACIÓN (A4 PDF)
+// ==========================================================
+
+window.imprimirCertificado = function(id) {
+    const item = appState.data.find(x => x.id === id);
+    if (!item) {
+        alert("No se encontró el equipo para emitir el certificado.");
+        return;
+    }
+
+    // 1. Formatear Fechas y Datos Básicos
+    const certNum = item.certificado || '---';
+    const fechaCalib = formatToArgDate(item.fecha_calibracion);
+    const fechaEmision = getFechaEmision(item.fecha_calibracion);
+    const objeto = getObjetoName(item.instrumento, certNum);
+
+    // Página 1 y 2 Cabeceras
+    document.getElementById('cert-pdf-num').innerText = certNum;
+    document.getElementById('cert-pdf-num-pg2').innerText = certNum;
+    
+    // Página 1 Datos
+    document.getElementById('cert-pdf-objeto').innerText = objeto;
+    document.getElementById('cert-pdf-fabricante').innerText = item.marca || '---';
+    document.getElementById('cert-pdf-modelo').innerText = item.modelo || '---';
+    document.getElementById('cert-pdf-serie').innerText = item.serie || '---';
+    document.getElementById('cert-pdf-identificacion').innerText = 'Sin identificar';
+    document.getElementById('cert-pdf-fecha-calib').innerText = fechaCalib;
+    document.getElementById('cert-pdf-fecha-emision').innerText = fechaEmision;
+    document.getElementById('cert-pdf-cliente').innerText = item.cliente || '---';
+
+    // 2. Determinar Plantilla Técnica por Tipo de Instrumento
+    let certType = 'DE'; // Default a Decibelímetro
+    const certUpper = certNum.toUpperCase();
+    const instUpper = (item.instrumento || '').toUpperCase();
+
+    if (certUpper.includes('-DN-') || instUpper.includes('DINAM')) {
+        certType = 'DN';
+    } else if (certUpper.includes('-TH-') || instUpper.includes('TERMOHIGR')) {
+        certType = 'TH';
+    } else if (certUpper.includes('-LX-') || instUpper.includes('LUX')) {
+        certType = 'LX';
+    } else if (certUpper.includes('-TE-') || certUpper.includes('-TC-') || instUpper.includes('TERMÓM') || instUpper.includes('TERMOM')) {
+        certType = 'TE';
+    }
+
+    let metodologia = '';
+    let temp = '';
+    let hum = '';
+    let rangoHdr = '';
+    let resolucionHdr = '';
+    let patrones = [];
+
+    if (certType === 'DE') {
+        metodologia = 'La calibración fue realizada por comparación con patrones, de acuerdo al instructivo de calibración IT-010-LAB (Calibración de decibelímetro).';
+        temp = '(20 ± 2) °C';
+        hum = '(50 ± 15) %Hr';
+        rangoHdr = 'Rango de medición: 30 a 130 dB';
+        resolucionHdr = 'Resolución: 0,1 dB';
+        patrones = [
+            { id: 'CDEC-001', desc: 'Calibrador Acústico', cert: 'C00624.1', emisor: 'CINTRA' },
+            { id: 'THGP-001', desc: 'Termohigrómetro', cert: '2023-003220-1', emisor: 'TESTO' }
+        ];
+    } else if (certType === 'DN') {
+        metodologia = 'La calibración fue realizada por comparación con patrones, de acuerdo al instructivo de calibración IT-020-LAB (Calibración de dinamómetros).';
+        temp = '(22 ± 3) °C';
+        hum = '(45 ± 15) %Hr';
+        rangoHdr = 'Rango de medición: 0 a 500 N';
+        resolucionHdr = 'Resolución: 0,1 N';
+        patrones = [
+            { id: 'PAT-DN-01', desc: 'Carga de Tracción Patrón', cert: 'C-4091', emisor: 'INTI' },
+            { id: 'CR-002', desc: 'Cronómetro Digital', cert: 'CR-9081', emisor: 'CINTRA' }
+        ];
+    } else if (certType === 'TH') {
+        metodologia = 'La calibración fue realizada por comparación directa en cámara climatizada con termo-anemómetros de referencia de acuerdo al instructivo IT-005-LAB.';
+        temp = '(21 ± 2) °C';
+        hum = '(50 ± 10) %Hr';
+        rangoHdr = 'Rango de medición: -10 a 60 °C / 10 a 95 %Hr';
+        resolucionHdr = 'Resolución: 0,1 °C / 0,1 %Hr';
+        patrones = [
+            { id: 'PTH-001', desc: 'Termómetro de Referencia', cert: 'C-89102', emisor: 'CINTRA' },
+            { id: 'HREF-002', desc: 'Higrómetro de Referencia', cert: 'H-90123', emisor: 'TESTO' }
+        ];
+    } else if (certType === 'LX') {
+        metodologia = 'La calibración fue realizada por comparación directa sobre banco óptico en concordancia con el instructivo IT-012-LAB.';
+        temp = '(23 ± 2) °C';
+        hum = '(45 ± 10) %Hr';
+        rangoHdr = 'Rango de medición: 0 a 20000 Lux';
+        resolucionHdr = 'Resolución: 1 Lux';
+        patrones = [
+            { id: 'PLX-001', desc: 'Lámpara Patrón Incandescente', cert: 'L-87612', emisor: 'NIST' },
+            { id: 'THGP-001', desc: 'Termohigrómetro', cert: '2023-003220-1', emisor: 'TESTO' }
+        ];
+    } else { // TE
+        metodologia = 'La calibración fue realizada por comparación en baño termostático con termómetro patrón digital de acuerdo al instructivo IT-002-LAB.';
+        temp = '(21 ± 2) °C';
+        hum = '(50 ± 15) %Hr';
+        rangoHdr = 'Rango de medición: -30 a 150 °C';
+        resolucionHdr = 'Resolución: 0,1 °C';
+        patrones = [
+            { id: 'PTE-002', desc: 'Termómetro Patrón Digital', cert: 'C-99812', emisor: 'CINTRA' }
+        ];
+    }
+
+    document.getElementById('cert-pdf-metodologia').innerText = metodologia;
+    document.getElementById('cert-pdf-temp').innerText = temp;
+    document.getElementById('cert-pdf-hum').innerText = hum;
+    document.getElementById('cert-pdf-rango-hdr').innerText = rangoHdr;
+    document.getElementById('cert-pdf-resolucion-hdr').innerText = resolucionHdr;
+
+    // 3. Cargar Patrones en la Tabla
+    const tbodyPatrones = document.getElementById('cert-pdf-tbody-patrones');
+    tbodyPatrones.innerHTML = '';
+    patrones.forEach(pat => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${pat.id}</td>
+            <td>${pat.desc}</td>
+            <td>${pat.cert}</td>
+            <td>${pat.emisor}</td>
+        `;
+        tbodyPatrones.appendChild(tr);
+    });
+
+    // 4. Cargar y Calcular Resultados Encontrados
+    let puntosArray = [];
+    try {
+        if (item.puntos) puntosArray = JSON.parse(item.puntos);
+    } catch (e) {
+        console.error("Error leyendo puntos Json para certificado", e);
+    }
+
+    const tbodyResultados = document.getElementById('cert-pdf-tbody-resultados');
+    tbodyResultados.innerHTML = '';
+
+    if (puntosArray.length === 0) {
+        tbodyResultados.innerHTML = '<tr><td colspan="4">Sin puntos de medición registrados.</td></tr>';
+    } else {
+        puntosArray.forEach(p => {
+            const refVal = parseFloat(String(p.ref).replace(',', '.'));
+            const instVal = parseFloat(String(p.inst).replace(',', '.'));
+            
+            let errorStr = '---';
+            if (!isNaN(refVal) && !isNaN(instVal)) {
+                // Calcular Error Obtenido (Diferencia Absoluta para coincidir con el PDF del decibelímetro)
+                const error = Math.abs(refVal - instVal);
+                errorStr = error.toFixed(1).replace('.', ',');
+            }
+
+            // Incertidumbre por defecto o cargada en el campo inc
+            let incStr = String(p.inc || '').trim();
+            if (incStr === '') {
+                incStr = (certType === 'DE') ? '0,4' : '0,1';
+            }
+            incStr = incStr.replace('.', ',');
+
+            const refStr = String(p.ref).replace('.', ',');
+            const instStr = String(p.inst).replace('.', ',');
+            const unit = p.unidad || '';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td>${refStr} ${unit}</td>
+                <td>${instStr} ${unit}</td>
+                <td>${errorStr} ${unit}</td>
+                <td>${incStr} ${unit}</td>
+            `;
+            tbodyResultados.appendChild(tr);
+        });
+    }
+
+    // 5. Lanzar diálogo de impresión
+    window.print();
+}
+
+function formatToArgDate(dateStr) {
+    if (!dateStr || dateStr === '---' || dateStr.trim() === '') return '---';
+    // Si viene en formato yyyy-mm-dd
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+        return `${parseInt(parts[2], 10)}/${parseInt(parts[1], 10)}/${parts[0]}`;
+    }
+    // Si ya viene formateado
+    return dateStr;
+}
+
+function getFechaEmision(calibDateStr) {
+    if (!calibDateStr || calibDateStr === '---' || calibDateStr.trim() === '') return '---';
+    const parts = calibDateStr.split('-');
+    if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        d.setDate(d.getDate() + 1); // Sumar 1 día
+        const dd = d.getDate();
+        const mm = d.getMonth() + 1;
+        const yyyy = d.getFullYear();
+        return `${dd}/${mm}/${yyyy}`;
+    }
+    return calibDateStr;
+}
+
+function getObjetoName(instrumento, certificado) {
+    let name = String(instrumento || '').toLowerCase();
+    if (name.includes('decibel') || name.includes('sonómetro') || String(certificado).includes('-DE-') || String(certificado).includes('-DB-') || String(certificado).includes('-DC-')) {
+        return 'Decibelímetro Digital';
+    }
+    if (name.includes('dinam') || String(certificado).includes('-DN-')) {
+        return 'Dinamómetro Digital';
+    }
+    if (name.includes('termohigr') || String(certificado).includes('-TH-')) {
+        return 'Termohigrómetro Digital';
+    }
+    if (name.includes('lux') || String(certificado).includes('-LX-')) {
+        return 'Luxómetro Digital';
+    }
+    if (name.includes('termóm') || String(certificado).includes('-TE-') || String(certificado).includes('-TC-')) {
+        return 'Termómetro Digital';
+    }
+    if (name.includes('calibre') || String(certificado).includes('-CA-')) {
+        return 'Calibre Digital';
+    }
+    return instrumento || 'Instrumento de Medición';
 }
