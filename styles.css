@@ -1397,7 +1397,7 @@ td:nth-child(6)  /* Cert */ {
    ========================================== */
 
 /* Importar tipografía de script para SchwyzLab en pantalla si es necesario */
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@700&family=Playball&family=Inter:wght@400;500;600;700&display=swap');
 
 #printable-certificate {
     display: none; /* Ocultar por defecto en pantalla */
@@ -1452,7 +1452,7 @@ td:nth-child(6)  /* Cert */ {
         position: relative !important;
         padding: 20mm 20mm 20mm 20mm !important;
         background: #ffffff !important;
-        font-family: 'Inter', sans-serif !important;
+        font-family: Calibri, 'Segoe UI', Arial, sans-serif !important;
         color: #000000 !important;
         overflow: hidden !important;
     }
@@ -1474,7 +1474,7 @@ td:nth-child(6)  /* Cert */ {
     }
 
     .cert-watermark-logo {
-        font-family: 'Caveat', cursive !important;
+        font-family: 'Playball', 'Caveat', cursive !important;
         font-size: 130px !important;
         left: 5% !important;
         top: 38% !important;
@@ -1507,14 +1507,14 @@ td:nth-child(6)  /* Cert */ {
         padding-top: 2mm !important;
     }
     .logo-schwyz {
-        font-family: 'Caveat', cursive !important;
+        font-family: 'Playball', 'Caveat', 'Lucida Handwriting', cursive !important;
         color: #d32f2f !important;
-        font-size: 42px !important;
-        font-weight: 700 !important;
-        letter-spacing: -1px !important;
+        font-size: 44px !important;
+        font-weight: 500 !important;
+        letter-spacing: -0.5px !important;
     }
     .logo-lab {
-        font-family: 'Inter', sans-serif !important;
+        font-family: Calibri, 'Segoe UI', Arial, sans-serif !important;
         color: #d32f2f !important;
         font-size: 38px !important;
         font-weight: 700 !important;
@@ -1591,9 +1591,9 @@ td:nth-child(6)  /* Cert */ {
         position: relative !important;
     }
     .cert-metadata-table td {
-        padding: 3mm 0 !important;
+        padding: 2.2mm 0 !important;
         font-size: 12.5px !important;
-        border-bottom: 1px solid #e0e0e0 !important;
+        border-bottom: none !important; /* Quitar líneas según PDF de referencia */
     }
     .meta-label {
         font-weight: 700 !important;
