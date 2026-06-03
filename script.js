@@ -420,7 +420,7 @@ function updateDashboard() {
         if(item.estado === 'DISPONIBLE') {
             stats[key].disponible++;
             totalAvailable++;
-        } else if (item.estado === 'ENTREGADO') {
+        } else if (item.estado === 'ENTREGADO' || item.estado === 'RESERVADO') {
             stats[key].entregado++;
             totalVentas++;
         } else if (item.estado === 'CERTIFICANDO') {
@@ -568,7 +568,7 @@ function renderTable() {
         
         // Filtro por Buscador
         if(appState.search) {
-            const searchStr = `${item.id} ${item.modelo} ${item.marca} ${item.serie} ${item.cliente} ${item.certificado}`.toLowerCase();
+            const searchStr = `${item.id} ${item.instrumento || ''} ${item.modelo} ${item.marca} ${item.serie} ${item.cliente} ${item.certificado}`.toLowerCase();
             if(!searchStr.includes(appState.search)) return false;
         }
         return true;
