@@ -632,7 +632,7 @@ function renderTable() {
 
             tr.innerHTML = `
                 <td><strong>${item.id}</strong></td>
-                <td>${item.marca} ${item.modelo}</td>
+                <td><strong>${item.instrumento || '---'}</strong><br><small style="color: var(--text-secondary);">${item.marca} ${item.modelo}</small></td>
                 <td>${item.serie}</td>
                 <td><span class="badge ${item.estado.toLowerCase()}">${item.estado}</span></td>
                 <td>${item.fecha_calibracion}</td>
