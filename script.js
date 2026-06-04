@@ -1062,7 +1062,10 @@ async function handleFormEdit(e) {
 function updateBadge() {
     const badge = document.getElementById('badge-solicitudes');
     if (!badge) return;
-    const pendientes = appState.solicitudes.filter(s => s.estado !== 'enviado').length;
+    const pendientes = appState.solicitudes.filter(s => {
+        const est = (s.estado || '').trim().toLowerCase();
+        return est === '' || est === 'pendiente';
+    }).length;
     if (pendientes > 0) {
         badge.innerText = pendientes;
         badge.style.display = 'inline-block';
@@ -1082,7 +1085,8 @@ function renderSolicitudes() {
     }
 
     appState.solicitudes.forEach((s, index) => {
-        const isEnviado = s.estado === 'enviado';
+        const est = (s.estado || '').trim().toLowerCase();
+        const isEnviado = est !== '' && est !== 'pendiente';
         const tr = document.createElement('tr');
         if (isEnviado) tr.style.opacity = '0.6';
         
