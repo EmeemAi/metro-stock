@@ -179,6 +179,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const index = btnAtender.getAttribute('data-index');
                 handleAtenderSolicitud(index);
             }
+            
+            const btnVerFicha = e.target.closest('.btn-ver-ficha-solicitud');
+            if (btnVerFicha) {
+                const index = btnVerFicha.getAttribute('data-index');
+                handleVerFichaSolicitud(index);
+            }
         });
     }
 
@@ -1087,12 +1093,30 @@ function renderSolicitudes() {
             <td>${s.email}</td>
             <td><span class="badge ${isEnviado ? 'entregado' : 'reservado'}">${s.estado || 'pendiente'}</span></td>
             <td>
-                ${isEnviado ? '-' : `<button class="btn btn-primary btn-sm btn-atender-solicitud" data-index="${index}"><i data-lucide="external-link" style="width:14px; height:14px;"></i> Atender</button>`}
+                <div style="display: flex; gap: 0.25rem;">
+                    ${isEnviado ? '' : `<button class="btn btn-primary btn-sm btn-atender-solicitud" data-index="${index}"><i data-lucide="external-link" style="width:14px; height:14px;"></i> Atender</button>`}
+                    <button class="btn btn-outline btn-sm btn-ver-ficha-solicitud" data-index="${index}" title="Ver Ficha del Instrumento"><i data-lucide="eye" style="width:14px; height:14px;"></i> Info</button>
+                </div>
             </td>
         `;
         tbody.appendChild(tr);
     });
     lucide.createIcons();
+}
+
+function handleVerFichaSolicitud(index) {
+    const s = appState.solicitudes[index];
+    if (!s) return;
+    
+    const certSolicitud = String(s.certificado || '').trim().toUpperCase();
+    const equipo = appState.data.find(e => certificadosCoinciden(e.certificado, certSolicitud));
+    
+    if (!equipo) {
+        alert(`No se encontró ningún equipo en el inventario con el Certificado: "${s.certificado}".`);
+        return;
+    }
+    
+    openModalFicha(equipo.id);
 }
 
 function obtenerIdNumericoCertificado(cert) {
