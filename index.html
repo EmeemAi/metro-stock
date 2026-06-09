@@ -23,6 +23,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
 <body>
+    <!-- Banner de Modo Demo -->
+    <div id="demo-banner" class="demo-banner" style="display: none;">
+        <i data-lucide="info"></i>
+        <span><strong>Modo Demostración Activo</strong> — Los datos son de simulación local. Los cambios no afectarán a Google Sheets.</span>
+        <a href="./" class="btn btn-sm btn-outline btn-demo-exit" style="color: #ffffff; border-color: rgba(255,255,255,0.4); margin-left: 1rem; padding: 0.15rem 0.5rem; height: auto; display: inline-flex; align-items: center; gap: 4px; text-decoration: none;"><i data-lucide="log-out" style="width:12px; height:12px;"></i> Salir</a>
+    </div>
     <div class="app-container">
         <div class="sidebar-overlay" id="sidebar-overlay"></div>
         <!-- Sidebar -->
@@ -111,14 +117,30 @@
                 <!-- Gráficos y Alertas -->
                 <div class="bi-charts-grid">
                     <div class="chart-container-card">
-                        <h3><i data-lucide="trending-up"></i> Equipos Más Vendidos (Demanda)</h3>
-                        <canvas id="chart-sales"></canvas>
+                        <h3><i data-lucide="trending-up"></i> Equipos Más Vendidos</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-sales"></canvas>
+                        </div>
                     </div>
                     <div class="chart-container-card">
-                        <h3><i data-lucide="alert-octagon"></i> Radar de Reposición (Críticos)</h3>
+                        <h3><i data-lucide="pie-chart"></i> Distribución de Inventario</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-distribution"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-container-card">
+                        <h3><i data-lucide="alert-octagon"></i> Radar de Reposición</h3>
                         <div id="replenishment-list" class="alert-list">
                             <!-- Inyectado por JS -->
                         </div>
+                    </div>
+                </div>
+
+                <!-- Timeline de Actividad Reciente -->
+                <div class="chart-container-card" style="margin-top: 1.5rem;">
+                    <h3><i data-lucide="activity"></i> Historial de Actividad Reciente</h3>
+                    <div class="activity-timeline" id="activity-timeline">
+                        <!-- Inyectado por JS -->
                     </div>
                 </div>
             </section>
