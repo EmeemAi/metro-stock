@@ -608,6 +608,10 @@ td:nth-child(6)  /* Cert */ {
     background-color: var(--state-certificando-bg);
     color: var(--state-certificando);
 }
+.badge.venta-interna {
+    background-color: rgba(107, 114, 128, 0.1);
+    color: #6b7280;
+}
 
 /* Buttons in Table */
 .btn-change-state {

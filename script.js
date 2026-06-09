@@ -631,16 +631,21 @@ function renderTable() {
                     <button class="btn btn-outline btn-icon-only btn-edit-equipo" data-id="${item.id}" title="Editar Equipo" style="color: var(--warning); border-color: var(--warning);"><i data-lucide="edit-2"></i></button>
                     <button class="btn btn-outline btn-icon-only btn-duplicate-equipo" data-id="${item.id}" data-index="${appState.data.indexOf(item)}" title="Duplicar Equipo"><i data-lucide="copy"></i></button>
                     ${item.estado === 'CERTIFICANDO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Finalizar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Finalizar <i data-lucide="check"></i></button>` : ''}
-                    ${item.estado === 'DISPONIBLE' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="RESERVADO" title="Despachar">Despachar <i data-lucide="arrow-right"></i></button>` : ''}
+                    ${item.estado === 'DISPONIBLE' ? `
+                        <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="RESERVADO" title="Despachar">Despachar <i data-lucide="arrow-right"></i></button>
+                        <button class="btn btn-outline btn-icon-only btn-change-state" data-id="${item.id}" data-target-state="VENTA INTERNA" title="Venta Interna" style="color: #6b7280; border-color: #cbd5e1;"><i data-lucide="home"></i></button>
+                    ` : ''}
                     ${item.estado === 'RESERVADO' ? `<button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Asignar Cliente">Asignar Cliente <i data-lucide="user-check"></i></button>` : ''}
                 </div>
             `;
+
+            const stateClass = item.estado.toLowerCase().replace(/\s+/g, '-');
 
             tr.innerHTML = `
                 <td><strong>${item.id}</strong></td>
                 <td><strong>${item.instrumento || '---'}</strong><br><small style="color: var(--text-secondary);">${item.marca} ${item.modelo}</small></td>
                 <td>${item.serie}</td>
-                <td><span class="badge ${item.estado.toLowerCase()}">${item.estado}</span></td>
+                <td><span class="badge ${stateClass}">${item.estado}</span></td>
                 <td>${item.fecha_calibracion}</td>
                 <td><strong>${certText}</strong></td>
                 <td>${clienteText}</td>
@@ -784,14 +789,18 @@ function openModalEstado(id, targetState) {
     // Campos condicionales
     const fReservado = document.getElementById('fields-reservado');
     const fEntregado = document.getElementById('fields-entregado');
+    const fInterno = document.getElementById('fields-interno');
     
     fReservado.style.display = 'none';
     fEntregado.style.display = 'none';
+    if (fInterno) fInterno.style.display = 'none';
 
     // Deshacer requerimientos previos
     document.getElementById('estado-certificado').required = false;
     document.getElementById('estado-cliente').required = false;
     document.getElementById('estado-fecha').required = false;
+    const elDestino = document.getElementById('estado-destino-interno');
+    if (elDestino) elDestino.required = false;
 
     // Pre-poblar fecha actual si existe
     if (item.fecha_calibracion) {
@@ -815,6 +824,10 @@ function openModalEstado(id, targetState) {
     else if (targetState === 'ENTREGADO') {
         fEntregado.style.display = 'block';
         document.getElementById('estado-cliente').required = true;
+    }
+    else if (targetState === 'VENTA INTERNA') {
+        if (fInterno) fInterno.style.display = 'block';
+        if (elDestino) elDestino.required = true;
     }
 
     modal.classList.add('active');
@@ -893,6 +906,9 @@ async function handleFormEstado(e) {
             extraData.fecha = document.getElementById('estado-fecha').value;
         } else if (targetState === 'ENTREGADO') {
             extraData.cliente = document.getElementById('estado-cliente').value;
+        } else if (targetState === 'VENTA INTERNA') {
+            const elDestino = document.getElementById('estado-destino-interno');
+            extraData.cliente = elDestino ? elDestino.value : 'Venta Interna';
         }
 
         const result = await updateStateRecord(id, targetState, extraData);
