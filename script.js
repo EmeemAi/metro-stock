@@ -8,164 +8,7 @@ const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbwgmgHF3D
 // ==========================================
 // MOCK DATA (Para probar sin Google Sheets)
 // ==========================================
-let mockDatabase = [
-    {
-        id: "INST-15449",
-        instrumento: "Decibelímetro",
-        marca: "Schwyz",
-        modelo: "SC210-A",
-        serie: "N1049710",
-        certificado: "202606-DE-16769",
-        estado: "RESERVADO",
-        fecha_calibracion: "2026-06-03",
-        cliente: "",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"dB",ref:"94",inst:"94.7",inc:""},{pt:"PT2",variable:"",unidad:"dB",ref:"114",inst:"115.1",inc:""}])
-    },
-    {
-        id: "INST-15448",
-        instrumento: "Durómetro",
-        marca: "Shahe",
-        modelo: "SLX-A",
-        serie: "43105157",
-        certificado: "202606-DU-16764",
-        estado: "RESERVADO",
-        fecha_calibracion: "2026-06-03",
-        cliente: "",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"Shore",ref:"1",inst:"1",inc:""}])
-    },
-    {
-        id: "INST-15447",
-        instrumento: "Calibre",
-        marca: "Schwyz",
-        modelo: "P1017-150B",
-        serie: "4704263",
-        certificado: "",
-        estado: "DISPONIBLE",
-        fecha_calibracion: "2026-06-02",
-        cliente: "",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"Mm",ref:"1",inst:"1",inc:""}])
-    },
-    {
-        id: "INST-15446",
-        instrumento: "Calibre",
-        marca: "Schwyz",
-        modelo: "P1017-150B",
-        serie: "4704279",
-        certificado: "",
-        estado: "DISPONIBLE",
-        fecha_calibracion: "2026-06-02",
-        cliente: "",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"Mm",ref:"1",inst:"1",inc:""}])
-    },
-    {
-        id: "INST-15445",
-        instrumento: "Medidor Ultrasonido",
-        marca: "Schwyz",
-        modelo: "WT100A",
-        serie: "H24237617",
-        certificado: "",
-        estado: "DISPONIBLE",
-        fecha_calibracion: "2026-06-02",
-        cliente: "",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"mm",ref:"1",inst:"1",inc:""}])
-    },
-    {
-        id: "INST-15444",
-        instrumento: "Medidor de recubrimiento",
-        marca: "Nohawk",
-        modelo: "NT-1S",
-        serie: "N/A",
-        certificado: "",
-        estado: "CERTIFICANDO",
-        fecha_calibracion: "2026-06-02",
-        cliente: "",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"um",ref:"50",inst:"50",inc:""}])
-    },
-    {
-        id: "INST-15436",
-        instrumento: "Calibre",
-        marca: "Schwyz",
-        modelo: "P1017-150B",
-        serie: "4090135",
-        certificado: "202606-CA-16726",
-        estado: "ENTREGADO",
-        fecha_calibracion: "2026-06-01",
-        cliente: "RN composites srl",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"Mm",ref:"1",inst:"1"}])
-    },
-    {
-        id: "INST-15434",
-        instrumento: "Luxómetro",
-        marca: "Bside",
-        modelo: "L1",
-        serie: "N/A",
-        certificado: "202605-LX-16691",
-        estado: "ENTREGADO",
-        fecha_calibracion: "2026-05-29",
-        cliente: "Julio Cesar Clemente",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"Lx",ref:"51",inst:"51"}])
-    },
-    {
-        id: "INST-15424",
-        instrumento: "Decibelímetro",
-        marca: "Wintact",
-        modelo: "WT1357",
-        serie: "H25275910",
-        certificado: "202605-DE-16341",
-        estado: "ENTREGADO",
-        fecha_calibracion: "2026-05-26",
-        cliente: "Waldelino Lange",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"dB",ref:"94",inst:"94.3"},{pt:"PT2",variable:"",unidad:"dB",ref:"114",inst:"114.5"}])
-    },
-    {
-        id: "INST-15411",
-        instrumento: "Pirómetro",
-        marca: "Etekcity",
-        modelo: "Lasergrip 774",
-        serie: "243217072436",
-        certificado: "202605-PI-16529",
-        estado: "ENTREGADO",
-        fecha_calibracion: "2026-05-14",
-        cliente: "Wellbore Tools Technology SA",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"°",ref:"100",inst:"101.2"}])
-    },
-    {
-        id: "INST-15381",
-        instrumento: "Termómetro",
-        marca: "ThermoPro",
-        modelo: "TP357",
-        serie: "N/A",
-        certificado: "202605-TH-16593",
-        estado: "ENTREGADO",
-        fecha_calibracion: "2026-05-21",
-        cliente: "Sanatorio de la Trinidad",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"°C",ref:"10",inst:"10.1"},{pt:"PT2",variable:"",unidad:"%",ref:"38.2",inst:"39"}])
-    },
-    {
-        id: "INST-15331",
-        instrumento: "Termohigrómetro",
-        marca: "Reed",
-        modelo: "R6200",
-        serie: "230574",
-        certificado: "202605-TH-16553",
-        estado: "ENTREGADO",
-        fecha_calibracion: "2026-05-19",
-        cliente: "Omar Billone",
-        puntos: JSON.stringify([{pt:"PT1",variable:"",unidad:"°C",ref:"10",inst:"10"}])
-    }
-];
-
-let mockSolicitudes = [
-    { timestamp: "2026-06-03", empresa: "Tecen Consorcio", contacto: "Pablo Arizio", email: "parizio@eling.com.ar", certificado: "202606-MR-16727", estado: "" },
-    { timestamp: "2026-06-02", empresa: "RN composites srl", contacto: "Daniel Rossi", email: "rossi@rncomp.com", certificado: "202606-CA-16726", estado: "enviado" },
-    { timestamp: "2026-06-01", empresa: "Julio Cesar Clemente", contacto: "Julio Clemente", email: "jclemente@gmail.com", certificado: "202605-LX-16691", estado: "ya solicitado" }
-];
-
-let mockVencimientos = [
-    { id: "INST-15331", instrumento: "Termohigrómetro Reed R6200", certificado: "202605-TH-16553", fecha_calibracion: "2026-05-19", fecha_vencimiento: "2027-05-19", cliente: "Omar Billone", email: "obillone@outlook.com", estado_recordatorio: "pendiente" },
-    { id: "INST-15411", instrumento: "Pirómetro Etekcity Lasergrip 774", certificado: "202605-PI-16529", fecha_calibracion: "2026-05-14", fecha_vencimiento: "2027-05-14", cliente: "Wellbore Tools", email: "calibraciones@wellbore.com", estado_recordatorio: "pendiente" },
-    { id: "INST-15381", instrumento: "Termómetro ThermoPro TP357", certificado: "202605-TH-16593", fecha_calibracion: "2026-05-21", fecha_vencimiento: "2027-05-21", cliente: "Sanatorio de la Trinidad", email: "mantenimiento@trinidad.com.ar", estado_recordatorio: "Enviado" }
-];
+let mockDatabase = [];
 
 // ==========================================
 // ESTADO DE LA APLICACIÓN
@@ -183,15 +26,6 @@ let appState = {
 // INICIALIZACIÓN
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
-    // Detectar Modo Demo por URL
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('demo') === 'true') {
-        appState.isDemo = true;
-        const banner = document.getElementById('demo-banner');
-        if (banner) banner.style.display = 'flex';
-        console.log(">>> MODO DEMOSTRACIÓN ACTIVO <<<");
-    }
-
     // Inicializar Iconos Lucide
     lucide.createIcons();
 
@@ -413,7 +247,7 @@ async function fetchData() {
     updateUIState();
 
     try {
-        if(GOOGLE_SHEETS_API_URL !== '' && !appState.isDemo) {
+        if(GOOGLE_SHEETS_API_URL !== '') {
             // Se inyecta un Timestamp para forzar al navegador a ignorar el caché (Cache-Busting)
             const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
             const result = await response.json();
@@ -423,24 +257,23 @@ async function fetchData() {
             
             console.log(">>> DATOS RECIBIDOS DEL SERVIDOR:");
             console.table(appState.data.slice(0, 5).map(i => ({ID: i.id, Modelo: i.modelo, Estado: i.estado})));
+            
+            renderTable();
         } else {
-            // Mock / Demo Mode
-            await new Promise(r => setTimeout(r, 600));
+            // Mock
+            await new Promise(r => setTimeout(r, 1000));
             appState.data = [...mockDatabase];
-            appState.solicitudes = [...mockSolicitudes];
-            appState.vencimientos = [...mockVencimientos];
+            appState.solicitudes = [];
         }
     } catch (err) {
         console.error("Error al cargar datos:", err);
         alert("Hubo un error cargando los datos.");
     } finally {
         appState.loading = false;
-        initTimeline(); // Inicializar historial
         updateUIState();
         renderTable();
         renderSolicitudes();
         renderVencimientos();
-        renderTimeline();
         updateBadge();
         updateDashboard(); 
     }
@@ -448,14 +281,14 @@ async function fetchData() {
 
 
 async function saveFullUpdate(record) {
-    if(GOOGLE_SHEETS_API_URL !== '' && !appState.isDemo) {
+    if(GOOGLE_SHEETS_API_URL !== '') {
         const response = await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
             body: JSON.stringify({ action: 'update_full', data: record })
         });
         return await response.json();
     } else {
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise(r => setTimeout(r, 800));
         const index = mockDatabase.findIndex(x => x.id === record.id);
         if(index > -1) mockDatabase[index] = record;
         appState.data = [...mockDatabase];
@@ -465,7 +298,7 @@ async function saveFullUpdate(record) {
 
 async function updateStateRecord(id, newState, extraData) {
     console.log(">>> Solicitando cambio de estado:", { id, newState, extraData });
-    if(GOOGLE_SHEETS_API_URL !== '' && !appState.isDemo) {
+    if(GOOGLE_SHEETS_API_URL !== '') {
         const requestData = { 
             action: 'update_status', 
             data: { id: String(id).trim(), estado: newState, ...extraData } 
@@ -479,17 +312,13 @@ async function updateStateRecord(id, newState, extraData) {
         return result;
     } else {
         // En Mock Local
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise(r => setTimeout(r, 800));
         const index = mockDatabase.findIndex(x => x.id === id);
         if(index > -1) {
-            const oldState = mockDatabase[index].estado;
             mockDatabase[index].estado = newState;
             if(extraData.certificado) mockDatabase[index].certificado = extraData.certificado;
             if(extraData.fecha) mockDatabase[index].fecha_calibracion = extraData.fecha;
             if(extraData.cliente) mockDatabase[index].cliente = extraData.cliente;
-            
-            // Registrar actividad
-            addActivity('state', `Cambio de Estado`, `El equipo <strong>${id}</strong> (${mockDatabase[index].instrumento}) pasó de ${oldState} a <strong>${newState}</strong>.`);
         }
         appState.data = [...mockDatabase];
         return { success: true };
@@ -497,7 +326,7 @@ async function updateStateRecord(id, newState, extraData) {
 }
 
 async function saveNewRecord(record) {
-    if(GOOGLE_SHEETS_API_URL !== '' && !appState.isDemo) {
+    if(GOOGLE_SHEETS_API_URL !== '') {
         const response = await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
             body: JSON.stringify({ action: 'create', data: record })
@@ -505,12 +334,9 @@ async function saveNewRecord(record) {
         return await response.json();
     } else {
         // En Mock Local
-        await new Promise(r => setTimeout(r, 600));
-        mockDatabase.unshift(record);
+        await new Promise(r => setTimeout(r, 800));
+        mockDatabase.push(record);
         appState.data = [...mockDatabase];
-        
-        // Registrar actividad
-        addActivity('create', `Alta de Equipo`, `Se ingresó el equipo <strong>${record.id}</strong> (${record.instrumento}) en estado <strong>CERTIFICANDO</strong>.`);
         return { success: true };
     }
 }
@@ -575,22 +401,24 @@ function switchView(view) {
 }
 
 let salesChart = null;
-let distributionChart = null;
 
 function updateDashboard() {
     const biSection = document.getElementById('bi-dashboard');
     if (!biSection) return;
+
+    if(biSection.style.display === 'none' && !appState.loading) {
+         // Si no estamos viendo el dashboard, solo calculamos los números básicos para los KPIs si fuera necesario, 
+         // pero los gráficos Chart.js requieren que el canvas sea visible.
+    }
 
     if(!appState.data || appState.data.length === 0) return;
 
     // 1. Cálculos de Ventas y Reposición
     const stats = {};
     let totalAvailable = 0;
-    let totalReservado = 0;
-    let totalEntregado = 0;
-    let totalCertificando = 0;
     let totalVentas = 0;
 
+    let totalCertificando = 0;
     appState.data.forEach(item => {
         const key = `${item.marca} ${item.modelo}`.toUpperCase();
         if(!stats[key]) stats[key] = { disponible: 0, entregado: 0 };
@@ -598,25 +426,23 @@ function updateDashboard() {
         if(item.estado === 'DISPONIBLE') {
             stats[key].disponible++;
             totalAvailable++;
-        } else if (item.estado === 'RESERVADO') {
+        } else if (item.estado === 'ENTREGADO' || item.estado === 'RESERVADO') {
             stats[key].entregado++;
-            totalReservado++;
-            totalVentas++;
-        } else if (item.estado === 'ENTREGADO') {
-            stats[key].entregado++;
-            totalEntregado++;
             totalVentas++;
         } else if (item.estado === 'CERTIFICANDO') {
             totalCertificando++;
         }
     });
 
-    // 2. Actualizar KPIs con micro-animaciones
-    animateCountHTML('kpi-disponible', totalAvailable);
-    animateCountHTML('kpi-ventas', totalVentas);
-    animateCountHTML('kpi-certificando', totalCertificando);
+    // 2. Actualizar KPIs
+    const elDisponible = document.getElementById('kpi-disponible');
+    if (elDisponible) elDisponible.innerText = totalAvailable;
+    const elVentas = document.getElementById('kpi-ventas');
+    if (elVentas) elVentas.innerText = totalVentas;
+    const elCertificando = document.getElementById('kpi-certificando');
+    if (elCertificando) elCertificando.innerText = totalCertificando;
 
-    // 3. Radar de Reposición
+    // 3. Radar de Reposición (Lógica Crítica)
     const replenishmentList = document.getElementById('replenishment-list');
     
     const criticalItems = Object.entries(stats)
@@ -624,7 +450,8 @@ function updateDashboard() {
         .filter(s => s.entregado > 0 && s.disponible < 2) // Menos de 2 unidades y con historial de ventas
         .sort((a,b) => b.entregado - a.entregado); // Ordenar por demanda
 
-    animateCountHTML('kpi-reposicion', criticalItems.length);
+    const elReposicion = document.getElementById('kpi-reposicion');
+    if (elReposicion) elReposicion.innerText = criticalItems.length;
 
     if(biSection.style.display !== 'none') {
         if (replenishmentList) {
@@ -652,200 +479,63 @@ function updateDashboard() {
             }
         }
 
-        const isMatte = document.body.classList.contains('theme-matte');
-        const textColor = isMatte ? '#a1a1aa' : '#4b5563';
-
         // 4. Gráfico de Ventas (Top Demand)
         const canvas = document.getElementById('chart-sales');
-        if(canvas) {
-            const ctx = canvas.getContext('2d');
-            const chartColor = isMatte ? '#60a5fa' : '#2563eb';
+        if(!canvas) return;
+        const ctx = canvas.getContext('2d');
+        
+        const isMatte = document.body.classList.contains('theme-matte');
+        const chartColor = isMatte ? '#60a5fa' : '#2563eb';
+        const gridColor = isMatte ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+        const textColor = isMatte ? '#a1a1aa' : '#4b5563';
 
-            const salesData = Object.entries(stats)
-                .map(([name, s]) => ({ name, count: s.entregado }))
-                .filter(s => s.count > 0)
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 5); // Top 5
-            
-            if(salesChart) salesChart.destroy();
-            
-            salesChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: salesData.map(d => d.name),
-                    datasets: [{
-                        label: 'Unidades Vendidas',
-                        data: salesData.map(d => d.count),
-                        backgroundColor: chartColor,
-                        borderRadius: 4,
-                        barThickness: 4
-                    }]
+        const salesData = Object.entries(stats)
+            .map(([name, s]) => ({ name, count: s.entregado }))
+            .filter(s => s.count > 0)
+            .sort((a, b) => b.count - a.count)
+            .slice(0, 5); // Top 5 para mayor estabilidad
+        
+        if(salesChart) salesChart.destroy();
+        
+        salesChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: salesData.map(d => d.name),
+                datasets: [{
+                    label: 'Unidades Vendidas',
+                    data: salesData.map(d => d.count),
+                    backgroundColor: chartColor,
+                    borderRadius: 4,
+                    barThickness: 4
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: {
+                    duration: 500
                 },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: { duration: 500 },
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        x: { 
-                            beginAtZero: true, 
-                            grid: { display: false },
-                            ticks: { stepSize: 1, color: textColor } 
-                        },
-                        y: { 
-                            grid: { display: false },
-                            ticks: {
-                                autoSkip: false,
-                                font: { size: 10 },
-                                color: textColor
-                            }
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    x: { 
+                        beginAtZero: true, 
+                        grid: { display: false },
+                        ticks: { stepSize: 1, color: textColor } 
+                    },
+                    y: { 
+                        grid: { display: false },
+                        ticks: {
+                            autoSkip: false,
+                            font: { size: 10 },
+                            color: textColor
                         }
                     }
                 }
-            });
-        }
-
-        // 5. Gráfico de Distribución (Doughnut)
-        const distCanvas = document.getElementById('chart-distribution');
-        if(distCanvas) {
-            const distCtx = distCanvas.getContext('2d');
-            const distColors = [
-                '#10b981', // Disponible
-                '#f59e0b', // Reservado
-                '#3b82f6', // Entregado
-                '#7c3aed'  // Certificando
-            ];
-            
-            if(distributionChart) distributionChart.destroy();
-            distributionChart = new Chart(distCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Disponibles', 'Reservados', 'Entregados', 'Certificando'],
-                    datasets: [{
-                        data: [totalAvailable, totalReservado, totalEntregado, totalCertificando],
-                        backgroundColor: distColors,
-                        borderWidth: isMatte ? 2 : 1,
-                        borderColor: isMatte ? '#1e1e1e' : '#ffffff'
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: { duration: 500 },
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: {
-                                color: textColor,
-                                boxWidth: 12,
-                                font: { size: 10 }
-                            }
-                        }
-                    },
-                    cutout: '60%'
-                }
-            });
-        }
-
-        // 6. Actualizar Historial de Actividad
-        renderTimeline();
-    }
-}
-
-function animateCountHTML(elementId, targetValue) {
-    const el = document.getElementById(elementId);
-    if (!el) return;
-    const start = parseInt(el.innerText) || 0;
-    const duration = 800; // ms
-    const startTime = performance.now();
-    
-    function update(currentTime) {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const ease = progress * (2 - progress);
-        const currentVal = Math.round(start + (targetValue - start) * ease);
-        el.innerText = currentVal;
-        if (progress < 1) {
-            requestAnimationFrame(update);
-        } else {
-            el.innerText = targetValue;
-        }
-    }
-    requestAnimationFrame(update);
-}
-
-function initTimeline() {
-    if (!appState.activities || appState.activities.length === 0) {
-        appState.activities = [
-            {
-                type: 'system',
-                title: 'Sistema Iniciado',
-                desc: 'MetroMLStock v20 cargado con éxito.',
-                timestamp: new Date(Date.now() - 3600000 * 2).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'})
-            },
-            {
-                type: 'fetch',
-                title: 'Sincronización Completa',
-                desc: 'Se importaron registros desde Google Sheets.',
-                timestamp: new Date(Date.now() - 3600000 * 1.8).toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'})
             }
-        ];
-    }
-}
-
-function addActivity(type, title, desc) {
-    if (!appState.activities) appState.activities = [];
-    appState.activities.unshift({
-        type,
-        title,
-        desc,
-        timestamp: new Date().toLocaleTimeString('es-AR', {hour: '2-digit', minute:'2-digit'})
-    });
-    if (appState.activities.length > 10) {
-        appState.activities.pop();
-    }
-    renderTimeline();
-}
-
-function renderTimeline() {
-    const container = document.getElementById('activity-timeline');
-    if (!container) return;
-    container.innerHTML = '';
-    
-    if (!appState.activities || appState.activities.length === 0) {
-        container.innerHTML = '<p style="text-align:center; padding:1.5rem; color:var(--text-secondary);">Sin actividad reciente.</p>';
-        return;
-    }
-    
-    appState.activities.forEach(act => {
-        const item = document.createElement('div');
-        item.className = 'timeline-item';
-        
-        let iconName = 'activity';
-        if (act.type === 'create') iconName = 'plus-circle';
-        else if (act.type === 'state') iconName = 'git-commit';
-        else if (act.type === 'email') iconName = 'mail';
-        else if (act.type === 'system') iconName = 'cpu';
-        else if (act.type === 'fetch') iconName = 'refresh-cw';
-        
-        item.innerHTML = `
-            <div class="timeline-icon ${act.type || 'system'}">
-                <i data-lucide="${iconName}"></i>
-            </div>
-            <div class="timeline-content">
-                <div class="timeline-header">
-                    <span class="timeline-title">${act.title}</span>
-                    <span class="timeline-time">${act.timestamp}</span>
-                </div>
-                <p class="timeline-desc">${act.desc}</p>
-            </div>
-        `;
-        container.appendChild(item);
-    });
-    
-    if (typeof lucide !== 'undefined' && lucide.createIcons) {
-        lucide.createIcons();
+        });
     }
 }
 
@@ -1523,15 +1213,6 @@ async function checkFileInDrive(certificado) {
     errorMsg.style.display = 'none';
     lucide.createIcons();
 
-    if (appState.isDemo) {
-        await new Promise(r => setTimeout(r, 800));
-        statusBox.innerHTML = `<i data-lucide="check-circle" style="color:var(--success);"></i> Archivo localizado (Simulación Demo): <strong>Certificado_${certificado}.pdf</strong>`;
-        statusBox.className = 'status-check-box success';
-        btnSend.disabled = false;
-        lucide.createIcons();
-        return;
-    }
-
     try {
         const response = await fetch(`${GOOGLE_SHEETS_API_URL}?action=check_file&certificado=${encodeURIComponent(certificado)}`);
         const result = await response.json();
@@ -1564,56 +1245,8 @@ async function confirmSendEmail() {
     btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Enviando...';
     lucide.createIcons();
 
+    // Obtenemos el certificado del estado en lugar de extraerlo del HTML
     const certificado = appState.pendingEmail ? appState.pendingEmail.certificado : '';
-
-    if (appState.isDemo) {
-        await new Promise(r => setTimeout(r, 1200));
-
-        // AUTO-ACTUALIZACIÓN DEL EQUIPO ASOCIADO: De RESERVADO a ENTREGADO con asignación de cliente
-        if (appState.pendingEmail && appState.pendingEmail.equipoId) {
-            const equipoId = appState.pendingEmail.equipoId;
-            const clienteName = appState.pendingEmail.empresa || '';
-            
-            // Forzar actualización en memoria local de inmediato
-            const eqIndex = appState.data.findIndex(e => e.id === equipoId);
-            if (eqIndex > -1) {
-                appState.data[eqIndex].estado = 'ENTREGADO';
-                appState.data[eqIndex].cliente = clienteName;
-                renderTable(); // Re-renderizar la tabla del inventario
-            }
-            
-            // También en mockDatabase
-            const mockIdx = mockDatabase.findIndex(e => e.id === equipoId);
-            if (mockIdx > -1) {
-                mockDatabase[mockIdx].estado = 'ENTREGADO';
-                mockDatabase[mockIdx].cliente = clienteName;
-            }
-            
-            addActivity('state', `Auto-Asignación Cliente`, `El equipo <strong>${equipoId}</strong> fue marcado como ENTREGADO a <strong>${clienteName}</strong> tras despacharse su certificado.`);
-        }
-
-        // Marcamos como enviado en la memoria de la web
-        if (appState.currentSolicitudIndex !== undefined) {
-            appState.solicitudes[appState.currentSolicitudIndex].estado = 'enviado';
-            if (mockSolicitudes[appState.currentSolicitudIndex]) {
-                mockSolicitudes[appState.currentSolicitudIndex].estado = 'enviado';
-            }
-            renderSolicitudes();
-            updateBadge();
-        }
-
-        // Registrar actividad de envío
-        addActivity('email', `Certificado Enviado (Demo)`, `Certificado <strong>${certificado}</strong> enviado exitosamente a <strong>${document.getElementById('email-to').value}</strong>.`);
-        
-        closeModal('modal-email-confirm');
-        alert("¡Envío de certificado (Simulado) y actualización de equipo procesados con éxito!");
-        
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        lucide.createIcons();
-        updateDashboard();
-        return;
-    }
 
     const requestData = {
         action: 'send_email',
@@ -1857,31 +1490,6 @@ async function confirmSendReminder() {
     btn.disabled = true;
     btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Enviando...';
     lucide.createIcons();
-
-    if (appState.isDemo) {
-        await new Promise(r => setTimeout(r, 1200));
-
-        // Marcado local
-        const index = appState.vencimientos.findIndex(e => e.id === appState.pendingReminder.id);
-        if (index > -1) {
-            appState.vencimientos[index].estado_recordatorio = 'Enviado';
-            if (mockVencimientos[index]) {
-                mockVencimientos[index].estado_recordatorio = 'Enviado';
-            }
-            renderVencimientos();
-        }
-        
-        // Log activity
-        addActivity('email', `Recordatorio Enviado (Demo)`, `Recordatorio de vencimiento para el equipo <strong>${appState.pendingReminder.id}</strong> enviado a <strong>${appState.pendingReminder.email}</strong>.`);
-        
-        closeModal('modal-reminder-confirm');
-        alert("¡Recordatorio de vencimiento (Simulado) enviado con éxito!");
-        
-        btn.disabled = false;
-        btn.innerHTML = originalText;
-        lucide.createIcons();
-        return;
-    }
 
     const payload = {
         action: 'send_reminder_email',
