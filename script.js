@@ -309,6 +309,82 @@ function setupPatronesChecklistHandlers(prefix) {
         lucide.createIcons();
     });
 }
+
+// ==========================================
+// NOTIFICACIONES Y CARGADOR GLOBAL (TOASTS)
+// ==========================================
+
+function showToast(message, type = 'info') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'toast-container';
+        document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    
+    let icon = 'info';
+    if (type === 'success') icon = 'check-circle-2';
+    else if (type === 'error' || type === 'danger') icon = 'alert-circle';
+    else if (type === 'warning') icon = 'alert-triangle';
+    
+    toast.innerHTML = `
+        <i data-lucide="${icon}" class="toast-icon-svg"></i>
+        <span class="toast-message">${message}</span>
+        <button class="toast-close" title="Cerrar">&times;</button>
+    `;
+    
+    container.appendChild(toast);
+    
+    // Configurar iconos de Lucide específicamente para el toast
+    if (window.lucide && typeof window.lucide.createIcons === 'function') {
+        window.lucide.createIcons();
+    }
+    
+    const closeBtn = toast.querySelector('.toast-close');
+    closeBtn.addEventListener('click', () => {
+        toast.classList.add('toast-exit');
+        setTimeout(() => toast.remove(), 300);
+    });
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.classList.add('toast-exit');
+            setTimeout(() => toast.remove(), 300);
+        }
+    }, 4000);
+}
+
+function showLoader(message = 'Sincronizando con Google Sheets...') {
+    let loader = document.getElementById('global-loader');
+    if (!loader) {
+        loader = document.createElement('div');
+        loader.id = 'global-loader';
+        loader.className = 'global-loader';
+        loader.innerHTML = `
+            <div class="loader-content">
+                <div class="spinner-premium"></div>
+                <p id="global-loader-text">${message}</p>
+            </div>
+        `;
+        document.body.appendChild(loader);
+    } else {
+        const textEl = document.getElementById('global-loader-text');
+        if (textEl) textEl.innerText = message;
+        loader.style.display = 'flex';
+    }
+}
+
+function hideLoader() {
+    const loader = document.getElementById('global-loader');
+    if (loader) {
+        loader.style.display = 'none';
+    }
+}
+
 /**
  * Configuración: 
  * Cuando tengas tu Web App de Google Apps Script publicada, 
@@ -571,6 +647,7 @@ function updateThemeToggleUI(isMatte) {
 async function fetchData() {
     appState.loading = true;
     updateUIState();
+    showLoader('Sincronizando con Google Sheets...');
 
     try {
         if(GOOGLE_SHEETS_API_URL !== '') {
@@ -593,10 +670,11 @@ async function fetchData() {
         }
     } catch (err) {
         console.error("Error al cargar datos:", err);
-        alert("Hubo un error cargando los datos.");
+        showToast("Hubo un error cargando los datos desde Google Sheets.", "error");
     } finally {
         appState.loading = false;
         updateUIState();
+        hideLoader();
         renderTable();
         renderSolicitudes();
         renderVencimientos();
@@ -1188,6 +1266,7 @@ async function handleFormNuevo(e) {
     btn.innerText = 'Guardando...';
 
     try {
+        showLoader('Guardando equipo nuevo...');
         const record = {
             id: document.getElementById('nuevo-id').value,
             instrumento: document.getElementById('nuevo-nombre').value,
@@ -1225,17 +1304,18 @@ async function handleFormNuevo(e) {
         if (result && result.success) {
             closeAllModals();
             await fetchData(); // Recargar datos para evitar duplicados en memoria
-            alert("Equipo guardado con éxito.");
+            showToast("Equipo guardado con éxito.", "success");
         } else {
             const errorMsg = result && result.error ? result.error : "Respuesta de guardado vacía o inválida del servidor.";
-            alert("⚠️ ATENCIÓN FALLA CRÍTICA:\nEl servidor o Google Sheets rechazó el guardado.\n\nMotivo técnico: " + errorMsg + "\n\nDario, por favor pasame este mensaje exacto para saber dónde apretar.");
+            showToast("⚠️ Falla crítica al guardar: " + errorMsg, "error");
         }
     } catch (error) {
         console.error("Error al guardar nuevo registro:", error);
-        alert("⚠️ ATENCIÓN FALLA CRÍTICA:\nEl servidor o Google Sheets rechazó el guardado. Motivo técnico: " + error.toString() + "\n\nDario, por favor pasame este mensaje exacto para saber dónde apretar.");
+        showToast("⚠️ Falla crítica de red: " + error.toString(), "error");
     } finally {
         btn.disabled = false;
         btn.innerText = 'Generar Entrada';
+        hideLoader();
     }
 }
 
@@ -1247,6 +1327,7 @@ async function handleFormEstado(e) {
     btn.innerText = 'Procesando...';
 
     try {
+        showLoader('Actualizando estado...');
         const id = document.getElementById('estado-id').value;
         const targetState = document.getElementById('estado-target').value;
         
@@ -1266,16 +1347,17 @@ async function handleFormEstado(e) {
         if (result && result.success) {
             closeAllModals();
             await fetchData(); // Recargar datos frescos
-            alert("Estado actualizado con éxito.");
+            showToast("Estado actualizado con éxito.", "success");
         } else {
-            alert("Error al actualizar: " + (result ? result.error : "Sin respuesta del servidor"));
+            showToast("Error al actualizar: " + (result ? result.error : "Sin respuesta del servidor"), "error");
         }
     } catch (error) {
         console.error("Error al actualizar estado:", error);
-        alert("Hubo un error al actualizar el estado. Por favor, inténtalo de nuevo.");
+        showToast("Hubo un error al actualizar el estado. Por favor, inténtalo de nuevo.", "error");
     } finally {
         btn.disabled = false;
         btn.innerText = 'Confirmar';
+        hideLoader();
     }
 }
 
@@ -1403,6 +1485,7 @@ async function handleFormEdit(e) {
     btn.innerText = 'Guardando...';
 
     try {
+        showLoader('Guardando cambios...');
         const record = {
             id: document.getElementById('edit-id').value,
             instrumento: document.getElementById('edit-instrumento').value,
@@ -1438,17 +1521,18 @@ async function handleFormEdit(e) {
         if (result && result.success) {
             await fetchData(); // Recargar datos frescos
             closeAllModals();
-            alert("Cambios guardados con éxito.");
+            showToast("Cambios guardados con éxito.", "success");
         } else {
             const errorMsg = result && result.error ? result.error : "Respuesta de guardado vacía o inválida del servidor.";
-            alert("⚠️ ERROR AL EDITAR:\nEl servidor rechazó los cambios.\n\nMotivo técnico: " + errorMsg);
+            showToast("⚠️ Falla al editar: " + errorMsg, "error");
         }
     } catch (error) {
         console.error("Error al editar registro:", error);
-        alert("Hubo un error al guardar los cambios. Por favor, inténtalo de nuevo.");
+        showToast("Hubo un error al guardar los cambios. Por favor, inténtalo de nuevo.", "error");
     } finally {
         btn.disabled = false;
         btn.innerText = 'Guardar Cambios';
+        hideLoader();
     }
 }
 
@@ -1509,7 +1593,7 @@ function handleVerFichaSolicitud(index) {
     const equipo = appState.data.find(e => certificadosCoinciden(e.certificado, certSolicitud));
     
     if (!equipo) {
-        alert(`No se encontró ningún equipo en el inventario con el Certificado: "${s.certificado}".`);
+        showToast(`No se encontró ningún equipo en el inventario con el Certificado: "${s.certificado}".`, "warning");
         return;
     }
     
@@ -1563,7 +1647,7 @@ function handleAtenderSolicitud(index) {
     
     if (!equipo) {
         console.warn("No se encontró equipo en el inventario.");
-        alert(`Atención: No se encontró ningún equipo en el inventario con el Certificado: "${s.certificado}".\n\nAsegúrate de que el equipo esté cargado en 'Gestión de Equipos' con este mismo código.`);
+        showToast(`No se encontró ningún equipo en el inventario con el Certificado "${s.certificado}". Asegúrate de cargarlo en Gestión de Equipos.`, "warning");
         return;
     }
 
@@ -1583,7 +1667,7 @@ function handleAtenderSolicitud(index) {
     
     if (!emailTo || !emailBody) {
         console.error("Error: No se encontró el modal de email en el HTML.");
-        alert("Error técnico: El modal de envío no existe en el HTML.");
+        showToast("Error técnico: El modal de envío no existe en el HTML.", "error");
         return;
     }
 
@@ -1637,6 +1721,7 @@ async function confirmSendEmail() {
     btn.disabled = true;
     btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Enviando...';
     lucide.createIcons();
+    showLoader("Enviando email y adjuntos...");
 
     // Obtenemos el certificado del estado en lugar de extraerlo del HTML
     const certificado = appState.pendingEmail ? appState.pendingEmail.certificado : '';
@@ -1720,7 +1805,7 @@ async function confirmSendEmail() {
         setTimeout(async () => {
             await fetchData();
             closeModal('modal-email-confirm');
-            alert("¡Envío de certificado y actualización de equipo procesados con éxito!");
+            showToast("¡Envío de certificado y actualización de equipo procesados con éxito!", "success");
         }, 3000);
 
     } catch (e) {
@@ -1746,7 +1831,8 @@ async function confirmSendEmail() {
             }
         }
 
-        alert("El envío se ha procesado (verifique su casilla CC por confirmación).");
+        hideLoader();
+        showToast("El envío se ha procesado (verifique su casilla CC por confirmación).", "info");
         closeModal('modal-email-confirm');
     } finally {
         btn.disabled = false;
@@ -1883,7 +1969,7 @@ window.handleEnviarAviso = function(id) {
     }
 
     if (!eq.email || !eq.email.includes('@')) {
-        alert("El equipo no tiene un email válido registrado en las solicitudes.");
+        showToast("El equipo no tiene un email válido registrado.", "warning");
         return;
     }
 
@@ -1909,6 +1995,7 @@ async function confirmSendReminder() {
     btn.disabled = true;
     btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Enviando...';
     lucide.createIcons();
+    showLoader("Enviando recordatorio de vencimiento...");
 
     const payload = {
         action: 'send_reminder_email',
@@ -1941,16 +2028,17 @@ async function confirmSendReminder() {
         }
 
         closeModal('modal-reminder-confirm');
-        alert("¡Recordatorio de vencimiento enviado con éxito!");
 
         // Refrescar datos reales en 3 segundos
         setTimeout(async () => {
             await fetchData();
+            showToast("¡Recordatorio de vencimiento enviado con éxito!", "success");
         }, 3000);
     } catch (e) {
         console.error("Error al enviar recordatorio:", e);
         closeModal('modal-reminder-confirm');
-        alert("El recordatorio ha sido procesado (revise la bandeja CC).");
+        hideLoader();
+        showToast("El recordatorio ha sido procesado (revise la bandeja CC).", "info");
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalText;
@@ -1965,7 +2053,7 @@ async function confirmSendReminder() {
 window.imprimirCertificado = function(id) {
     const item = appState.data.find(x => x.id === id);
     if (!item) {
-        alert("No se encontró el equipo para emitir el certificado.");
+        showToast("No se encontró el equipo para emitir el certificado.", "error");
         return;
     }
 
