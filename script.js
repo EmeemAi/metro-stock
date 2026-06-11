@@ -217,13 +217,10 @@ function updatePatronesChecklist(prefix, selectedPats) {
     allShowPats.forEach(id => {
         const isChecked = selPatsUpper.includes(id) || (selPatsUpper.length === 0 && defaultPats.includes(id));
         const pDet = PATRONES_CATALOG[id];
-        const labelText = pDet ? `${id} - ${pDet.desc} (${pDet.brand} ${pDet.model})` : `${id} (No localizado en catÃ¡logo)`;
+        const tooltipText = pDet ? `${id} - ${pDet.desc} (${pDet.brand} ${pDet.model})` : `${id} (No localizado en catálogo)`;
         
         const div = document.createElement('div');
         div.className = 'patron-chk-item';
-        div.style.display = 'flex';
-        div.style.alignItems = 'center';
-        div.style.gap = '0.5rem';
         
         const cb = document.createElement('input');
         cb.type = 'checkbox';
@@ -233,9 +230,8 @@ function updatePatronesChecklist(prefix, selectedPats) {
         
         const lbl = document.createElement('label');
         lbl.htmlFor = 'chk-' + prefix + '-' + id;
-        lbl.innerText = labelText;
-        lbl.style.cursor = 'pointer';
-        lbl.style.fontSize = '0.85rem';
+        lbl.innerText = id;
+        lbl.title = tooltipText;
         
         div.appendChild(cb);
         div.appendChild(lbl);
@@ -278,12 +274,10 @@ function setupPatronesChecklistHandlers(prefix) {
             const exists = document.getElementById("chk-" + prefix + "-" + id);
             if (!exists) {
                 const pDet = PATRONES_CATALOG[id];
-                const labelText = pDet ? (id + " - " + pDet.desc + " (" + pDet.brand + " " + pDet.model + ")") : id;
+                const tooltipText = pDet ? (id + " - " + pDet.desc + " (" + pDet.brand + " " + pDet.model + ")") : id;
                 
                 const div = document.createElement('div');
-                div.style.display = 'flex';
-                div.style.alignItems = 'center';
-                div.style.gap = '0.5rem';
+                div.className = 'patron-chk-item';
                 
                 const cb = document.createElement('input');
                 cb.type = 'checkbox';
@@ -293,9 +287,8 @@ function setupPatronesChecklistHandlers(prefix) {
                 
                 const lbl = document.createElement('label');
                 lbl.htmlFor = 'chk-' + prefix + '-' + id;
-                lbl.innerText = labelText;
-                lbl.style.cursor = 'pointer';
-                lbl.style.fontSize = '0.85rem';
+                lbl.innerText = id;
+                lbl.title = tooltipText;
                 
                 div.appendChild(cb);
                 div.appendChild(lbl);

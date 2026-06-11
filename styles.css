@@ -1767,30 +1767,47 @@ td:nth-child(6)  /* Cert */ {
    Fase 9: Checklist de Patrones en Modales
    ========================================== */
 .patrones-checklist {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 0.75rem;
-    padding: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 0.5rem 0;
+    background: transparent;
+    border: none;
+    margin-top: 0.25rem;
+    margin-bottom: 0.5rem;
+}
+.patron-chk-item {
+    display: inline-flex;
+}
+.patron-chk-item input[type="checkbox"] {
+    display: none;
+}
+.patron-chk-item label {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-sm);
     background: var(--bg-card);
     border: 1px solid var(--border-color);
-    border-radius: var(--radius-sm);
-    margin-top: 0.5rem;
-    margin-bottom: 0.5rem;
-    max-height: 200px;
-    overflow-y: auto;
-}
-.patrones-checklist label {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--text-primary);
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
     cursor: pointer;
     user-select: none;
+    transition: all 0.15s ease-in-out;
 }
-.patrones-checklist input[type="checkbox"] {
-    accent-color: var(--primary-color);
-    width: 16px;
-    height: 16px;
-    cursor: pointer;
+.patron-chk-item label:hover {
+    border-color: var(--border-strong);
+    background: var(--bg-main);
+}
+.patron-chk-item input[type="checkbox"]:checked + label {
+    background: var(--state-entregado-bg);
+    border-color: var(--primary);
+    color: var(--primary);
+}
+.patron-chk-item input[type="checkbox"]:checked + label::before {
+    content: "✓";
+    font-weight: 900;
+    font-size: 0.75rem;
 }
