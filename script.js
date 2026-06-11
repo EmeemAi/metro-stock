@@ -1,4 +1,4 @@
-﻿const PATRONES_CATALOG = {
+const PATRONES_CATALOG = {
     "ATP-001": { desc: "Analizador de torque", brand: "NORBAR", model: "TRUCHECK PLUS", serial: "56527", cert: "A-14733", emisor: "CR MEDICION" },
     "ATP-002": { desc: "Analizador de torque", brand: "NORBAR", model: "TRUCHECKPLUS", serial: "57795", cert: "A-14734", emisor: "CR MEDICION" },
     "ATP-003": { desc: "Analizador de torque", brand: "NORBAR", model: "TRUCHECK PLUS", serial: "81207", cert: "A-05914", emisor: "CR MEDICION" },
@@ -1208,7 +1208,7 @@ async function handleFormNuevo(e) {
         };
 
         const checkedPats = [];
-        document.querySelectorAll('#nuevo-patrones-checklist input[type=''checkbox'']:checked').forEach(function(cb) {
+        document.querySelectorAll('#nuevo-patrones-checklist input[type="checkbox"]:checked').forEach(function(cb) {
             checkedPats.push(cb.value);
         });
         record.patrones = JSON.stringify(checkedPats);
@@ -1423,7 +1423,7 @@ async function handleFormEdit(e) {
         };
 
         const checkedPats = [];
-        document.querySelectorAll('#edit-patrones-checklist input[type=''checkbox'']:checked').forEach(function(cb) {
+        document.querySelectorAll('#edit-patrones-checklist input[type="checkbox"]:checked').forEach(function(cb) {
             checkedPats.push(cb.value);
         });
         record.patrones = JSON.stringify(checkedPats);
