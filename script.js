@@ -1,3 +1,321 @@
+﻿const PATRONES_CATALOG = {
+    "ATP-001": { desc: "Analizador de torque", brand: "NORBAR", model: "TRUCHECK PLUS", serial: "56527", cert: "A-14733", emisor: "CR MEDICION" },
+    "ATP-002": { desc: "Analizador de torque", brand: "NORBAR", model: "TRUCHECKPLUS", serial: "57795", cert: "A-14734", emisor: "CR MEDICION" },
+    "ATP-003": { desc: "Analizador de torque", brand: "NORBAR", model: "TRUCHECK PLUS", serial: "81207", cert: "A-05914", emisor: "CR MEDICION" },
+    "BAL-001": { desc: "Balanza Electrónica", brand: "Prec", model: "HZT-B6000", serial: "-", cert: "", emisor: "CR MEDICION" },
+    "CALP-002": { desc: "Calibre digital", brand: "SCHWYZ", model: "Sin identificar", serial: "17113143", cert: "202604-CA-16386", emisor: "CR MEDICION" },
+    "CALP-003": { desc: "Calibre Digital", brand: "SCHWYZ", model: "SC111003", serial: "Sin Identificar", cert: "", emisor: "CR MEDICION" },
+    "CDEC-001": { desc: "Calibrador Decibelimetro", brand: "SCHWYZ", model: "ND9", serial: "423623", cert: "", emisor: "CR MEDICION" },
+    "CMP-001": { desc: "Calibrador multifunción", brand: "TRANSMILLE", model: "3050A", serial: "K1358I20", cert: "", emisor: "CR MEDICION" },
+    "COM-001": { desc: "COMPARADOR", brand: "PRIDE", model: "-", serial: "19G0094", cert: "A-04015", emisor: "CR MEDICION" },
+    "CRO-001": { desc: "Cronómetro digital", brand: "TRESSA", model: "-", serial: "22423520", cert: "", emisor: "CR MEDICION" },
+    "CRO-002": { desc: "Cronómetro", brand: "TRACEABLE", model: "Sin identificar", serial: "230790221", cert: "", emisor: "CR MEDICION" },
+    "CTM-001": { desc: "Cuenta metros", brand: "SCHWYZ", model: "-", serial: "JM316", cert: "", emisor: "CR MEDICION" },
+    "CTP-001": { desc: "Calibrador de temperatura", brand: "Ametek", model: "ETC-125 A", serial: "681554-01624", cert: "", emisor: "CR MEDICION" },
+    "CTP-002": { desc: "Calibrador de temperatura", brand: "Ametek", model: "ETC-400 A", serial: "680510-02188", cert: "", emisor: "CR MEDICION" },
+    "DRP-001": { desc: "Caja de década de resistencia", brand: "EXTECH", model: "380400", serial: "H.468113", cert: "202605-DR-16900", emisor: "CR MEDICION" },
+    "DUR-001": { desc: "Durómetro Digital", brand: "SCHWYZ", model: "DUDI-A", serial: "N830064", cert: "", emisor: "CR MEDICION" },
+    "FRP-001": { desc: "Fuente radiante", brand: "CEM", model: "BX-500", serial: "11056658", cert: "", emisor: "CR MEDICION" },
+    "GON-001": { desc: "Goniometro", brand: "SCHWYZ", model: "-", serial: "5-2.912153", cert: "", emisor: "CR MEDICION" },
+    "JBA-001": { desc: "Juego de bloques angulares", brand: "Sin identificar", model: "Sin identificar", serial: "Sin identificar", cert: "A-10458", emisor: "CR MEDICION" },
+    "JBP-001": { desc: "Juego de Bloques Patron", brand: "SCHWYZ", model: "-", serial: "10090020", cert: "A-02533", emisor: "CR MEDICION" },
+    "JBP-002": { desc: "Juego de Bloques Patron", brand: "SCHWYZ", model: "-", serial: "26218", cert: "A-02534", emisor: "CR MEDICION" },
+    "JBP-003": { desc: "Juego de Bloques Patrón", brand: "SCHWYZ", model: "-", serial: "13781 / 13275 / 13677", cert: "", emisor: "CR MEDICION" },
+    "JMP-001": { desc: "Pesas hasta 1000 gr", brand: "Ohaus", model: "N° Serie: 190220", serial: "190220", cert: "", emisor: "CR MEDICION" },
+    "JMP-002": { desc: "Juegos de pesas patrón", brand: "Dolz Hnos. SRL", model: "Paralelepipédica de control con manija", serial: "AB4879-01 AB4879-02 AB5115-01 AB5115-02 AA2454-07", cert: "", emisor: "CR MEDICION" },
+    "JPP-001": { desc: "Plantillas de Espesor", brand: "-", model: "-", serial: "140710111 150610944", cert: "", emisor: "CR MEDICION" },
+    "JPP-002": { desc: "Plantillas patrones de espesor", brand: "Sin Identificar", model: "Sin Identificar", serial: "Sin Identificar", cert: "", emisor: "CR MEDICION" },
+    "JPP-003": { desc: "Juego de plantillas de espesor", brand: "-", model: "-", serial: "-", cert: "", emisor: "CR MEDICION" },
+    "JPP-004": { desc: "Juego de plantillas de espesor", brand: "Sin identificar", model: "Sin identificar", serial: "18275", cert: "A-12990", emisor: "CR MEDICION" },
+    "LUX-001": { desc: "Luxometro", brand: "SCHWYZ", model: "SC105", serial: "S1035541", cert: "NXZ-12-24-9182", emisor: "SERVICIO ARGENTINO DE CALIBRACIÓN Y MEDICIÓN" },
+    "MDL-001": { desc: "Distanciómetro Láser", brand: "Leica", model: "DISTO D 110", serial: "1262419360", cert: "", emisor: "CR MEDICION" },
+    "MDP-001": { desc: "Vacuómetro digital", brand: "Additel", model: "ADT680-05-V15-BAR-N", serial: "218182B0012", cert: "A-06272", emisor: "CR MEDICION" },
+    "MDP-002": { desc: "Manómetro digital", brand: "Additel", model: "ADT680-05-GP3K-BAR-N", serial: "21819430006", cert: "A-06342", emisor: "CR MEDICION" },
+    "MDP-003": { desc: "Manómetro digital", brand: "Additel", model: "ADT680-05-GP10K-BAR-N", serial: "21820150044", cert: "A-06270", emisor: "CR MEDICION" },
+    "MDP-004": { desc: "Manómetro digital", brand: "Additel", model: "ADT680-05-GP300-BAR-N", serial: "21821100010", cert: "LABORATORIO", emisor: "CR MEDICION" },
+    "MDP-005": { desc: "Manómetro diferencial", brand: "Testo", model: "510", serial: "51581039/1023", cert: "A-09086", emisor: "CR MEDICION" },
+    "MIC-001": { desc: "Micrometro", brand: "SCHWYZ", model: "SC13001414", serial: "171147350", cert: "202604-ME-16387", emisor: "CR MEDICION" },
+    "MIC-002": { desc: "Micrómetro", brand: "SCHWYZ", model: "SC13002410", serial: "70703766", cert: "", emisor: "CR MEDICION" },
+    "MUL-001": { desc: "Multímetro", brand: "BRYMEN", model: "BM252", serial: "151052783", cert: "202202-ML-04100", emisor: "CR MEDICION" },
+    "MUL-002": { desc: "Multímetro digital", brand: "BREMEN", model: "BM525S", serial: "202190584", cert: "", emisor: "CR MEDICION" },
+    "MULP-001": { desc: "Multímetro digital", brand: "SIGLENT", model: "SDM3045X", serial: "SDM34HBQ7R2402", cert: "202604-ML-16385", emisor: "CR MEDICION" },
+    "NDP-001": { desc: "Nivel digital", brand: "Schwyz", model: "SCN3000-M", serial: "Sin identificar", cert: "202503-ND-12796", emisor: "CR MEDICION" },
+    "PIE-001": { desc: "Probador de instalaciones eléctricas", brand: "KEWTECH", model: "FC 2000", serial: "152552", cert: "", emisor: "CR MEDICION" },
+    "PRG-001": { desc: "Patrón de rugosidad", brand: "SCHWYZ", model: "-", serial: "-", cert: "", emisor: "CR MEDICION" },
+    "REF-001": { desc: "Cristal de interferencia", brand: "-", model: "-", serial: "-", cert: "", emisor: "CR MEDICION" },
+    "REG-001": { desc: "Regla flexible", brand: "-", model: "-", serial: "-", cert: "", emisor: "CR MEDICION" },
+    "STP-001": { desc: "Simulador de termocuplas", brand: "TRANSMILLE", model: "EA001A", serial: "113134J20", cert: "", emisor: "CR MEDICION" },
+    "TAC-001": { desc: "Tacometro", brand: "SCHWYZ", model: "SC114115-B", serial: "S1014202", cert: "", emisor: "CR MEDICION" },
+    "THGP-001": { desc: "Termohigrómetro electrónico", brand: "Testo", model: "Testo 625", serial: "61940467/907", cert: "", emisor: "Calibración realizada en el laboratorio de T esto Argentina" },
+    "TRP-001": { desc: "Controlador digital", brand: "BEYCA", model: "CD48R", serial: "AKTP2759", cert: "", emisor: "Calibración realizada en el laboratorio de T esto Argentina" },
+};
+
+const INSTRUMENT_MAPPINGS = [
+    { instrumento: "Calibre", patrones: ["JBP-002", "JBP-003", "THGP-001"], filename: "001 Calibre.xlsx" },
+    { instrumento: "Micómetro de exteriores", patrones: ["JBP-001", "JBP-002", "JBP-003", "THGP-001"], filename: "002 Micómetro de exteriores.xlsx" },
+    { instrumento: "Medidor de Espesor", patrones: ["JBP-002", "THGP-001"], filename: "004 Medidor de Espesor.xlsx" },
+    { instrumento: "004-1 Medidor de Espesor", patrones: ["JPP-004", "THGP-001"], filename: "004-1 Medidor de Espesor.xlsx" },
+    { instrumento: "Medidor de Recubrimiento", patrones: ["JPP-004", "THGP-001"], filename: "005 Medidor de Recubrimiento .xlsx" },
+    { instrumento: "Medidor Ultrasonido", patrones: ["JBP-002", "THGP-001"], filename: "006 Medidor Ultrasonido.xlsx" },
+    { instrumento: "Torquimetro", patrones: ["ATP-001", "ATP-002", "ATP-003", "THGP-001"], filename: "007 Torquimetro.xlsx" },
+    { instrumento: "Manómetro-Vacuómetro", patrones: ["MDP-001", "MDP-002", "MDP-003", "MDP-004", "MDP-005", "THGP-001"], filename: "008 Manómetro-Vacuómetro.xlsx" },
+    { instrumento: "008A Transmisor de presion", patrones: ["MDP-001", "MDP-002", "MDP-003", "MDP-004", "THGP-001"], filename: "008A Transmisor de presion.xlsx" },
+    { instrumento: "Luxometro", patrones: ["LUX-001", "THGP-001"], filename: "009 Luxometro.xlsx" },
+    { instrumento: "Decibelimetro", patrones: ["CDEC-001", "THGP-001"], filename: "010 Decibelimetro.xlsx" },
+    { instrumento: "Termohigrometro", patrones: ["THGP-001", "THGP-002"], filename: "011 Termohigrometro.xlsx" },
+    { instrumento: "Telurimetro", patrones: ["DRP-001", "THGP-001"], filename: "012 Telurimetro.xlsx" },
+    { instrumento: "012-1 Megohmetro", patrones: ["MULP-001", "PIE-001", "THGP-001"], filename: "012-1 Megohmetro.xlsx" },
+    { instrumento: "Regla - Cinta", patrones: ["MDL-001", "REG-001", "THGP-001"], filename: "013 Regla - Cinta .xlsx" },
+    { instrumento: "Pirometro", patrones: ["FRP-001", "TRP-001", "THGP-001"], filename: "014 Pirometro.xlsx" },
+    { instrumento: "Cronómetro", patrones: ["CRO-002", "THGP-001"], filename: "015 Cronómetro.xlsx" },
+    { instrumento: "Tacómetro", patrones: ["TAC-001", "THGP-001"], filename: "016 Tacómetro.xlsx" },
+    { instrumento: "Termometro", patrones: ["CTP-001", "CTP-002", "TRP-001", "THGP-001"], filename: "017 Termometro.xlsx" },
+    { instrumento: "Rugosimetro", patrones: ["PRG-001", "THGP-001"], filename: "018 Rugosimetro.xlsx" },
+    { instrumento: "Dinamometro", patrones: ["JMP-001", "JMP-002", "JMP-002-1", "JMP-002-2", "THGP-001"], filename: "019 Dinamometro.xlsx" },
+    { instrumento: "Goniometro (No usar)", patrones: ["GON-001", "THGP-001"], filename: "020 Goniometro (No usar).xlsx" },
+    { instrumento: "Inclinometro", patrones: ["JBA-001", "THGP-001"], filename: "020 Inclinometro.xlsx" },
+    { instrumento: "Durometro", patrones: ["BAL-001", "CALP-002"], filename: "021 Durometro.xlsx" },
+    { instrumento: "Multimetro", patrones: ["CMP-001", "THGP-001"], filename: "023 Multimetro.xlsx" },
+    { instrumento: "Multímetro (NO USAR)", patrones: ["CMP-001"], filename: "023 Multímetro (NO USAR).xlsx" },
+    { instrumento: "Dispositivos", patrones: ["MIC-001", "CALP-002", "COM-001", "MIC-002", "NDP-001"], filename: "024 Dispositivos.xlsx" },
+    { instrumento: "Calibrador multifuncion", patrones: ["CMP-001", "STP-001", "MULP-001", "THGP-001"], filename: "025 Calibrador multifuncion .xlsx" },
+    { instrumento: "Micrometro de interior", patrones: ["JBP-002", "THGP-001"], filename: "026 Micrometro de interior.xlsx" },
+    { instrumento: "Balanza", patrones: ["JMP-001", "JMP-002", "JMP-002-1", "JMP-002-2", "THGP-001"], filename: "027 Balanza.xlsx" },
+    { instrumento: "Indicador - Simulador  TC", patrones: ["STP-001", "THGP-001"], filename: "028 Indicador - Simulador  TC.xlsx" },
+    { instrumento: "Medidor de Distancia", patrones: ["MDL-001", "THGP-001"], filename: "029 Medidor de Distancia.xlsx" },
+    { instrumento: "Micrometro interno de 2 puntas", patrones: ["JBP-001", "JBP-002", "JBP-003", "THGP-001"], filename: "030 Micrometro interno de 2 puntas.xlsx" },
+    { instrumento: "Fuente de tension y corriente", patrones: ["MULP-001", "THGP-001"], filename: "031 Fuente de tension y corriente.xlsx" },
+    { instrumento: "Cuenta Metro", patrones: ["CALP-002", "CALP-003", "REG-001", "THGP-001"], filename: "032 Cuenta Metro.xlsx" },
+    { instrumento: "Calibrador de lazo", patrones: [], filename: "033 Calibrador de lazo.xlsx" },
+    { instrumento: "Probador de Disyuntor", patrones: ["PIE-001", "THGP-001"], filename: "034 Probador de Disyuntor.xlsx" },
+    { instrumento: "Analizador de seguridad", patrones: ["PIE-001", "MULP-001", "THGP-001"], filename: "035 Analizador de seguridad .xlsx" },
+    { instrumento: "Frecuencimetro", patrones: ["CMP-001", "THGP-001"], filename: "036 Frecuencimetro .xlsx" },
+    { instrumento: "Medidores de tension", patrones: ["MULP-001", "PIE-001", "THGP-001"], filename: "037 Medidores de tension.xlsx" },
+    { instrumento: "Decada de resistencia", patrones: ["MULP-001", "THGP-001"], filename: "038 Decada de resistencia.xlsx" },
+    { instrumento: "Material volumetrico", patrones: ["BAL-001", "CALP-002"], filename: "039 Material volumetrico .xlsx" },
+    { instrumento: "Cinta PI", patrones: ["REG-001", "THGP-001"], filename: "Cinta PI.xlsx" },
+    { instrumento: "Galga de soldadura SOLD 11", patrones: ["MIC-001", "CALP-002", "COM-001", "MIC-002", "NDP-001"], filename: "Galga de soldadura SOLD 11.xlsx" },
+    { instrumento: "Nivel de burbuja sin escala", patrones: ["GON-001", "THGP-001"], filename: "Nivel de burbuja sin escala.xlsx" },
+    { instrumento: "Patron de rugosidad", patrones: ["PRG-001", "RUGP-001", "THGP-001"], filename: "Patron de rugosidad.xlsx" },
+    { instrumento: "Patrones de dureza", patrones: ["DUR-001", "THGP-001"], filename: "Patrones de dureza.xlsx" },
+    { instrumento: "Plantillas de espesor", patrones: ["MIC-001", "CAL-001", "COM-001", "MIC-002"], filename: "Plantillas de espesor.xlsx" },
+];
+
+
+// ==========================================
+// CONTROLADOR DE PATRONES DE CALIBRACIÃ“N (DARIO)
+// ==========================================
+
+function getTemplateForInstrument(instrumentoName, certificadoCode) {
+    const name = String(instrumentoName || '').toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+    const cert = String(certificadoCode || '').toUpperCase().trim();
+    
+    // 1. Intentar buscar coincidencia directa por nombre en INSTRUMENT_MAPPINGS
+    for (const mapping of INSTRUMENT_MAPPINGS) {
+        const mapName = mapping.instrumento.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        if (name.includes(mapName) || mapName.includes(name)) {
+            return mapping;
+        }
+    }
+    
+    // 2. Si no coincide, buscar por prefijo de certificado (ej: "202604-DE-15681" -> "DE")
+    let prefix = '';
+    const match = cert.match(/-([A-Z]{2})-/);
+    if (match) {
+        prefix = match[1];
+    } else {
+        const matchSpaces = cert.match(/\s+([A-Z]{2})\s+/);
+        if (matchSpaces) {
+            prefix = matchSpaces[1];
+        }
+    }
+    
+    if (prefix) {
+        const prefixToTemplateIndex = {
+            'CA': '001 Calibre',
+            'MR': '002 MicÃ³metro de exteriores',
+            'ME': '004 Medidor de Espesor',
+            'RE': '005 Medidor de Recubrimiento',
+            'MU': '006 Medidor Ultrasonido',
+            'TQ': '007 Torquimetro',
+            'MA': '008 ManÃ³metro-VacuÃ³metro',
+            'PR': '008A Transmisor de presion',
+            'LX': '009 Luxometro',
+            'DE': '010 Decibelimetro', 'DB': '010 Decibelimetro', 'DC': '010 Decibelimetro',
+            'TH': '011 Termohigrometro',
+            'TL': '012 Telurimetro',
+            'MG': '012-1 Megohmetro',
+            'RC': '013 Regla - Cinta',
+            'PI': '014 Pirometro',
+            'CR': '015 CronÃ³metro',
+            'TC': '016 TacÃ³metro', 'TA': '016 TacÃ³metro',
+            'TE': '017 Termometro',
+            'RU': '018 Rugosimetro',
+            'DN': '019 Dinamometro',
+            'IN': '020 Inclinometro',
+            'DU': '021 Durometro',
+            'MT': '023 Multimetro',
+            'DI': '024 Dispositivos',
+            'CF': '025 Calibrador multifuncion',
+            'BA': '027 Balanza',
+            'ST': '028 Indicador - Simulador  TC',
+            'MD': '029 Medidor de Distancia',
+            'FT': '031 Fuente de tension y corriente',
+            'CM': '032 Cuenta Metro',
+            'CL': '033 Calibrador de lazo',
+            'PD': '034 Probador de Disyuntor',
+            'AS': '035 Analizador de seguridad',
+            'FR': '036 Frecuencimetro',
+            'VT': '037 Medidores de tension',
+            'DR': '038 Decada de resistencia',
+            'VO': '039 Material volumetrico'
+        };
+        
+        const templateName = prefixToTemplateIndex[prefix];
+        if (templateName) {
+            const found = INSTRUMENT_MAPPINGS.find(m => m.instrumento === templateName || m.instrumento.includes(templateName.replace(/^\d+\s+/, '')));
+            if (found) return found;
+        }
+    }
+    
+    // 3. Fallbacks directos para nombres comunes
+    if (name.includes('calibre')) return INSTRUMENT_MAPPINGS.find(m => m.filename.includes('001'));
+    if (name.includes('termohigr')) return INSTRUMENT_MAPPINGS.find(m => m.filename.includes('011'));
+    if (name.includes('lux')) return INSTRUMENT_MAPPINGS.find(m => m.filename.includes('009'));
+    if (name.includes('decibel') || name.includes('sonom')) return INSTRUMENT_MAPPINGS.find(m => m.filename.includes('010'));
+    if (name.includes('termom') || name.includes('termoc')) return INSTRUMENT_MAPPINGS.find(m => m.filename.includes('017'));
+    if (name.includes('dinam')) return INSTRUMENT_MAPPINGS.find(m => m.filename.includes('019'));
+    if (name.includes('pirom')) return INSTRUMENT_MAPPINGS.find(m => m.filename.includes('014'));
+    if (name.includes('tacom')) return INSTRUMENT_MAPPINGS.find(m => m.filename.includes('016'));
+    if (name.includes('torque') || name.includes('torquim')) return INSTRUMENT_MAPPINGS.find(m => m.filename.includes('007'));
+    
+    return null;
+}
+
+function updatePatronesChecklist(prefix, selectedPats) {
+    const container = document.getElementById(prefix + "-patrones-checklist");
+    if (!container) return;
+    container.innerHTML = '';
+    
+    const nameInput = document.getElementById(prefix === 'nuevo' ? 'nuevo-nombre' : 'edit-instrumento');
+    const certInput = document.getElementById(prefix === 'nuevo' ? 'nuevo-id' : 'edit-certificado');
+    const matchingMapping = getTemplateForInstrument(nameInput ? nameInput.value : '', certInput ? certInput.value : '');
+    
+    let defaultPats = matchingMapping ? matchingMapping.patrones : [];
+    
+    // Normalizar a mayÃºsculas
+    const selPatsUpper = (selectedPats || []).map(id => id.toUpperCase());
+    
+    // Unir patrones seleccionados y por defecto
+    const allShowPats = Array.from(new Set([...defaultPats, ...selPatsUpper]));
+    
+    if (allShowPats.length === 0) {
+        container.innerHTML = '<div style="grid-column: 1/-1; color: var(--text-secondary); font-size: 0.8rem;">No hay patrones asociados por defecto para este tipo de instrumento. Use "Agregar otro patrÃ³n" si desea incluir alguno.</div>';
+        return;
+    }
+    
+    allShowPats.forEach(id => {
+        const isChecked = selPatsUpper.includes(id) || (selPatsUpper.length === 0 && defaultPats.includes(id));
+        const pDet = PATRONES_CATALOG[id];
+        const labelText = pDet ? `${id} - ${pDet.desc} (${pDet.brand} ${pDet.model})` : `${id} (No localizado en catÃ¡logo)`;
+        
+        const div = document.createElement('div');
+        div.className = 'patron-chk-item';
+        div.style.display = 'flex';
+        div.style.alignItems = 'center';
+        div.style.gap = '0.5rem';
+        
+        const cb = document.createElement('input');
+        cb.type = 'checkbox';
+        cb.id = 'chk-' + prefix + '-' + id;
+        cb.value = id;
+        cb.checked = isChecked;
+        
+        const lbl = document.createElement('label');
+        lbl.htmlFor = 'chk-' + prefix + '-' + id;
+        lbl.innerText = labelText;
+        lbl.style.cursor = 'pointer';
+        lbl.style.fontSize = '0.85rem';
+        
+        div.appendChild(cb);
+        div.appendChild(lbl);
+        container.appendChild(div);
+    });
+}
+
+function setupPatronesChecklistHandlers(prefix) {
+    const btn = document.getElementById("btn-" + prefix + "-add-patron");
+    const select = document.getElementById(prefix + "-patrones-catalogo-select");
+    if (!btn || !select) return;
+    
+    if (select.children.length <= 1) {
+        Object.keys(PATRONES_CATALOG).sort().forEach(id => {
+            const p = PATRONES_CATALOG[id];
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.innerText = id + " - " + p.desc + " (" + p.brand + ")";
+            select.appendChild(opt);
+        });
+    }
+    
+    btn.addEventListener('click', () => {
+        if (select.style.display === 'none') {
+            select.style.display = 'inline-block';
+            btn.innerHTML = '<i data-lucide="minus" style="width:14px; height:14px; vertical-align: middle;"></i> Ocultar';
+        } else {
+            select.style.display = 'none';
+            btn.innerHTML = '<i data-lucide="plus" style="width:14px; height:14px; vertical-align: middle;"></i> Agregar otro patrÃ³n';
+        }
+        lucide.createIcons();
+    });
+    
+    select.addEventListener('change', () => {
+        const id = select.value;
+        if (!id) return;
+        
+        const container = document.getElementById(prefix + "-patrones-checklist");
+        if (container) {
+            const exists = document.getElementById("chk-" + prefix + "-" + id);
+            if (!exists) {
+                const pDet = PATRONES_CATALOG[id];
+                const labelText = pDet ? (id + " - " + pDet.desc + " (" + pDet.brand + " " + pDet.model + ")") : id;
+                
+                const div = document.createElement('div');
+                div.style.display = 'flex';
+                div.style.alignItems = 'center';
+                div.style.gap = '0.5rem';
+                
+                const cb = document.createElement('input');
+                cb.type = 'checkbox';
+                cb.id = 'chk-' + prefix + '-' + id;
+                cb.value = id;
+                cb.checked = true;
+                
+                const lbl = document.createElement('label');
+                lbl.htmlFor = 'chk-' + prefix + '-' + id;
+                lbl.innerText = labelText;
+                lbl.style.cursor = 'pointer';
+                lbl.style.fontSize = '0.85rem';
+                
+                div.appendChild(cb);
+                div.appendChild(lbl);
+                
+                if (container.querySelector('div[style*="grid-column"]')) {
+                    container.innerHTML = '';
+                }
+                
+                container.appendChild(div);
+            } else {
+                exists.checked = true;
+            }
+        }
+        
+        select.value = '';
+        select.style.display = 'none';
+        btn.innerHTML = '<i data-lucide="plus" style="width:14px; height:14px; vertical-align: middle;"></i> Agregar otro patrÃ³n';
+        lucide.createIcons();
+    });
+}
 /**
  * Configuración: 
  * Cuando tengas tu Web App de Google Apps Script publicada, 
@@ -28,6 +346,21 @@ let appState = {
 document.addEventListener('DOMContentLoaded', () => {
     // Inicializar Iconos Lucide
     lucide.createIcons();
+    
+    // Configurar controladores de selecciÃ³n de patrones
+    setupPatronesChecklistHandlers('nuevo');
+    setupPatronesChecklistHandlers('edit');
+    
+    // Detectar patrones al escribir en Nuevo Equipo
+    const nuevoNombreInput = document.getElementById('nuevo-nombre');
+    if (nuevoNombreInput) {
+        nuevoNombreInput.addEventListener('input', () => {
+            const val = nuevoNombreInput.value;
+            const matchingMapping = getTemplateForInstrument(val, '');
+            const defaultPats = matchingMapping ? matchingMapping.patrones : [];
+            updatePatronesChecklist('nuevo', defaultPats);
+        });
+    }
 
     // Registrar Service Worker para PWA
     if ('serviceWorker' in navigator) {
@@ -705,6 +1038,9 @@ function openModalNuevo() {
     // Fecha actual por defecto
     document.getElementById('nuevo-fecha').valueAsDate = new Date();
     
+    // Limpiar checklist de patrones
+    updatePatronesChecklist('nuevo', []);
+    
     modal.classList.add('active');
 }
 
@@ -741,6 +1077,21 @@ function openModalDuplicate(id, index = null) {
     document.getElementById('nuevo-marca').value = item.marca || '';
     document.getElementById('nuevo-modelo').value = item.modelo || '';
     document.getElementById('nuevo-serie').value = ''; 
+    
+    // Copiar patrones del equipo duplicado
+    let itemPats = [];
+    if (item.patrones) {
+        try {
+            itemPats = JSON.parse(item.patrones);
+        } catch(e) {
+            if (typeof item.patrones === 'string') {
+                itemPats = item.patrones.split(',').map(s => s.trim());
+            } else if (Array.isArray(item.patrones)) {
+                itemPats = item.patrones;
+            }
+        }
+    }
+    updatePatronesChecklist('nuevo', itemPats);
     
     const tbody = document.getElementById('tbody-puntos');
     tbody.innerHTML = '';
@@ -855,6 +1206,12 @@ async function handleFormNuevo(e) {
             certificado: '',
             cliente: ''
         };
+
+        const checkedPats = [];
+        document.querySelectorAll('#nuevo-patrones-checklist input[type=''checkbox'']:checked').forEach(function(cb) {
+            checkedPats.push(cb.value);
+        });
+        record.patrones = JSON.stringify(checkedPats);
 
         const puntos = [];
         const trs = document.querySelectorAll('#tbody-puntos tr');
@@ -995,6 +1352,27 @@ function openModalEdit(id) {
     document.getElementById('edit-certificado').value = item.certificado || '';
     document.getElementById('edit-cliente').value = item.cliente || '';
 
+    // Cargar patrones seleccionados
+    let itemPats = [];
+    if (item.patrones) {
+        try {
+            itemPats = JSON.parse(item.patrones);
+        } catch(e) {
+            if (typeof item.patrones === 'string') {
+                itemPats = item.patrones.split(',').map(s => s.trim());
+            } else if (Array.isArray(item.patrones)) {
+                itemPats = item.patrones;
+            }
+        }
+    }
+    if (itemPats.length === 0) {
+        const matchingMapping = getTemplateForInstrument(item.instrumento, item.certificado);
+        if (matchingMapping) {
+            itemPats = matchingMapping.patrones;
+        }
+    }
+    updatePatronesChecklist('edit', itemPats);
+
     // Puntos
     const tbody = document.getElementById('edit-tbody-puntos');
     tbody.innerHTML = '';
@@ -1043,6 +1421,12 @@ async function handleFormEdit(e) {
             certificado: document.getElementById('edit-certificado').value,
             cliente: document.getElementById('edit-cliente').value
         };
+
+        const checkedPats = [];
+        document.querySelectorAll('#edit-patrones-checklist input[type=''checkbox'']:checked').forEach(function(cb) {
+            checkedPats.push(cb.value);
+        });
+        record.patrones = JSON.stringify(checkedPats);
 
         const puntos = [];
         document.querySelectorAll('#edit-tbody-puntos tr').forEach(tr => {
@@ -1264,6 +1648,31 @@ async function confirmSendEmail() {
     // Obtenemos el certificado del estado en lugar de extraerlo del HTML
     const certificado = appState.pendingEmail ? appState.pendingEmail.certificado : '';
 
+    // Buscar patrones del equipo para adjuntar
+    let patternsData = [];
+    if (appState.pendingEmail && appState.pendingEmail.equipoId) {
+        const equipo = appState.data.find(function(e) { return e.id === appState.pendingEmail.equipoId; });
+        if (equipo && equipo.patrones) {
+            let patIds = [];
+            try {
+                patIds = JSON.parse(equipo.patrones);
+            } catch(e) {
+                if (typeof equipo.patrones === 'string') {
+                    patIds = equipo.patrones.split(',').map(function(s) { return s.trim(); });
+                } else if (Array.isArray(equipo.patrones)) {
+                    patIds = equipo.patrones;
+                }
+            }
+            patternsData = patIds.map(function(id) {
+                const pDet = PATRONES_CATALOG[id.toUpperCase()];
+                return {
+                    id: id,
+                    cert: pDet ? pDet.cert : ''
+                };
+            });
+        }
+    }
+
     const requestData = {
         action: 'send_email',
         data: {
@@ -1271,7 +1680,8 @@ async function confirmSendEmail() {
             certificado: certificado,
             body: document.getElementById('email-body').value,
             empresa: appState.pendingEmail ? appState.pendingEmail.empresa : '',
-            originalEmail: appState.pendingEmail ? appState.pendingEmail.email : ''
+            originalEmail: appState.pendingEmail ? appState.pendingEmail.email : '',
+            patrones: patternsData
         }
     };
 
