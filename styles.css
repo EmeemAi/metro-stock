@@ -189,8 +189,8 @@ svg.lucide {
 }
 
 .brand-logo-sidebar {
-    height: 28px;
-    width: auto;
+    width: 180px;
+    height: auto;
     object-fit: contain;
 }
 
@@ -2058,8 +2058,8 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .brand-logo-login {
-    height: 52px;
-    width: auto;
+    width: 260px;
+    height: auto;
     object-fit: contain;
 }
 
