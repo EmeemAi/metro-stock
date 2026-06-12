@@ -2113,15 +2113,6 @@ function getLastFooterHTML(identificacionVal) {
                 <div class="signature-box">
                     <div class="signature-line">
                         <svg viewBox="0 0 100 40" class="sig-svg">
-                            <path d="M 25 35 Q 35 5 45 5 T 60 30 Q 65 35 75 25 Q 85 15 95 15 M 20 20 L 90 20" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <div class="signature-name">Calibrado por</div>
-                    <div class="signature-author">Dario Del Real</div>
-                </div>
-                <div class="signature-box">
-                    <div class="signature-line">
-                        <svg viewBox="0 0 100 40" class="sig-svg">
                             <path d="M 15 30 C 5 30 5 10 15 10 C 30 10 25 30 45 30 C 60 30 70 20 80 10 M 55 30 L 75 2" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/>
                         </svg>
                     </div>
