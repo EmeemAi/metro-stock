@@ -2178,7 +2178,7 @@ window.imprimirCertificado = function(id) {
     // 3. Generar Página 1
     let htmlContent = `
         <div class="cert-page cert-page-1">
-            <div class="cert-watermark cert-watermark-logo">SchwyzLab</div>
+            <div class="cert-watermark"></div>
             ${getHeaderHTML(certNum, 1, totalPages)}
             <main class="cert-main">
                 <div class="cert-intro-text">
@@ -2227,7 +2227,7 @@ window.imprimirCertificado = function(id) {
                     ${clientAddr ? `
                     <tr>
                         <td class="meta-label" style="padding-top:0; border:none;"></td>
-                        <td class="meta-val meta-val-left" style="padding-top:0; color:#555; font-size:11.5px;">${clientAddr}</td>
+                        <td class="meta-val meta-val-left" style="padding-top:0; color:#000000; font-size:12pt;">${clientAddr}</td>
                     </tr>
                     ` : ''}
                 </table>
@@ -2352,13 +2352,13 @@ window.imprimirCertificado = function(id) {
 
         htmlContent += `
             <div class="cert-page cert-page-2">
-                <div class="cert-watermark cert-watermark-symbol">§</div>
+                <div class="cert-watermark"></div>
                 ${getHeaderHTML(certNum, 2, 2)}
                 <main class="cert-main">
                     <!-- Metodología Side-by-Side -->
                     <div class="cert-row-side-by-side">
                         <div class="cert-row-label">Metodología empleada</div>
-                        <div class="cert-row-value">${metodologia}</div>
+                        <div class="cert-row-value" style="font-weight: bold;">${metodologia}</div>
                     </div>
 
                     <!-- Condiciones Ambientales Side-by-Side -->
@@ -2479,13 +2479,13 @@ window.imprimirCertificado = function(id) {
         // Construir Página 2
         htmlContent += `
             <div class="cert-page cert-page-2">
-                <div class="cert-watermark cert-watermark-symbol">§</div>
+                <div class="cert-watermark"></div>
                 ${getHeaderHTML(certNum, 2, 3)}
                 <main class="cert-main">
                     <!-- Metodología Side-by-Side -->
                     <div class="cert-row-side-by-side">
                         <div class="cert-row-label">Metodología empleada</div>
-                        <div class="cert-row-value">${metodologia}</div>
+                        <div class="cert-row-value" style="font-weight: bold;">${metodologia}</div>
                     </div>
 
                     <!-- Condiciones Ambientales Side-by-Side -->
@@ -2539,7 +2539,7 @@ window.imprimirCertificado = function(id) {
         // Construir Página 3
         htmlContent += `
             <div class="cert-page cert-page-3">
-                <div class="cert-watermark cert-watermark-symbol">§</div>
+                <div class="cert-watermark"></div>
                 ${getHeaderHTML(certNum, 3, 3)}
                 <main class="cert-main">
                     <!-- Patrones utilizados (Stacked) -->

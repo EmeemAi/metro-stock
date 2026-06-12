@@ -1460,6 +1460,7 @@ td:nth-child(6)  /* Cert */ {
         padding: 20mm 20mm 20mm 20mm !important;
         background: #ffffff !important;
         font-family: Calibri, 'Segoe UI', Arial, sans-serif !important;
+        font-size: 12pt !important;
         color: #000000 !important;
         overflow: hidden !important;
     }
@@ -1468,34 +1469,21 @@ td:nth-child(6)  /* Cert */ {
         page-break-after: avoid !important;
     }
 
-    /* Marca de agua transparente */
+    /* Marca de agua de marca real */
     .cert-watermark {
         position: absolute !important;
-        user-select: none !important;
-        pointer-events: none !important;
-        color: #d32f2f !important;
+        left: 15mm !important;
+        top: 80mm !important;
+        width: 180mm !important;
+        height: 120mm !important;
+        background-image: url('watermark_schwyz.png') !important;
+        background-repeat: no-repeat !important;
+        background-position: center !important;
+        background-size: contain !important;
         opacity: 0.045 !important;
         z-index: 1 !important;
-        text-align: center !important;
-        font-weight: 700 !important;
-    }
-
-    .cert-watermark-logo {
-        font-family: 'Playball', 'Caveat', cursive !important;
-        font-size: 130px !important;
-        left: 5% !important;
-        top: 38% !important;
-        width: 90% !important;
-        transform: rotate(-25deg) !important;
-    }
-
-    .cert-watermark-symbol {
-        font-size: 320px !important;
-        left: 10% !important;
-        bottom: 12% !important;
-        width: 50% !important;
-        transform: rotate(-10deg) !important;
-        font-weight: 400 !important;
+        pointer-events: none !important;
+        user-select: none !important;
     }
 
     /* Encabezado */
@@ -1527,32 +1515,33 @@ td:nth-child(6)  /* Cert */ {
         padding-top: 1mm !important;
     }
     .cert-title {
-        font-size: 19px !important;
+        font-size: 16pt !important;
         font-weight: 700 !important;
         color: #000000 !important;
         margin: 0 0 2mm 0 !important;
         letter-spacing: 0.2px !important;
     }
     .cert-number {
-        font-size: 13.5px !important;
+        font-size: 14pt !important;
         font-weight: 700 !important;
         margin-bottom: 1.5mm !important;
     }
     .cert-page-num {
-        font-size: 11px !important;
-        color: #333333 !important;
+        font-size: 12pt !important;
+        font-weight: 700 !important;
+        color: #000000 !important;
     }
 
     /* Datos Empresa Derecha */
     .cert-company-details {
         width: 30% !important;
         text-align: right !important;
-        font-size: 9.5px !important;
+        font-size: 12pt !important;
         line-height: 1.35 !important;
         color: #000000 !important;
     }
     .cert-company-details strong {
-        font-size: 12px !important;
+        font-size: 16pt !important;
         font-weight: 700 !important;
     }
 
@@ -1572,7 +1561,7 @@ td:nth-child(6)  /* Cert */ {
 
     /* Introducción */
     .cert-intro-text {
-        font-size: 11.5px !important;
+        font-size: 12pt !important;
         line-height: 1.45 !important;
         margin-bottom: 7mm !important;
         text-align: justify !important;
@@ -1590,8 +1579,8 @@ td:nth-child(6)  /* Cert */ {
         position: relative !important;
     }
     .cert-metadata-table td {
-        padding: 2.2mm 0 !important;
-        font-size: 12.5px !important;
+        padding: 1.8mm 0 !important;
+        font-size: 12pt !important;
         border-bottom: none !important;
     }
     .meta-label {
@@ -1619,14 +1608,13 @@ td:nth-child(6)  /* Cert */ {
     .cert-row-label {
         width: 33% !important;
         font-weight: 700 !important;
-        font-size: 12.5px !important;
-        text-transform: uppercase !important;
+        font-size: 12pt !important;
         color: #000000 !important;
         margin-top: 0.5mm !important;
     }
     .cert-row-value {
         width: 67% !important;
-        font-size: 11.5px !important;
+        font-size: 12pt !important;
         line-height: 1.45 !important;
         color: #000000 !important;
         text-align: left !important;
@@ -1645,7 +1633,7 @@ td:nth-child(6)  /* Cert */ {
     .rango-resolucion-row {
         display: flex !important;
         gap: 15mm !important;
-        font-size: 11px !important;
+        font-size: 11pt !important;
         color: #000000 !important;
         margin-bottom: 1.5mm !important;
     }
@@ -1662,8 +1650,9 @@ td:nth-child(6)  /* Cert */ {
     .cert-results-table td {
         border: 1px solid #000000 !important;
         padding: 1.8mm 2.5mm !important;
-        font-size: 11px !important;
+        font-size: 11pt !important;
         text-align: center !important;
+        width: 25% !important; /* Ancho exacto e idéntico a Excel */
     }
     .cert-results-table th.hdr-empty {
         border: none !important;
@@ -1675,16 +1664,16 @@ td:nth-child(6)  /* Cert */ {
         border-right: 1px solid #000000 !important;
         border-bottom: 1px solid #000000 !important;
         font-weight: 700 !important;
-        font-size: 11.5px !important;
+        font-size: 12pt !important;
     }
     .table-hdr-sub-1 th {
         font-weight: 700 !important;
-        font-size: 11px !important;
+        font-size: 11pt !important;
         border-bottom: none !important;
     }
     .table-hdr-sub-2 th {
         font-weight: 700 !important;
-        font-size: 11px !important;
+        font-size: 11pt !important;
         border-top: none !important;
     }
     .cert-results-table tbody td {
@@ -1698,20 +1687,20 @@ td:nth-child(6)  /* Cert */ {
         border-collapse: collapse !important;
         margin-top: 1.5mm !important;
     }
-    .cert-patterns-table th, 
-    .cert-patterns-table td {
-        padding: 2mm 1.5mm !important;
-        font-size: 11px !important;
-        text-align: left !important;
-        border-bottom: 1px solid #000000 !important;
-    }
     .cert-patterns-table th {
+        padding: 2mm 1.5mm !important;
+        font-size: 12pt !important;
         font-weight: 700 !important;
+        text-align: left !important;
         color: #000000 !important;
         border-bottom: 1.5px solid #000000 !important;
     }
     .cert-patterns-table td {
+        padding: 2mm 1.5mm !important;
+        font-size: 11pt !important;
+        text-align: left !important;
         color: #000000 !important;
+        border-bottom: 1px solid #000000 !important;
     }
 
     /* Firmas y Pie de Página */
@@ -1745,6 +1734,8 @@ td:nth-child(6)  /* Cert */ {
         margin-bottom: 4mm !important;
         padding: 0 10mm !important;
         box-sizing: border-box !important;
+        padding: 0 10mm !important;
+        box-sizing: border-box !important;
     }
     .signature-box {
         text-align: center !important;
@@ -1765,13 +1756,13 @@ td:nth-child(6)  /* Cert */ {
         margin-bottom: -1mm !important;
     }
     .signature-name {
-        font-size: 10.5px !important;
+        font-size: 12pt !important;
         font-weight: 700 !important;
         color: #000000 !important;
     }
     .signature-author {
-        font-size: 10.5px !important;
-        color: #444444 !important;
+        font-size: 12pt !important;
+        color: #000000 !important;
         margin-top: 0.5mm !important;
     }
 
@@ -1786,13 +1777,12 @@ td:nth-child(6)  /* Cert */ {
         box-sizing: border-box !important;
     }
     .cert-info-adicional {
-        font-size: 11px !important;
+        font-size: 11pt !important;
         color: #000000 !important;
     }
     .cert-fin-text {
         font-weight: 700 !important;
-        font-size: 12px !important;
-        text-transform: uppercase !important;
+        font-size: 12pt !important;
         color: #000000 !important;
     }
 }
