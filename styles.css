@@ -1464,8 +1464,8 @@ td:nth-child(6)  /* Cert */ {
         overflow: hidden !important;
     }
 
-    .cert-page-2 {
-        page-break-after: avoid !important; /* Evitar página en blanco extra al final */
+    .cert-page-2, .cert-page-3 {
+        page-break-after: avoid !important;
     }
 
     /* Marca de agua transparente */
@@ -1508,24 +1508,16 @@ td:nth-child(6)  /* Cert */ {
         box-sizing: border-box !important;
     }
 
-    /* Logo SchwyzLab */
+    /* Logo SchwyzLab en Imagen */
     .cert-logo-container {
         width: 32% !important;
-        padding-top: 2mm !important;
+        padding-top: 1mm !important;
     }
-    .logo-schwyz {
-        font-family: 'Playball', 'Caveat', 'Lucida Handwriting', cursive !important;
-        color: #d32f2f !important;
-        font-size: 44px !important;
-        font-weight: 500 !important;
-        letter-spacing: -0.5px !important;
-    }
-    .logo-lab {
-        font-family: Calibri, 'Segoe UI', Arial, sans-serif !important;
-        color: #d32f2f !important;
-        font-size: 38px !important;
-        font-weight: 700 !important;
-        margin-left: 1px !important;
+    .cert-logo-img {
+        width: 110px !important;
+        height: auto !important;
+        display: block !important;
+        object-fit: contain !important;
     }
 
     /* Título Central */
@@ -1580,7 +1572,7 @@ td:nth-child(6)  /* Cert */ {
 
     /* Introducción */
     .cert-intro-text {
-        font-size: 11px !important;
+        font-size: 11.5px !important;
         line-height: 1.45 !important;
         margin-bottom: 7mm !important;
         text-align: justify !important;
@@ -1600,7 +1592,7 @@ td:nth-child(6)  /* Cert */ {
     .cert-metadata-table td {
         padding: 2.2mm 0 !important;
         font-size: 12.5px !important;
-        border-bottom: none !important; /* Quitar líneas según PDF de referencia */
+        border-bottom: none !important;
     }
     .meta-label {
         font-weight: 700 !important;
@@ -1609,61 +1601,94 @@ td:nth-child(6)  /* Cert */ {
     }
     .meta-val {
         width: 62% !important;
-        color: #333333 !important;
-    }
-
-    /* Secciones (Página 2) */
-    .cert-section {
-        margin-bottom: 5.5mm !important;
-        position: relative !important;
-        z-index: 10 !important;
-    }
-    .section-title {
-        font-size: 12px !important;
-        font-weight: 700 !important;
-        text-transform: uppercase !important;
-        margin: 0 0 2mm 0 !important;
         color: #000000 !important;
+        text-align: center !important; /* Centrado en Excel por defecto */
     }
-    .cert-section p {
-        font-size: 11px !important;
-        line-height: 1.4 !important;
-        margin: 0 !important;
-        color: #222222 !important;
+    .meta-val-left {
+        text-align: left !important; /* Cliente y dirección van a la izquierda */
     }
 
-    .condiciones-grid {
+    /* Layout de filas horizontales (side-by-side de Excel) */
+    .cert-row-side-by-side {
+        display: flex !important;
+        width: 100% !important;
+        margin-bottom: 5mm !important;
+        align-items: flex-start !important;
+        page-break-inside: avoid !important;
+    }
+    .cert-row-label {
+        width: 33% !important;
+        font-weight: 700 !important;
+        font-size: 12.5px !important;
+        text-transform: uppercase !important;
+        color: #000000 !important;
+        margin-top: 0.5mm !important;
+    }
+    .cert-row-value {
+        width: 67% !important;
+        font-size: 11.5px !important;
+        line-height: 1.45 !important;
+        color: #000000 !important;
+        text-align: left !important;
+    }
+    .condiciones-val-grid {
+        display: flex !important;
+        gap: 15mm !important;
+    }
+
+    /* Metadatos de resultados (Rango y Resolución) */
+    .resultados-meta {
+        width: 100% !important;
+        margin-top: 2mm !important;
+        margin-bottom: 2mm !important;
+    }
+    .rango-resolucion-row {
         display: flex !important;
         gap: 15mm !important;
         font-size: 11px !important;
-        color: #222222 !important;
+        color: #000000 !important;
+        margin-bottom: 1.5mm !important;
     }
 
     /* Tabla de Resultados (Página 2) */
     .cert-results-table {
         width: 100% !important;
         border-collapse: collapse !important;
-        margin-top: 1.5mm !important;
+        margin-top: 1mm !important;
+        margin-bottom: 4mm !important;
         border: 1.5px solid #000000 !important;
     }
     .cert-results-table th, 
     .cert-results-table td {
         border: 1px solid #000000 !important;
-        padding: 2.2mm 3mm !important;
+        padding: 1.8mm 2.5mm !important;
         font-size: 11px !important;
         text-align: center !important;
     }
-    .table-hdr-top {
-        background-color: #f2f2f2 !important;
-        font-weight: 700 !important;
+    .cert-results-table th.hdr-empty {
+        border: none !important;
+        background: transparent !important;
     }
-    .table-hdr-sub th {
-        background-color: #f9f9f9 !important;
+    .cert-results-table th.hdr-val-enc {
+        border-left: 1px solid #000000 !important;
+        border-top: 1.5px solid #000000 !important;
+        border-right: 1px solid #000000 !important;
+        border-bottom: 1px solid #000000 !important;
         font-weight: 700 !important;
-        font-size: 10px !important;
+        font-size: 11.5px !important;
+    }
+    .table-hdr-sub-1 th {
+        font-weight: 700 !important;
+        font-size: 11px !important;
+        border-bottom: none !important;
+    }
+    .table-hdr-sub-2 th {
+        font-weight: 700 !important;
+        font-size: 11px !important;
+        border-top: none !important;
     }
     .cert-results-table tbody td {
-        font-family: var(--font-data) !important;
+        font-family: Calibri, 'Segoe UI', Arial, sans-serif !important;
         font-weight: 500 !important;
     }
 
@@ -1675,10 +1700,10 @@ td:nth-child(6)  /* Cert */ {
     }
     .cert-patterns-table th, 
     .cert-patterns-table td {
-        padding: 2mm 1mm !important;
-        font-size: 10.5px !important;
+        padding: 2mm 1.5mm !important;
+        font-size: 11px !important;
         text-align: left !important;
-        border-bottom: 1px solid #e0e0e0 !important;
+        border-bottom: 1px solid #000000 !important;
     }
     .cert-patterns-table th {
         font-weight: 700 !important;
@@ -1686,15 +1711,7 @@ td:nth-child(6)  /* Cert */ {
         border-bottom: 1.5px solid #000000 !important;
     }
     .cert-patterns-table td {
-        color: #222222 !important;
-    }
-
-    /* Sección de Información */
-    .cert-section-info p {
-        font-size: 9.5px !important;
-        line-height: 1.35 !important;
-        margin-bottom: 1.5mm !important;
-        color: #333333 !important;
+        color: #000000 !important;
     }
 
     /* Firmas y Pie de Página */
@@ -1716,6 +1733,7 @@ td:nth-child(6)  /* Cert */ {
 
     .cert-footer-pg2 {
         bottom: 20mm !important;
+        position: absolute !important;
     }
 
     /* Contenedor de Firmas */
@@ -1724,7 +1742,7 @@ td:nth-child(6)  /* Cert */ {
         justify-content: space-between !important;
         align-items: flex-end !important;
         width: 100% !important;
-        margin-bottom: 5mm !important;
+        margin-bottom: 4mm !important;
         padding: 0 10mm !important;
         box-sizing: border-box !important;
     }
@@ -1757,11 +1775,24 @@ td:nth-child(6)  /* Cert */ {
         margin-top: 0.5mm !important;
     }
 
-    .cert-fin {
-        text-align: right !important;
-        font-size: 10.5px !important;
+    /* Bloque final de Certificado */
+    .cert-fin-row {
+        display: flex !important;
+        justify-content: space-between !important;
+        align-items: center !important;
+        margin-top: 3mm !important;
+        padding: 0 2mm !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    .cert-info-adicional {
+        font-size: 11px !important;
+        color: #000000 !important;
+    }
+    .cert-fin-text {
         font-weight: 700 !important;
-        margin-bottom: 2mm !important;
+        font-size: 12px !important;
+        text-transform: uppercase !important;
         color: #000000 !important;
     }
 }

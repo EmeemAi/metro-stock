@@ -2065,6 +2065,81 @@ async function confirmSendReminder() {
 // FUNCIONES DE EMISIÓN DE CERTIFICADO DE CALIBRACIÓN (A4 PDF)
 // ==========================================================
 
+const CLIENT_ADDRESSES = {
+    'cr medicion': 'Perú 1297, C1141ACA C.A.B.A',
+    'cr medición': 'Perú 1297, C1141ACA C.A.B.A',
+    'zeid medical srl': 'Av. Córdoba 1450 - C.A.B.A.',
+    'myce srl': 'Calle Falsa 123 - Buenos Aires'
+};
+
+function getHeaderHTML(certNum, pageNum, totalPages) {
+    return `
+        <header class="cert-header">
+            <div class="cert-logo-container">
+                <img src="logo_schwyz.png?v=6" alt="Schwyz" class="cert-logo-img">
+            </div>
+            <div class="cert-title-container">
+                <h1 class="cert-title">Certificado de Calibración</h1>
+                <div class="cert-number">Certificado N° <span>${certNum}</span></div>
+                <div class="cert-page-num">Página ${pageNum} de ${totalPages}</div>
+            </div>
+            <div class="cert-company-details">
+                <strong>CR Medición</strong><br>
+                Perú 1297, C1141ACA C.A.B.A<br>
+                ventas@todomedicion.com<br>
+                www.todomedicion.com<br>
+                Tel: 4361-3499 / 3680
+            </div>
+        </header>
+        <hr class="cert-divider-thin">
+    `;
+}
+
+function getIntermediateFooterHTML() {
+    return `
+        <footer class="cert-footer">
+            <div class="cert-footer-text">
+                Los resultados contenidos en el presente certificado se refieren a los equipos o instrumentos sometidos a la calibración o medición, así como al momento y las condiciones en que se realizaron las mediciones. El Laboratorio que emite no se responsabiliza de los perjuicios que puedan derivarse del uso inadecuado de este certificado.
+            </div>
+            <hr class="cert-divider-thick">
+        </footer>
+    `;
+}
+
+function getLastFooterHTML(identificacionVal) {
+    return `
+        <footer class="cert-footer cert-footer-pg2">
+            <div class="signatures-container">
+                <div class="signature-box">
+                    <div class="signature-line">
+                        <svg viewBox="0 0 100 40" class="sig-svg">
+                            <path d="M 25 35 Q 35 5 45 5 T 60 30 Q 65 35 75 25 Q 85 15 95 15 M 20 20 L 90 20" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div class="signature-name">Calibrado por</div>
+                    <div class="signature-author">Dario Del Real</div>
+                </div>
+                <div class="signature-box">
+                    <div class="signature-line">
+                        <svg viewBox="0 0 100 40" class="sig-svg">
+                            <path d="M 15 30 C 5 30 5 10 15 10 C 30 10 25 30 45 30 C 60 30 70 20 80 10 M 55 30 L 75 2" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/>
+                        </svg>
+                    </div>
+                    <div class="signature-name">Aprobado por</div>
+                    <div class="signature-author">Albert Mesa</div>
+                </div>
+            </div>
+            <div class="cert-fin-row">
+                <div class="cert-info-adicional">
+                    <strong>Información Adicional:</strong> <span>${identificacionVal}</span>
+                </div>
+                <div class="cert-fin-text">Fin de Certificado</div>
+            </div>
+            <hr class="cert-divider-thick">
+        </footer>
+    `;
+}
+
 window.imprimirCertificado = function(id) {
     const item = appState.data.find(x => x.id === id);
     if (!item) {
@@ -2072,32 +2147,19 @@ window.imprimirCertificado = function(id) {
         return;
     }
 
-    // 1. Formatear Fechas y Datos Básicos
     const certNum = item.certificado || '---';
     const fechaCalib = formatToArgDate(item.fecha_calibracion);
     const fechaEmision = getFechaEmision(item.fecha_calibracion);
     const objeto = getObjetoName(item.instrumento, certNum);
 
-    // Página 1 y 2 Cabeceras
-    document.getElementById('cert-pdf-num').innerText = certNum;
-    document.getElementById('cert-pdf-num-pg2').innerText = certNum;
-    
-    // Página 1 Datos
-    document.getElementById('cert-pdf-objeto').innerText = objeto;
-    document.getElementById('cert-pdf-fabricante').innerText = item.marca || '---';
-    document.getElementById('cert-pdf-modelo').innerText = item.modelo || '---';
-    document.getElementById('cert-pdf-serie').innerText = item.serie || '---';
-    document.getElementById('cert-pdf-identificacion').innerText = 'Sin identificar';
-    document.getElementById('cert-pdf-fecha-calib').innerText = fechaCalib;
-    document.getElementById('cert-pdf-fecha-emision').innerText = fechaEmision;
-    document.getElementById('cert-pdf-cliente').innerText = item.cliente || '---';
-
-    // 2. Determinar Plantilla Técnica por Tipo de Instrumento
+    // 1. Determinar el Tipo de Instrumento
     let certType = 'DE'; // Default a Decibelímetro
     const certUpper = certNum.toUpperCase();
     const instUpper = (item.instrumento || '').toUpperCase();
 
-    if (certUpper.includes('-DN-') || instUpper.includes('DINAM')) {
+    if (certUpper.includes('-CA-') || instUpper.includes('CALIBRE')) {
+        certType = 'CA';
+    } else if (certUpper.includes('-DN-') || instUpper.includes('DINAM')) {
         certType = 'DN';
     } else if (certUpper.includes('-TH-') || instUpper.includes('TERMOHIGR')) {
         certType = 'TH';
@@ -2107,85 +2169,115 @@ window.imprimirCertificado = function(id) {
         certType = 'TE';
     }
 
+    const totalPages = (certType === 'CA' || certType === 'TH') ? 3 : 2;
+
+    // 2. Información del cliente y dirección
+    const clientName = (item.cliente || '---').trim();
+    const clientAddr = CLIENT_ADDRESSES[clientName.toLowerCase()] || '';
+
+    // 3. Generar Página 1
+    let htmlContent = `
+        <div class="cert-page cert-page-1">
+            <div class="cert-watermark cert-watermark-logo">SchwyzLab</div>
+            ${getHeaderHTML(certNum, 1, totalPages)}
+            <main class="cert-main">
+                <div class="cert-intro-text">
+                    <p>Este certificado de calibración documenta la trazabilidad a los patrones nacionales, los cuales representan a las unidades físicas de medida de medición en concordancia con el sistema internacional de Unidades (SI).</p>
+                    <p>Este certificado no podrá ser reproducido parcialmente excepto cuando se haya obtenido previamente permiso por escrito de SCHWYZ LAB. Certificados de calibración sin firma y aclaración, no serán válidos.</p>
+                    <p>El usuario es el responsable de la recalibración del objeto a intervalos apropiados.</p>
+                </div>
+                
+                <table class="cert-metadata-table">
+                    <tr>
+                        <td class="meta-label">Objeto</td>
+                        <td class="meta-val">${objeto}</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Fabricante</td>
+                        <td class="meta-val">${item.marca || '---'}</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Modelo</td>
+                        <td class="meta-val">${item.modelo || '---'}</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">N° Serie</td>
+                        <td class="meta-val">${item.serie || '---'}</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Identificación</td>
+                        <td class="meta-val">${item.id || 'Sin identificar'}</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Determinación requerida</td>
+                        <td class="meta-val">Calibración</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Fecha de calibración</td>
+                        <td class="meta-val">${fechaCalib}</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Fecha de emisión</td>
+                        <td class="meta-val">${fechaEmision}</td>
+                    </tr>
+                    <tr>
+                        <td class="meta-label">Cliente</td>
+                        <td class="meta-val meta-val-left">${clientName}</td>
+                    </tr>
+                    ${clientAddr ? `
+                    <tr>
+                        <td class="meta-label" style="padding-top:0; border:none;"></td>
+                        <td class="meta-val meta-val-left" style="padding-top:0; color:#555; font-size:11.5px;">${clientAddr}</td>
+                    </tr>
+                    ` : ''}
+                </table>
+            </main>
+            ${getIntermediateFooterHTML()}
+        </div>
+    `;
+
+    // 4. Parámetros Técnicos según Tipo de Instrumento
     let metodologia = '';
     let temp = '';
     let hum = '';
     let rangoHdr = '';
     let resolucionHdr = '';
-    let patrones = [];
 
     if (certType === 'DE') {
-        metodologia = 'La calibración fue realizada por comparación con patrones, de acuerdo al instructivo de calibración IT-010-LAB (Calibración de decibelímetro).';
+        metodologia = 'La calibración fue realizada por comparación con patrones, de acuerdo al instructivo de calibración IT-010-LAB (Calibración de decibelimetro).';
         temp = '(20 ± 2) °C';
         hum = '(50 ± 15) %Hr';
-        rangoHdr = 'Rango de medición: 30 a 130 dB';
-        resolucionHdr = 'Resolución: 0,1 dB';
-        patrones = [
-            { id: 'CDEC-001', desc: 'Calibrador Acústico', cert: 'C00624.1', emisor: 'CINTRA' },
-            { id: 'THGP-001', desc: 'Termohigrómetro', cert: '2023-003220-1', emisor: 'TESTO' }
-        ];
+        rangoHdr = '30 a 130 dB';
+        resolucionHdr = '0,1 dB';
     } else if (certType === 'DN') {
         metodologia = 'La calibración fue realizada por comparación con patrones, de acuerdo al instructivo de calibración IT-020-LAB (Calibración de dinamómetros).';
         temp = '(22 ± 3) °C';
         hum = '(45 ± 15) %Hr';
-        rangoHdr = 'Rango de medición: 0 a 500 N';
-        resolucionHdr = 'Resolución: 0,1 N';
-        patrones = [
-            { id: 'PAT-DN-01', desc: 'Carga de Tracción Patrón', cert: 'C-4091', emisor: 'INTI' },
-            { id: 'CR-002', desc: 'Cronómetro Digital', cert: 'CR-9081', emisor: 'CINTRA' }
-        ];
+        rangoHdr = '0 a 500 N';
+        resolucionHdr = '0,1 N';
     } else if (certType === 'TH') {
-        metodologia = 'La calibración fue realizada por comparación directa en cámara climatizada con termo-anemómetros de referencia de acuerdo al instructivo IT-005-LAB.';
-        temp = '(21 ± 2) °C';
-        hum = '(50 ± 10) %Hr';
-        rangoHdr = 'Rango de medición: -10 a 60 °C / 10 a 95 %Hr';
-        resolucionHdr = 'Resolución: 0,1 °C / 0,1 %Hr';
-        patrones = [
-            { id: 'PTH-001', desc: 'Termómetro de Referencia', cert: 'C-89102', emisor: 'CINTRA' },
-            { id: 'HREF-002', desc: 'Higrómetro de Referencia', cert: 'H-90123', emisor: 'TESTO' }
-        ];
+        metodologia = 'La calibración fue realizada por comparación con patrones, de acuerdo al instructivo de calibración IT-011-LAB (Calibración de termohigrometro).';
+        temp = '(20 ± 2) °C';
+        hum = '(50 ± 15) %Hr';
     } else if (certType === 'LX') {
         metodologia = 'La calibración fue realizada por comparación directa sobre banco óptico en concordancia con el instructivo IT-012-LAB.';
         temp = '(23 ± 2) °C';
         hum = '(45 ± 10) %Hr';
-        rangoHdr = 'Rango de medición: 0 a 20000 Lux';
-        resolucionHdr = 'Resolución: 1 Lux';
-        patrones = [
-            { id: 'PLX-001', desc: 'Lámpara Patrón Incandescente', cert: 'L-87612', emisor: 'NIST' },
-            { id: 'THGP-001', desc: 'Termohigrómetro', cert: '2023-003220-1', emisor: 'TESTO' }
-        ];
-    } else { // TE
+        rangoHdr = '0 a 20000 Lux';
+        resolucionHdr = '1 Lux';
+    } else if (certType === 'CA') {
+        metodologia = 'La calibración fue realizada por comparación con patrones, de acuerdo al instructivo de calibración IT-001-LAB (Calibración de calibre pie de rey).';
+        temp = '(20 ± 2) °C';
+        hum = '(50 ± 15) %Hr';
+    } else { // TE (Termómetro)
         metodologia = 'La calibración fue realizada por comparación en baño termostático con termómetro patrón digital de acuerdo al instructivo IT-002-LAB.';
         temp = '(21 ± 2) °C';
         hum = '(50 ± 15) %Hr';
-        rangoHdr = 'Rango de medición: -30 a 150 °C';
-        resolucionHdr = 'Resolución: 0,1 °C';
-        patrones = [
-            { id: 'PTE-002', desc: 'Termómetro Patrón Digital', cert: 'C-99812', emisor: 'CINTRA' }
-        ];
+        rangoHdr = '-30 a 150 °C';
+        resolucionHdr = '0,1 °C';
     }
 
-    document.getElementById('cert-pdf-metodologia').innerText = metodologia;
-    document.getElementById('cert-pdf-temp').innerText = temp;
-    document.getElementById('cert-pdf-hum').innerText = hum;
-    document.getElementById('cert-pdf-rango-hdr').innerText = rangoHdr;
-    document.getElementById('cert-pdf-resolucion-hdr').innerText = resolucionHdr;
-
-    // 3. Cargar Patrones en la Tabla
-    const tbodyPatrones = document.getElementById('cert-pdf-tbody-patrones');
-    tbodyPatrones.innerHTML = '';
-    patrones.forEach(pat => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${pat.id}</td>
-            <td>${pat.desc}</td>
-            <td>${pat.cert}</td>
-            <td>${pat.emisor}</td>
-        `;
-        tbodyPatrones.appendChild(tr);
-    });
-
-    // 4. Cargar y Calcular Resultados Encontrados
+    // 5. Cargar Puntos de Medición (JSON)
     let puntosArray = [];
     try {
         if (item.puntos) puntosArray = JSON.parse(item.puntos);
@@ -2193,57 +2285,434 @@ window.imprimirCertificado = function(id) {
         console.error("Error leyendo puntos Json para certificado", e);
     }
 
-    const tbodyResultados = document.getElementById('cert-pdf-tbody-resultados');
-    tbodyResultados.innerHTML = '';
+    // 6. Construir Páginas Adicionales
+    if (totalPages === 2) {
+        // --- CASO DE 2 PÁGINAS (DE, DN, LX, TE, etc.) ---
+        
+        // Formatear filas de la tabla de resultados única
+        let resultsRowsHTML = '';
+        if (puntosArray.length === 0) {
+            resultsRowsHTML = '<tr><td colspan="4">Sin puntos de medición registrados.</td></tr>';
+        } else {
+            puntosArray.forEach(p => {
+                const refVal = parseFloat(String(p.ref).replace(',', '.'));
+                const instVal = parseFloat(String(p.inst).replace(',', '.'));
+                
+                let errorStr = '---';
+                if (!isNaN(refVal) && !isNaN(instVal)) {
+                    const error = instVal - refVal;
+                    errorStr = error.toFixed(1).replace('.', ',');
+                    if (error > 0) errorStr = '+' + errorStr;
+                }
+                
+                let incStr = String(p.inc || '').trim();
+                if (incStr === '') {
+                    incStr = (certType === 'DE') ? '0,4' : '0,1';
+                }
+                incStr = incStr.replace('.', ',');
+                const refStr = String(p.ref).replace('.', ',');
+                const instStr = String(p.inst).replace('.', ',');
+                const unit = p.unidad || '';
+                
+                resultsRowsHTML += `
+                    <tr>
+                        <td>${refStr} ${unit}</td>
+                        <td>${instStr} ${unit}</td>
+                        <td>${errorStr} ${unit}</td>
+                        <td>${incStr} ${unit}</td>
+                    </tr>
+                `;
+            });
+        }
 
-    if (puntosArray.length === 0) {
-        tbodyResultados.innerHTML = '<tr><td colspan="4">Sin puntos de medición registrados.</td></tr>';
+        // Cargar Patrones
+        let selectedPats = [];
+        try {
+            if (item.patrones) selectedPats = JSON.parse(item.patrones);
+        } catch(e) {}
+        if (selectedPats.length === 0) {
+            const mapping = getTemplateForInstrument(item.instrumento, certNum);
+            selectedPats = mapping ? mapping.patrones : [];
+        }
+        let patternsRowsHTML = '';
+        selectedPats.forEach(patId => {
+            const pDet = PATRONES_CATALOG[patId];
+            const desc = pDet ? pDet.desc : 'Patrón de Referencia';
+            const cert = pDet && pDet.cert ? pDet.cert : '---';
+            const emisor = pDet && pDet.emisor ? pDet.emisor : 'CR MEDICION';
+            patternsRowsHTML += `
+                <tr>
+                    <td>${patId}</td>
+                    <td>${desc}</td>
+                    <td>${cert}</td>
+                    <td>${emisor}</td>
+                </tr>
+            `;
+        });
+
+        htmlContent += `
+            <div class="cert-page cert-page-2">
+                <div class="cert-watermark cert-watermark-symbol">§</div>
+                ${getHeaderHTML(certNum, 2, 2)}
+                <main class="cert-main">
+                    <!-- Metodología Side-by-Side -->
+                    <div class="cert-row-side-by-side">
+                        <div class="cert-row-label">Metodología empleada</div>
+                        <div class="cert-row-value">${metodologia}</div>
+                    </div>
+
+                    <!-- Condiciones Ambientales Side-by-Side -->
+                    <div class="cert-row-side-by-side">
+                        <div class="cert-row-label">Condiciones ambientales</div>
+                        <div class="cert-row-value">
+                            <div class="condiciones-val-grid">
+                                <div><strong>Temperatura:</strong> ${temp}</div>
+                                <div><strong>Humedad:</strong> ${hum}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resultados Side-by-Side -->
+                    <div class="cert-row-side-by-side">
+                        <div class="cert-row-label">Resultados</div>
+                        <div class="cert-row-value">
+                            <div class="resultados-meta">
+                                <div class="rango-resolucion-row">
+                                    <span><strong>Rango de medición:</strong> ${rangoHdr}</span>
+                                    <span><strong>Resolución:</strong> ${resolucionHdr}</span>
+                                </div>
+                            </div>
+                            <table class="cert-results-table">
+                                <thead>
+                                    <tr class="table-hdr-top">
+                                        <th class="hdr-empty"></th>
+                                        <th colspan="2" class="hdr-val-enc">Valores Encontrados</th>
+                                        <th class="hdr-empty"></th>
+                                    </tr>
+                                    <tr class="table-hdr-sub-1">
+                                        <th>Valor de</th>
+                                        <th>Valor</th>
+                                        <th>Error</th>
+                                        <th>Incertidumbre</th>
+                                    </tr>
+                                    <tr class="table-hdr-sub-2">
+                                        <th>Referencia</th>
+                                        <th>Instrumento</th>
+                                        <th>Obtenido</th>
+                                        <th>Expandida</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${resultsRowsHTML}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Patrones utilizados (Stacked) -->
+                    <div style="margin-top: 3mm !important; page-break-inside: avoid !important;">
+                        <div style="font-weight: bold; font-size: 12.5px; text-transform: uppercase; margin-bottom: 1.5mm !important; text-align: left;">
+                            Patrones utilizados
+                        </div>
+                        <table class="cert-patterns-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 20%;">Identificación</th>
+                                    <th style="width: 48%;">Descripción</th>
+                                    <th style="width: 17%;">Certificado</th>
+                                    <th style="width: 15%;">Emisor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${patternsRowsHTML}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Información Side-by-Side -->
+                    <div class="cert-row-side-by-side" style="margin-top: 4mm !important;">
+                        <div class="cert-row-label">Información:</div>
+                        <div class="cert-row-value" style="font-size: 9.5px !important; line-height: 1.4 !important; color:#333;">
+                            <p style="margin-bottom: 1.5mm !important;">La incertidumbre expandida de medición informada fue calculada en conformidad con los requerimientos de la Guía ISO para Expresión de Incertidumbre, según el procedimiento PT-003-LAB, multiplicando la incertidumbre estándar combinada por un factor de cubertura k = 2, lo que corresponde a un nivel aproximado de confianza del 95% bajo distribución normal.</p>
+                            <p>Los resultados encontrados son el promedio de 3 mediciones en cada punto de calibración.</p>
+                        </div>
+                    </div>
+                </main>
+                ${getLastFooterHTML(item.id || 'Sin identificar')}
+            </div>
+        `;
     } else {
-        puntosArray.forEach(p => {
-            const refVal = parseFloat(String(p.ref).replace(',', '.'));
-            const instVal = parseFloat(String(p.inst).replace(',', '.'));
-            
-            let errorStr = '---';
-            if (!isNaN(refVal) && !isNaN(instVal)) {
-                // Calcular Error Obtenido (Diferencia Absoluta para coincidir con el PDF del decibelímetro)
-                const error = Math.abs(refVal - instVal);
-                errorStr = error.toFixed(1).replace('.', ',');
-            }
+        // --- CASO DE 3 PÁGINAS (CA, TH) ---
 
-            // Incertidumbre por defecto o cargada en el campo inc
-            let incStr = String(p.inc || '').trim();
-            if (incStr === '') {
-                incStr = (certType === 'DE') ? '0,4' : '0,1';
-            }
-            incStr = incStr.replace('.', ',');
+        // Generar Tablas de Resultados para la Página 2
+        let resultsSectionHTML = '';
+        if (certType === 'CA') {
+            // Dividir los puntos de Calibre
+            const mordazaPts = puntosArray.filter(p => ['PT1', 'PT2', 'PT3', 'PT4', 'PT5', 'PT6'].includes(p.pt));
+            const extremidadPts = puntosArray.filter(p => ['PT7', 'PT8'].includes(p.pt));
+            const interiorPts = puntosArray.filter(p => ['PT9', 'PT10'].includes(p.pt));
+            const profundidadPts = puntosArray.filter(p => ['PT11', 'PT12'].includes(p.pt));
 
-            const refStr = String(p.ref).replace('.', ',');
-            const instStr = String(p.inst).replace('.', ',');
-            const unit = p.unidad || '';
+            resultsSectionHTML += `
+                <div class="resultados-meta" style="margin-bottom: 2mm !important;">
+                    <div class="rango-resolucion-row">
+                        <span><strong>Rango de medición:</strong> 0 a 150 mm</span>
+                        <span><strong>Resolución:</strong> 0,01 mm</span>
+                    </div>
+                </div>
+                ${renderSubTableHTML('Mordaza', mordazaPts)}
+                ${renderSubTableHTML('Extremidad Mordaza', extremidadPts)}
+                ${renderSubTableHTML('Mordaza Interior', interiorPts)}
+                ${renderSubTableHTML('Profundidad', profundidadPts)}
+            `;
+        } else if (certType === 'TH') {
+            // Dividir puntos de Termohigrómetro
+            const tempPts = puntosArray.filter(p => !String(p.pt).includes('M2'));
+            const humPts = puntosArray.filter(p => String(p.pt).includes('M2'));
 
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
+            resultsSectionHTML += `
+                ${renderTermohigrometroTableHTML('Temperatura', tempPts, '0 a 50 °C', '0,1 °C', false)}
+                ${renderTermohigrometroTableHTML('Humedad', humPts, '0 a 100 %Hr', '1 %Hr', true)}
+            `;
+        }
+
+        // Construir Página 2
+        htmlContent += `
+            <div class="cert-page cert-page-2">
+                <div class="cert-watermark cert-watermark-symbol">§</div>
+                ${getHeaderHTML(certNum, 2, 3)}
+                <main class="cert-main">
+                    <!-- Metodología Side-by-Side -->
+                    <div class="cert-row-side-by-side">
+                        <div class="cert-row-label">Metodología empleada</div>
+                        <div class="cert-row-value">${metodologia}</div>
+                    </div>
+
+                    <!-- Condiciones Ambientales Side-by-Side -->
+                    <div class="cert-row-side-by-side">
+                        <div class="cert-row-label">Condiciones ambientales</div>
+                        <div class="cert-row-value">
+                            <div class="condiciones-val-grid">
+                                <div><strong>Temperatura:</strong> ${temp}</div>
+                                <div><strong>Humedad:</strong> ${hum}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Resultados Side-by-Side (Tablas y Rangos) -->
+                    <div class="cert-row-side-by-side">
+                        <div class="cert-row-label">Resultados</div>
+                        <div class="cert-row-value">
+                            ${resultsSectionHTML}
+                        </div>
+                    </div>
+                </main>
+                ${getIntermediateFooterHTML()}
+            </div>
+        `;
+
+        // Cargar Patrones para la Página 3
+        let selectedPats = [];
+        try {
+            if (item.patrones) selectedPats = JSON.parse(item.patrones);
+        } catch(e) {}
+        if (selectedPats.length === 0) {
+            const mapping = getTemplateForInstrument(item.instrumento, certNum);
+            selectedPats = mapping ? mapping.patrones : [];
+        }
+        let patternsRowsHTML = '';
+        selectedPats.forEach(patId => {
+            const pDet = PATRONES_CATALOG[patId];
+            const desc = pDet ? pDet.desc : 'Patrón de Referencia';
+            const cert = pDet && pDet.cert ? pDet.cert : '---';
+            const emisor = pDet && pDet.emisor ? pDet.emisor : 'CR MEDICION';
+            patternsRowsHTML += `
+                <tr>
+                    <td>${patId}</td>
+                    <td>${desc}</td>
+                    <td>${cert}</td>
+                    <td>${emisor}</td>
+                </tr>
+            `;
+        });
+
+        // Construir Página 3
+        htmlContent += `
+            <div class="cert-page cert-page-3">
+                <div class="cert-watermark cert-watermark-symbol">§</div>
+                ${getHeaderHTML(certNum, 3, 3)}
+                <main class="cert-main">
+                    <!-- Patrones utilizados (Stacked) -->
+                    <div style="margin-top: 4mm !important; page-break-inside: avoid !important;">
+                        <div style="font-weight: bold; font-size: 12.5px; text-transform: uppercase; margin-bottom: 2mm !important; text-align: left;">
+                            Patrones utilizados
+                        </div>
+                        <table class="cert-patterns-table">
+                            <thead>
+                                <tr>
+                                    <th style="width: 20%;">Identificación</th>
+                                    <th style="width: 48%;">Descripción</th>
+                                    <th style="width: 17%;">Certificado</th>
+                                    <th style="width: 15%;">Emisor</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${patternsRowsHTML}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Información Side-by-Side -->
+                    <div class="cert-row-side-by-side" style="margin-top: 8mm !important;">
+                        <div class="cert-row-label">Información:</div>
+                        <div class="cert-row-value" style="font-size: 9.5px !important; line-height: 1.4 !important; color:#333;">
+                            <p style="margin-bottom: 1.5mm !important;">La incertidumbre expandida de medición informada fue calculada en conformidad con los requerimientos de la Guía ISO para Expresión de Incertidumbre, según el procedimiento PT-003-LAB, multiplicando la incertidumbre estándar combinada por un factor de cubertura k = 2, lo que corresponde a un nivel aproximado de confianza del 95% bajo distribución normal.</p>
+                            <p>Los resultados encontrados son el promedio de 3 mediciones en cada punto de calibración.</p>
+                        </div>
+                    </div>
+                </main>
+                ${getLastFooterHTML(item.id || 'Sin identificar')}
+            </div>
+        `;
+    }
+
+    // Inyectar HTML dinámico final en el contenedor
+    document.getElementById('printable-certificate').innerHTML = htmlContent;
+
+    // Disparar la ventana de impresión nativa
+    window.print();
+};
+
+// Funciones auxiliares para renderizar sub-tablas
+function renderSubTableHTML(title, points) {
+    if (points.length === 0) return '';
+    
+    let rowsHTML = '';
+    points.forEach(p => {
+        const refVal = parseFloat(String(p.ref).replace(',', '.'));
+        const instVal = parseFloat(String(p.inst).replace(',', '.'));
+        let errorStr = '---';
+        if (!isNaN(refVal) && !isNaN(instVal)) {
+            const error = instVal - refVal;
+            errorStr = error.toFixed(2).replace('.', ',');
+            if (error > 0) errorStr = '+' + errorStr;
+        }
+        let incStr = String(p.inc || '0,01').replace('.', ',');
+        const refStr = String(p.ref).replace('.', ',');
+        const instStr = String(p.inst).replace('.', ',');
+        const unit = p.unidad || 'mm';
+        
+        rowsHTML += `
+            <tr>
                 <td>${refStr} ${unit}</td>
                 <td>${instStr} ${unit}</td>
                 <td>${errorStr} ${unit}</td>
                 <td>${incStr} ${unit}</td>
-            `;
-            tbodyResultados.appendChild(tr);
-        });
-    }
+            </tr>
+        `;
+    });
+    
+    return `
+        <div style="font-weight: bold; font-size: 11px; margin-top: 3mm !important; margin-bottom: 1mm !important; text-align: left; color:#000;">
+            Valores Encontrados - ${title}
+        </div>
+        <table class="cert-results-table">
+            <thead>
+                <tr class="table-hdr-sub-1">
+                    <th>Valor de</th>
+                    <th>Valor de</th>
+                    <th>Error</th>
+                    <th>Incertidumbre</th>
+                </tr>
+                <tr class="table-hdr-sub-2">
+                    <th>Referencia</th>
+                    <th>${title}</th>
+                    <th>Obtenido</th>
+                    <th>Expandida</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rowsHTML}
+            </tbody>
+        </table>
+    `;
+}
 
-    // 5. Lanzar diálogo de impresión
-    window.print();
+function renderTermohigrometroTableHTML(title, points, rango, resolucion, isHumidity) {
+    if (points.length === 0) return '';
+    
+    let rowsHTML = '';
+    points.forEach(p => {
+        const refVal = parseFloat(String(p.ref).replace(',', '.'));
+        const instVal = parseFloat(String(p.inst).replace(',', '.'));
+        let errorStr = '---';
+        if (!isNaN(refVal) && !isNaN(instVal)) {
+            const error = instVal - refVal;
+            errorStr = error.toFixed(1).replace('.', ',');
+            if (error > 0) errorStr = '+' + errorStr;
+        }
+        let incStr = String(p.inc || '').trim();
+        if (incStr === '') {
+            incStr = isHumidity ? '1,5' : '0,2';
+        }
+        incStr = incStr.replace('.', ',');
+        const refStr = String(p.ref).replace('.', ',');
+        const instStr = String(p.inst).replace('.', ',');
+        const unit = p.unidad || (isHumidity ? '%Hr' : '°C');
+        
+        rowsHTML += `
+            <tr>
+                <td>${refStr} ${unit}</td>
+                <td>${instStr} ${unit}</td>
+                <td>${errorStr} ${unit}</td>
+                <td>${incStr} ${unit}</td>
+            </tr>
+        `;
+    });
+    
+    return `
+        <div style="font-weight: bold; font-size: 11px; margin-top: 3mm !important; margin-bottom: 1mm !important; text-align: left; color:#000;">
+            Valores Encontrados - ${title}
+        </div>
+        <div class="resultados-meta">
+            <div class="rango-resolucion-row">
+                <span><strong>Rango de medición:</strong> ${rango}</span>
+                <span><strong>Resolución:</strong> ${resolucion}</span>
+            </div>
+        </div>
+        <table class="cert-results-table">
+            <thead>
+                <tr class="table-hdr-top">
+                    <th class="hdr-empty"></th>
+                    <th colspan="2" class="hdr-val-enc">Valores Encontrados</th>
+                    <th class="hdr-empty"></th>
+                </tr>
+                <tr class="table-hdr-sub-1">
+                    <th>Valor de</th>
+                    <th>Valor</th>
+                    <th>Error</th>
+                    <th>Incertidumbre</th>
+                </tr>
+                <tr class="table-hdr-sub-2">
+                    <th>Referencia</th>
+                    <th>Instrumento</th>
+                    <th>Obtenido</th>
+                    <th>Expandida</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rowsHTML}
+            </tbody>
+        </table>
+    `;
 }
 
 function formatToArgDate(dateStr) {
     if (!dateStr || dateStr === '---' || dateStr.trim() === '') return '---';
-    // Si viene en formato yyyy-mm-dd
     const parts = dateStr.split('-');
     if (parts.length === 3) {
         return `${parseInt(parts[2], 10)}/${parseInt(parts[1], 10)}/${parts[0]}`;
     }
-    // Si ya viene formateado
     return dateStr;
 }
 
