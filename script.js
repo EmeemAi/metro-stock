@@ -1733,17 +1733,29 @@ async function confirmSendEmail() {
     let patternsData = [];
     if (appState.pendingEmail && appState.pendingEmail.equipoId) {
         const equipo = appState.data.find(function(e) { return e.id === appState.pendingEmail.equipoId; });
-        if (equipo && equipo.patrones) {
+        if (equipo) {
             let patIds = [];
-            try {
-                patIds = JSON.parse(equipo.patrones);
-            } catch(e) {
-                if (typeof equipo.patrones === 'string') {
-                    patIds = equipo.patrones.split(',').map(function(s) { return s.trim(); });
-                } else if (Array.isArray(equipo.patrones)) {
-                    patIds = equipo.patrones;
+            
+            // Si el equipo tiene patrones guardados en la base de datos, los usamos
+            if (equipo.patrones && equipo.patrones !== '' && equipo.patrones !== '[]') {
+                try {
+                    patIds = JSON.parse(equipo.patrones);
+                } catch(e) {
+                    if (typeof equipo.patrones === 'string') {
+                        patIds = equipo.patrones.split(',').map(function(s) { return s.trim(); });
+                    } else if (Array.isArray(equipo.patrones)) {
+                        patIds = equipo.patrones;
+                    }
                 }
             }
+            
+            // FALLBACK: Si no tiene patrones (ej. registros anteriores), usamos el mapeo sugerido por defecto
+            if (patIds.length === 0) {
+                const matchingMapping = getTemplateForInstrument(equipo.instrumento, equipo.certificado);
+                patIds = matchingMapping ? matchingMapping.patrones : [];
+                console.log(">>> Usando patrones sugeridos por defecto para el envío (registro preexistente):", patIds);
+            }
+            
             patternsData = patIds.map(function(id) {
                 const pDet = PATRONES_CATALOG[id.toUpperCase()];
                 return {
