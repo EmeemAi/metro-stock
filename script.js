@@ -358,7 +358,7 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
-function showLoader(message = 'Sincronizando con Google Sheets...') {
+function showLoader(message = 'Sincronizando base de datos...') {
     let loader = document.getElementById('global-loader');
     if (!loader) {
         loader = document.createElement('div');
@@ -650,7 +650,7 @@ function updateThemeToggleUI(isMatte) {
 async function fetchData() {
     appState.loading = true;
     updateUIState();
-    showLoader('Sincronizando con Google Sheets...');
+    showLoader('Sincronizando base de datos...');
 
     try {
         if(GOOGLE_SHEETS_API_URL !== '') {
