@@ -1370,11 +1370,7 @@ function openModalFicha(id) {
     const item = appState.data.find(x => x.id === id);
     if(!item) return;
 
-    // Configurar acción del botón Emitir Certificado
-    const btnEmitir = document.getElementById('btn-emitir-certificado-pdf');
-    if (btnEmitir) {
-        btnEmitir.onclick = () => window.imprimirCertificado(id);
-    }
+
 
     // Llenar Cabecera
     document.getElementById('ficha-id').innerText = `ID: ${item.id}`;
