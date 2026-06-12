@@ -172,23 +172,24 @@ svg.lucide {
 
 .sidebar-header {
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    padding: 1.5rem 1.5rem 2rem 1.5rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 1.5rem 1.5rem 1.5rem 1.5rem;
     border-bottom: 1px solid var(--border-color);
 }
 
 .sidebar-header h2 {
     font-weight: 700;
     letter-spacing: -0.02em;
-    font-size: 1.15rem;
+    font-size: 1.05rem;
     color: var(--primary);
 }
 
-.logo-icon {
-    color: var(--primary);
-    width: 24px;
-    height: 24px;
+.brand-logo-sidebar {
+    height: 28px;
+    width: auto;
+    object-fit: contain;
 }
 
 .sidebar-nav {
@@ -2044,20 +2045,20 @@ td:nth-child(6)  /* Cert */ {
 }
 
 .login-logo {
-    background: rgba(59, 130, 246, 0.1);
-    color: var(--primary);
-    width: 56px;
-    height: 56px;
-    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
     margin-bottom: 0.5rem;
-    box-shadow: var(--shadow-solid);
 }
 
 .theme-matte .login-logo {
-    background: rgba(99, 102, 241, 0.15);
+    background: none;
+}
+
+.brand-logo-login {
+    height: 52px;
+    width: auto;
+    object-fit: contain;
 }
 
 .login-logo-icon {
