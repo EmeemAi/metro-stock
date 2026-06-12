@@ -416,7 +416,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // Inicializar Iconos Lucide
     lucide.createIcons();
     
-    // Configurar controladores de selecciÃ³n de patrones
+    // Inicializar sistema de Login
+    initLoginSystem();
+    
+    // Configurar controladores de selección de patrones
     setupPatronesChecklistHandlers('nuevo');
     setupPatronesChecklistHandlers('edit');
     
@@ -440,8 +443,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Cargar datos
-    fetchData();
+    // Verificar sesión (cargar datos si está autenticado)
+    checkSession();
 
     // Event Listeners Básicos
     const btnNewEquipo = document.getElementById('btn-new-equipo');
@@ -2267,4 +2270,142 @@ function getObjetoName(instrumento, certificado) {
         return 'Calibre Digital';
     }
     return instrumento || 'Instrumento de Medición';
+}
+
+// ==========================================
+// SISTEMA DE AUTENTICACIÓN (LOGIN)
+// ==========================================
+const AUTH_CREDENTIALS = {
+    username: 'admin01',
+    password: '1001'
+};
+
+function initLoginSystem() {
+    const loginForm = document.getElementById('login-form');
+    const btnTogglePassword = document.getElementById('btn-toggle-password');
+    const btnLogout = document.getElementById('btn-logout');
+    
+    if (loginForm) {
+        loginForm.addEventListener('submit', handleLogin);
+    }
+    
+    if (btnTogglePassword) {
+        btnTogglePassword.addEventListener('click', () => {
+            const passwordInput = document.getElementById('login-password');
+            const icon = document.getElementById('toggle-password-icon');
+            if (passwordInput && icon) {
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    icon.setAttribute('data-lucide', 'eye-off');
+                    btnTogglePassword.title = "Ocultar contraseña";
+                } else {
+                    passwordInput.type = 'password';
+                    icon.setAttribute('data-lucide', 'eye');
+                    btnTogglePassword.title = "Mostrar contraseña";
+                }
+                lucide.createIcons();
+            }
+        });
+    }
+    
+    if (btnLogout) {
+        btnLogout.addEventListener('click', handleLogout);
+    }
+}
+
+function checkSession() {
+    const isRemembered = localStorage.getItem('auth_session') === 'true';
+    const isSessionActive = sessionStorage.getItem('auth_session') === 'true';
+    
+    if (isRemembered || isSessionActive) {
+        // Mostrar app, ocultar login, cargar datos
+        document.getElementById('login-container').style.display = 'none';
+        document.querySelector('.app-container').style.display = 'flex';
+        fetchData();
+    } else {
+        // Ocultar app, mostrar login
+        document.getElementById('login-container').style.display = 'flex';
+        document.querySelector('.app-container').style.display = 'none';
+    }
+}
+
+async function handleLogin(e) {
+    e.preventDefault();
+    
+    const userVal = document.getElementById('login-username').value.trim();
+    const passVal = document.getElementById('login-password').value;
+    const rememberCheckbox = document.getElementById('login-remember');
+    const submitBtn = document.getElementById('btn-login-submit');
+    
+    const originalContent = submitBtn.innerHTML;
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span>Ingresando...</span><i data-lucide="loader-2" class="spin"></i>';
+    lucide.createIcons();
+    
+    // Simular pequeña latencia de 600ms para realismo y seguridad de fuerza bruta básica
+    await new Promise(r => setTimeout(r, 600));
+    
+    if (userVal === AUTH_CREDENTIALS.username && passVal === AUTH_CREDENTIALS.password) {
+        // Credenciales correctas
+        if (rememberCheckbox && rememberCheckbox.checked) {
+            localStorage.setItem('auth_session', 'true');
+        } else {
+            sessionStorage.setItem('auth_session', 'true');
+        }
+        
+        showToast("Sesión iniciada con éxito.", "success");
+        
+        // Animación de salida del Login
+        const loginContainer = document.getElementById('login-container');
+        loginContainer.classList.add('login-exit');
+        
+        setTimeout(() => {
+            loginContainer.style.display = 'none';
+            loginContainer.classList.remove('login-exit');
+            
+            // Mostrar la aplicación principal
+            const appContainer = document.querySelector('.app-container');
+            appContainer.style.display = 'flex';
+            
+            // Forzar render de iconos Lucide dentro de la app por si acaso
+            lucide.createIcons();
+            
+            // Cargar base de datos real
+            fetchData();
+        }, 400);
+    } else {
+        // Credenciales incorrectas
+        showToast("Usuario o contraseña incorrectos.", "error");
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = originalContent;
+        lucide.createIcons();
+    }
+}
+
+function handleLogout() {
+    localStorage.removeItem('auth_session');
+    sessionStorage.removeItem('auth_session');
+    
+    showToast("Sesión cerrada.", "info");
+    
+    // Ocultar la app y mostrar el login
+    const appContainer = document.querySelector('.app-container');
+    const loginContainer = document.getElementById('login-container');
+    
+    appContainer.style.display = 'none';
+    loginContainer.style.display = 'flex';
+    
+    // Limpiar campos
+    document.getElementById('login-username').value = '';
+    document.getElementById('login-password').value = '';
+    
+    // Reiniciar inputs de contraseña a tipo password y resetear icono
+    const passwordInput = document.getElementById('login-password');
+    const toggleIcon = document.getElementById('toggle-password-icon');
+    if (passwordInput && toggleIcon) {
+        passwordInput.type = 'password';
+        toggleIcon.setAttribute('data-lucide', 'eye');
+    }
+    
+    lucide.createIcons();
 }
