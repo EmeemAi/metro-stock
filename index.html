@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Charts (Chart.js) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=20.3">
+    <link rel="stylesheet" href="styles.css?v=21.0">
     
     <!-- PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -109,17 +109,32 @@
                             <div class="kpi-value" id="kpi-certificando">0</div>
                         </div>
                     </div>
+                    <div class="kpi-card stock-inmovilizado">
+                        <div class="kpi-icon" style="background: rgba(107, 114, 128, 0.1); color: #6b7280;"><i data-lucide="archive"></i></div>
+                        <div class="kpi-info">
+                            <h3>Inmovilizados</h3>
+                            <div class="kpi-value" id="kpi-inmovilizados">0</div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Gráficos y Alertas -->
                 <div class="bi-charts-grid">
                     <div class="chart-container-card">
-                        <h3><i data-lucide="trending-up"></i> Equipos Más Vendidos (Demanda)</h3>
-                        <canvas id="chart-sales"></canvas>
+                        <h3><i data-lucide="trending-up"></i> Equipos Más Vendidos</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-sales"></canvas>
+                        </div>
                     </div>
                     <div class="chart-container-card">
-                        <h3><i data-lucide="alert-octagon"></i> Radar de Reposición (Críticos)</h3>
+                        <h3><i data-lucide="alert-octagon"></i> Radar de Reposición</h3>
                         <div id="replenishment-list" class="alert-list">
+                            <!-- Inyectado por JS -->
+                        </div>
+                    </div>
+                    <div class="chart-container-card">
+                        <h3><i data-lucide="slash"></i> Stock Inmovilizado / Baja Rotación</h3>
+                        <div id="low-rotation-list" class="alert-list">
                             <!-- Inyectado por JS -->
                         </div>
                     </div>
@@ -140,8 +155,8 @@
                         <button class="filter-btn active" data-filter="ALL">Todos</button>
                         <button class="filter-btn" data-filter="CERTIFICANDO">Certificando</button>
                         <button class="filter-btn" data-filter="DISPONIBLE">Disponibles</button>
-                        <button class="filter-btn" data-filter="RESERVADO">Reservados</button>
-                        <button class="filter-btn" data-filter="ENTREGADO">Entregados</button>
+                        <button class="filter-btn" data-filter="VENDIDO - DESPACHADO">Vendidos - Despachados</button>
+                        <button class="filter-btn" data-filter="VENDIDO - ENTREGADO">Vendidos - Entregados</button>
                         <button class="filter-btn" data-filter="VENTA INTERNA">Venta Interna</button>
                     </div>
                 </section>
@@ -352,7 +367,7 @@
                     <!-- Campos Dinámicos (Mostrar/Ocultar por JS) -->
                     <div id="fields-reservado" class="dynamic-fields" style="display:none;">
                         <div class="alert alert-warning">
-                            Vas a marcar este equipo como RESERVADO. Es obligatorio generar su número de certificado.
+                            Vas a marcar este equipo como VENDIDO - DESPACHADO. Es obligatorio generar su número de certificado.
                         </div>
                         <div class="form-group">
                             <label>Nº de Certificado</label>
@@ -367,7 +382,7 @@
 
                     <div id="fields-entregado" class="dynamic-fields" style="display:none;">
                         <div class="alert alert-info">
-                            Vas a marcar este equipo como ENTREGADO. Ingresa el nombre del cliente final.
+                            Vas a marcar este equipo como VENDIDO - ENTREGADO. Ingresa el nombre del cliente final.
                         </div>
                         <div class="form-group">
                             <label>Nombre del Cliente / Empresa</label>
@@ -430,13 +445,13 @@
                         </div>
                         <div class="form-group">
                             <label>Estado Activo</label>
-                            <select id="edit-estado">
-                                <option value="CERTIFICANDO">CERTIFICANDO</option>
-                                <option value="DISPONIBLE">DISPONIBLE</option>
-                                <option value="RESERVADO">RESERVADO</option>
-                                <option value="ENTREGADO">ENTREGADO</option>
-                                <option value="VENTA INTERNA">VENTA INTERNA</option>
-                            </select>
+                             <select id="edit-estado">
+                                 <option value="CERTIFICANDO">CERTIFICANDO</option>
+                                 <option value="DISPONIBLE">DISPONIBLE</option>
+                                 <option value="VENDIDO - DESPACHADO">VENDIDO - DESPACHADO</option>
+                                 <option value="VENDIDO - ENTREGADO">VENDIDO - ENTREGADO</option>
+                                 <option value="VENTA INTERNA">VENTA INTERNA</option>
+                             </select>
                         </div>
                         <div class="form-group">
                             <label>Nº de Certificado</label>
@@ -675,6 +690,6 @@
         </div>
     </div>
 
-    <script src="script.js?v=20.2"></script>
+    <script src="script.js?v=21.0"></script>
 </body>
 </html>
