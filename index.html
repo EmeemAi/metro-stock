@@ -1,695 +1,510 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>MetroMLStock - Gestión de Instrumentos</title>
-    <meta name="description" content="Dashboard para la gestión integral de estado y calibración de instrumentos de medición.">
-    <!-- Google Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Icons (Lucide) -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Charts (Chart.js) -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=22.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SCHWYZ | Soluciones Integrales</title>
     
-    <!-- PWA Support -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0f0f0f">
-    <link rel="apple-touch-icon" href="icon-512.png">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <!-- Tailwind CSS Play CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React & ReactDOM CDNs (Pinned & Highly stable via jsDelivr) -->
+    <script src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX transpilation in browser -->
+    <script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.24.4/babel.min.js"></script>
+    
+    <!-- Lucide Icons (Pinned version to prevent breaking changes) -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.453.0/dist/umd/lucide.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- CSS ESTÁNDAR: Se aplica instantáneamente antes que cualquier script -->
+    <style>
+        /* Oculta scripts y estilos para que no se vean como texto */
+        script, style { display: none !important; }
+        /* Mantiene la pantalla en el color de fondo oficial mientras carga */
+        body { 
+            background-color: #002654 !important; 
+            margin: 0;
+            opacity: 0;
+        }
+        /* Clase que activa React al terminar de cargar */
+        body.loaded { 
+            opacity: 1; 
+            transition: opacity 0.4s ease-in; 
+        }
+    </style>
+
+    <script>
+        // Sistema de autodiagnóstico ante pantallas azules o congeladas
+        window.addEventListener('error', function(e) {
+            document.body.style.opacity = "1";
+            document.body.classList.add('loaded');
+            var errDiv = document.getElementById('error-debugger');
+            if (errDiv) {
+                errDiv.style.display = 'block';
+                errDiv.innerHTML = '<div style="font-weight: bold; margin-bottom: 0.5rem;">⚠️ Error de Carga / Ejecución:</div>' + 
+                                  '<div style="background: rgba(0,0,0,0.1); padding: 0.5rem; border-radius: 0.25rem; font-size: 12px; margin-bottom: 0.5rem;">' + e.message + '</div>' +
+                                  '<div style="font-size: 11px; opacity: 0.8;">Archivo: ' + (e.filename || 'Desconocido') + ' (Línea ' + (e.lineno || '?') + ')</div>' +
+                                  '<div style="margin-top: 0.75rem; font-size: 11px; font-style: italic;">Sugerencia de solución: Intente recargar la página limpiando el caché (Ctrl + F5 o Cmd + Shift + R).</div>';
+            }
+        });
+        
+        window.addEventListener('unhandledrejection', function(e) {
+            document.body.style.opacity = "1";
+            document.body.classList.add('loaded');
+            var errDiv = document.getElementById('error-debugger');
+            if (errDiv) {
+                errDiv.style.display = 'block';
+                errDiv.innerHTML = '<div style="font-weight: bold; margin-bottom: 0.5rem;">⚠️ Promesa Fallida:</div>' + 
+                                  '<div style="background: rgba(0,0,0,0.1); padding: 0.5rem; border-radius: 0.25rem; font-size: 12px;">' + e.reason + '</div>';
+            }
+        });
+
+        // Temporizador de seguridad: Si en 3.5 segundos React no arranca, hacemos visible el fondo
+        setTimeout(function() {
+            if (!document.body.classList.contains('loaded')) {
+                console.warn("React tardó demasiado en iniciar. Forzando visualización de página.");
+                document.body.style.opacity = "1";
+                document.body.classList.add('loaded');
+            }
+        }, 3500);
+    </script>
+
+    <script>
+        // Tailwind Configuration
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        schwyz: {
+                            blue: '#002654',
+                            dark: '#001a3d',
+                            yellow: '#FFC700',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in': 'fadeIn 0.5s ease-out forwards',
+                        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0' },
+                            '100%': { opacity: '1' },
+                        },
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style type="text/tailwindcss">
+        @layer base {
+            body {
+                @apply font-sans text-white antialiased;
+            }
+        }
+        @layer components {
+            .bg-grid-pattern {
+                background-size: 40px 40px;
+                background-image: linear-gradient(to right, rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                                  linear-gradient(to bottom, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            }
+        }
+    </style>
 </head>
 <body>
-    <div class="app-container" style="display: none;">
-        <div class="sidebar-overlay" id="sidebar-overlay"></div>
-        <!-- Sidebar -->
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <img src="logo_schwyz.png?v=6" alt="Schwyz" class="brand-logo-sidebar" style="width: 180px; height: auto; object-fit: contain;">
-                <h2>MetroMLStock v20</h2>
-            </div>
-            <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" id="nav-gestion"><i data-lucide="layout-dashboard"></i> Gestión de Equipos</a>
-                <a href="#" class="nav-item" id="nav-stats">
-                    <i data-lucide="line-chart"></i> Inteligencia de Negocio
-                </a>
-                <a href="#" class="nav-item" id="nav-solicitudes">
-                    <i data-lucide="inbox"></i> Solicitudes
-                    <span class="notification-badge" id="badge-solicitudes" style="display: none;">0</span>
-                </a>
-                <a href="#" class="nav-item" id="nav-vencimientos">
-                    <i data-lucide="clock"></i> CRM Vencimientos
-                </a>
-            </nav>
-            <div class="sidebar-footer">
-                <button class="btn btn-outline" id="btn-toggle-theme" style="margin-bottom: 0.5rem; width: 100%;">
-                    <i data-lucide="moon"></i> <span id="theme-text">Modo Mate</span>
-                </button>
-                <button class="btn btn-outline" id="btn-export" style="margin-bottom: 0.5rem; width: 100%;">
-                    <i data-lucide="download"></i> Exportar CSV
-                </button>
-                <button class="btn btn-outline btn-logout" id="btn-logout" style="width: 100%; border-color: rgba(220, 38, 38, 0.2); color: #dc2626;">
-                    <i data-lucide="log-out"></i> Cerrar Sesión
-                </button>
-            </div>
-        </aside>
+    <!-- Depurador de errores visible solo si algo falla en la carga o ejecución de React/CDNs -->
+    <div id="error-debugger" style="display:none; background: #fee2e2; color: #991b1b; padding: 1.25rem; margin: 1.5rem auto; border-radius: 0.75rem; font-family: monospace; z-index: 99999; position: relative; font-size: 13px; border: 1px solid #f87171; max-width: 500px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);"></div>
 
-        <!-- Main Content -->
-        <main class="main-content">
-            <!-- Header -->
-            <header class="top-header">
-                <div class="header-left">
-                    <button class="btn-menu no-print" id="btn-menu-toggle">
-                        <i data-lucide="menu"></i>
-                    </button>
-                    <div>
-                        <h1 id="page-title">Gestión de Inventario</h1>
-                        <p class="subtitle" id="page-subtitle">gestiona el stock de instrumentos con certificado para entrega inmediata</p>
-                    </div>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- HELPER COMPONENTS ---
+
+        const Icon = ({ name, className = "", size = 20 }) => {
+            const iconRef = useRef(null);
+            useEffect(() => {
+                if (iconRef.current) {
+                    lucide.createIcons({
+                        attrs: {
+                            class: className,
+                            'stroke-width': 2,
+                            width: size,
+                            height: size
+                        },
+                        name: name,
+                        element: iconRef.current
+                    });
+                }
+            }, [name, className, size]);
+            return <i ref={iconRef} data-lucide={name} className={className}></i>;
+        };
+
+        const Logo = ({ className = '', size = 'lg' }) => {
+            const [hasError, setHasError] = useState(false);
+            const sizes = {
+                sm: 'h-14',
+                md: 'h-24',
+                lg: 'h-36',
+            };
+
+            return (
+                <div className={`flex items-center justify-center select-none ${className}`}>
+                    {hasError ? (
+                        <span className="text-white font-extrabold tracking-tight text-3xl sm:text-5xl">SCHWYZ</span>
+                    ) : (
+                        <img 
+                            src="logo.png" 
+                            alt="SCHWYZ Logo" 
+                            className={`${sizes[size]} w-auto object-contain`}
+                            referrerPolicy="no-referrer"
+                            onError={() => setHasError(true)}
+                        />
+                    )}
                 </div>
-                <div class="header-actions">
-                    <button class="btn btn-primary" id="btn-new-equipo">
-                        <i data-lucide="plus"></i> Nuevo Equipo
-                    </button>
-                </div>
-            </header>
+            );
+        };
 
-            <!-- Dashboard de Inteligencia de Negocio (BI) -->
-            <section id="bi-dashboard" style="display: none; flex-direction: column; gap: 1.5rem;">
-                <!-- KPIs Rápidos -->
-                <div class="kpi-grid">
-                    <div class="kpi-card stock-disponible">
-                        <div class="kpi-icon"><i data-lucide="package"></i></div>
-                        <div class="kpi-info">
-                            <h3>En Stock</h3>
-                            <div class="kpi-value" id="kpi-disponible">0</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card stock-entregado">
-                        <div class="kpi-icon"><i data-lucide="shopping-cart"></i></div>
-                        <div class="kpi-info">
-                            <h3>Ventas Totales</h3>
-                            <div class="kpi-value" id="kpi-ventas">0</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card stock-despachado">
-                        <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
-                        <div class="kpi-info">
-                            <h3>Sugerencia Reposición</h3>
-                            <div class="kpi-value" id="kpi-reposicion">0</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card stock-certificando">
-                        <div class="kpi-icon" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed;"><i data-lucide="cog"></i></div>
-                        <div class="kpi-info">
-                            <h3>En Certificación</h3>
-                            <div class="kpi-value" id="kpi-certificando">0</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card stock-inmovilizado">
-                        <div class="kpi-icon" style="background: rgba(107, 114, 128, 0.1); color: #6b7280;"><i data-lucide="archive"></i></div>
-                        <div class="kpi-info">
-                            <h3>Inmovilizados</h3>
-                            <div class="kpi-value" id="kpi-inmovilizados">0</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Gráficos y Alertas -->
-                <div class="bi-charts-grid">
-                    <div class="chart-container-card">
-                        <h3><i data-lucide="trending-up"></i> Equipos Más Vendidos</h3>
-                        <div class="chart-wrapper">
-                            <canvas id="chart-sales"></canvas>
-                        </div>
-                    </div>
-                    <div class="chart-container-card">
-                        <h3><i data-lucide="alert-octagon"></i> Radar de Reposición</h3>
-                        <div id="replenishment-list" class="alert-list">
-                            <!-- Inyectado por JS -->
-                        </div>
-                    </div>
-                    <div class="chart-container-card">
-                        <h3><i data-lucide="slash"></i> Stock Inmovilizado / Baja Rotación</h3>
-                        <div id="low-rotation-list" class="alert-list">
-                            <!-- Inyectado por JS -->
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-
-
-            <!-- Vista de Gestión -->
-            <section id="view-gestion" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                <!-- Table Controls -->
-                <section class="toolbar">
-                    <div class="search-box">
-                        <i data-lucide="search"></i>
-                        <input type="text" id="search-input" placeholder="Buscar por ID, Instrumento, Modelo, Serie, Cliente o Certificado...">
-                    </div>
-                    <div class="filters">
-                        <button class="filter-btn active" data-filter="ALL">Todos</button>
-                        <button class="filter-btn" data-filter="CERTIFICANDO">Certificando</button>
-                        <button class="filter-btn" data-filter="DISPONIBLE">Disponibles</button>
-                        <button class="filter-btn" data-filter="VENDIDO - DESPACHADO">Vendidos - Despachados</button>
-                        <button class="filter-btn" data-filter="VENDIDO - ENTREGADO">Vendidos - Entregados</button>
-                        <button class="filter-btn" data-filter="VENTA INTERNA">Venta Interna</button>
-                    </div>
-                </section>
-
-                <!-- Resumen de Disponibles (Dinámico) -->
-                <section id="available-summary" class="summary-container" style="display: none;">
-                    <!-- Inyectado por JS -->
-                </section>
-
-                <!-- Datatable -->
-                <section class="table-container">
-                    <table id="instrumentos-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Instrumento / Modelo</th>
-                                <th>Nº Serie</th>
-                                <th>Estado</th>
-                                <th>Fecha Cal.</th>
-                                <th>Certificado</th>
-                                <th>Cliente</th>
-                                <th>Acciones</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-body">
-                            <!-- Rows will be populated by JS -->
-                        </tbody>
-                    </table>
-                    <div id="loading-state" class="empty-state">
-                        <div class="spinner"></div>
-                        <p>Sincronizando base de datos...</p>
-                    </div>
-                    <div id="empty-state" class="empty-state" style="display: none;">
-                        <i data-lucide="folder-open"></i>
-                        <p>No se encontraron registros.</p>
-                    </div>
-                </section>
-            </section>
-
-            <!-- Vista: Solicitudes Externas -->
-            <section id="view-solicitudes" class="dashboard-view" style="display: none;">
-                <div class="table-container shadow-sm">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>Fecha</th>
-                                <th>Empresa / Cliente</th>
-                                <th>Certificado Solicitado</th>
-                                <th>Email</th>
-                                <th>Estado</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-solicitudes">
-                            <!-- Inyectado por JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-            <!-- Vista: CRM Vencimientos -->
-            <section id="view-vencimientos" class="dashboard-view" style="display: none; flex-direction: column; gap: 1.5rem;">
-                <div class="kpi-grid">
-                    <div class="kpi-card stock-disponible">
-                        <div class="kpi-icon"><i data-lucide="check-circle"></i></div>
-                        <div class="kpi-info">
-                            <h3>Vigentes</h3>
-                            <div class="kpi-value" id="kpi-vigentes">0</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card stock-despachado">
-                        <div class="kpi-icon"><i data-lucide="clock"></i></div>
-                        <div class="kpi-info">
-                            <h3>Próximos a Vencer</h3>
-                            <div class="kpi-value" id="kpi-proximos">0</div>
-                        </div>
-                    </div>
-                    <div class="kpi-card stock-entregado">
-                        <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;"><i data-lucide="x-octagon"></i></div>
-                        <div class="kpi-info">
-                            <h3>Vencidos</h3>
-                            <div class="kpi-value" id="kpi-vencidos">0</div>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="table-container shadow-sm">
-                    <table class="data-table">
-                        <thead>
-                            <tr>
-                                <th>ID</th>
-                                <th>Instrumento</th>
-                                <th>Cliente</th>
-                                <th>Vencimiento</th>
-                                <th>Alerta</th>
-                                <th>Recordatorio</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody id="table-vencimientos">
-                            <!-- Inyectado por JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </section>
-
-
-
-        </main>
-    </div>
-
-    <!-- Modal Nuevo Equipo -->
-    <div id="modal-nuevo" class="modal-overlay">
-        <div class="modal-content large">
-            <div class="modal-header">
-                <h2>Ingresar Nuevo Equipo Calibrado</h2>
-                <button class="btn-close"><i data-lucide="x"></i></button>
-            </div>
-            <div class="modal-body">
-                <form id="form-nuevo">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>ID Autogenerado</label>
-                            <input type="text" id="nuevo-id" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label>Nombre del Instrumento</label>
-                            <input type="text" id="nuevo-nombre" required placeholder="Ej. Calibrador de Proceso">
-                        </div>
-                        <div class="form-group">
-                            <label>Marca</label>
-                            <input type="text" id="nuevo-marca" required placeholder="Ej. Fluke">
-                        </div>
-                        <div class="form-group">
-                            <label>Modelo</label>
-                            <input type="text" id="nuevo-modelo" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Número de Serie</label>
-                            <input type="text" id="nuevo-serie" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Fecha Inicial Calibración</label>
-                            <input type="date" id="nuevo-fecha" required>
-                        </div>
-                    </div>
-                    
-                    <h3 class="section-title">Patrones Utilizados</h3>
-                    <div class="form-group" style="margin-bottom: 1.5rem;">
-                        <div id="nuevo-patrones-checklist" class="patrones-checklist">
-                            <!-- Checkboxes inyectados por JS -->
-                        </div>
-                        <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
-                            <button type="button" class="btn btn-outline btn-sm" id="btn-nuevo-add-patron" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; height: 32px;">
-                                <i data-lucide="plus" style="width:14px; height:14px; vertical-align: middle;"></i> Agregar otro patrón
-                            </button>
-                            <select id="nuevo-patrones-catalogo-select" class="input-tiny" style="display: none; height: 32px; padding: 0.25rem 0.5rem; width: 200px;">
-                                <option value="">-- Seleccionar --</option>
-                            </select>
-                        </div>
-                    </div>
-                    
-                    <h3 class="section-title">Puntos de Medición</h3>
-                    <div class="table-puntos-container">
-                        <table class="table-puntos">
-                            <thead>
-                                <tr>
-                                    <th>Punto</th>
-                                    <th>Unidad</th>
-                                    <th>Referencia</th>
-                                    <th>Instrumento</th>
-                                    <th>Incertidumbre</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="tbody-puntos">
-                                <!-- Generado por JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <button type="button" class="btn btn-outline" id="btn-add-punto" style="margin-top: 0.5rem; font-size: 0.75rem;">
-                        <i data-lucide="plus"></i> Añadir otro punto
-                    </button>
-                    <div class="modal-actions">
-                        <button type="button" class="btn btn-outline btn-close-action">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" id="btn-save-nuevo">Generar Entrada</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Cambio Estado -->
-    <div id="modal-estado" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 id="modal-estado-title">Actualizar Estado</h2>
-                <button class="btn-close"><i data-lucide="x"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="context-info" id="estado-context">
-                    <!-- Info inyectada por JS -->
-                </div>
-                <form id="form-estado">
-                    <input type="hidden" id="estado-id">
-                    <input type="hidden" id="estado-target">
-                    
-                    <!-- Campos Dinámicos (Mostrar/Ocultar por JS) -->
-                    <div id="fields-reservado" class="dynamic-fields" style="display:none;">
-                        <div class="alert alert-warning">
-                            Vas a marcar este equipo como VENDIDO - DESPACHADO. Es obligatorio generar su número de certificado.
-                        </div>
-                        <div class="form-group">
-                            <label>Nº de Certificado</label>
-                            <input type="text" id="estado-certificado" placeholder="Ej. CERT-2026-X">
-                        </div>
-                        <div class="form-group">
-                            <label>Fecha de Calibración</label>
-                            <input type="date" id="estado-fecha">
-                            <small style="color:var(--text-secondary); font-size:0.75rem;">Asegúrate de que esta sea la fecha correcta.</small>
-                        </div>
-                    </div>
-
-                    <div id="fields-entregado" class="dynamic-fields" style="display:none;">
-                        <div class="alert alert-info">
-                            Vas a marcar este equipo como VENDIDO - ENTREGADO. Ingresa el nombre del cliente final.
-                        </div>
-                        <div class="form-group">
-                            <label>Nombre del Cliente / Empresa</label>
-                            <input type="text" id="estado-cliente" placeholder="Nombre completo">
-                        </div>
-                    </div>
-
-                    <div id="fields-interno" class="dynamic-fields" style="display:none;">
-                        <div class="alert alert-info" style="background-color: rgba(107, 114, 128, 0.1); border-color: #6b7280; color: #4b5563;">
-                            Vas a marcar este equipo como VENTA INTERNA (salida del stock comercial).
-                        </div>
-                        <div class="form-group">
-                            <label>Destino / Sector de la Empresa</label>
-                            <input type="text" id="estado-destino-interno" placeholder="Ej. Laboratorio Central, Schwyz, etc.">
-                        </div>
-                    </div>
-
-                    <div class="modal-actions">
-                        <button type="button" class="btn btn-outline btn-close-action">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" id="btn-save-estado">Confirmar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Edición de Equipo (Nuevo) -->
-    <div id="modal-edit" class="modal-overlay">
-        <div class="modal-content large">
-            <div class="modal-header">
-                <h2>Editar Información del Equipo</h2>
-                <button class="btn-close"><i data-lucide="x"></i></button>
-            </div>
-            <div class="modal-body">
-                <form id="form-edit">
-                    <div class="form-grid">
-                        <div class="form-group">
-                            <label>ID del Equipo (Solo Lectura)</label>
-                            <input type="text" id="edit-id" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label>Instrumento / Magnitud</label>
-                            <input type="text" id="edit-instrumento" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Marca</label>
-                            <input type="text" id="edit-marca" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Modelo</label>
-                            <input type="text" id="edit-modelo" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Número de Serie</label>
-                            <input type="text" id="edit-serie" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Fecha de Calibración</label>
-                            <input type="date" id="edit-fecha" required>
-                        </div>
-                        <div class="form-group">
-                            <label>Estado Activo</label>
-                             <select id="edit-estado">
-                                 <option value="CERTIFICANDO">CERTIFICANDO</option>
-                                 <option value="DISPONIBLE">DISPONIBLE</option>
-                                 <option value="VENDIDO - DESPACHADO">VENDIDO - DESPACHADO</option>
-                                 <option value="VENDIDO - ENTREGADO">VENDIDO - ENTREGADO</option>
-                                 <option value="VENTA INTERNA">VENTA INTERNA</option>
-                             </select>
-                        </div>
-                        <div class="form-group">
-                            <label>Nº de Certificado</label>
-                            <input type="text" id="edit-certificado" placeholder="Ej. CERT-123">
-                        </div>
-                        <div class="form-group">
-                            <label>Nombre del Cliente</label>
-                            <input type="text" id="edit-cliente" placeholder="---">
-                        </div>
-                    </div>
-                    
-                    <h3 class="section-title">Patrones Utilizados</h3>
-                    <div class="form-group" style="margin-bottom: 1.5rem;">
-                        <div id="edit-patrones-checklist" class="patrones-checklist">
-                            <!-- Checkboxes inyectados por JS -->
-                        </div>
-                        <div style="display: flex; gap: 0.5rem; align-items: center; margin-top: 0.5rem;">
-                            <button type="button" class="btn btn-outline btn-sm" id="btn-edit-add-patron" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; height: 32px;">
-                                <i data-lucide="plus" style="width:14px; height:14px; vertical-align: middle;"></i> Agregar otro patrón
-                            </button>
-                            <select id="edit-patrones-catalogo-select" class="input-tiny" style="display: none; height: 32px; padding: 0.25rem 0.5rem; width: 200px;">
-                                <option value="">-- Seleccionar --</option>
-                            </select>
-                        </div>
-                    </div>
-
-                    <h3 class="section-title">Actualizar Puntos de Medición</h3>
-                    <div class="table-puntos-container">
-                        <table class="table-puntos">
-                            <thead>
-                                <tr>
-                                    <th>Punto</th>
-                                    <th>Unidad</th>
-                                    <th>Referencia</th>
-                                    <th>Instrumento</th>
-                                    <th>Incertidumbre</th>
-                                    <th></th>
-                                </tr>
-                            </thead>
-                            <tbody id="edit-tbody-puntos">
-                                <!-- Generado dinámicamente -->
-                            </tbody>
-                        </table>
-                    </div>
-                    <button type="button" class="btn btn-outline" id="btn-add-punto-edit" style="margin-top: 0.5rem; font-size: 0.75rem;">
-                        <i data-lucide="plus"></i> Añadir otro punto
-                    </button>
-                    <div class="modal-actions">
-                        <button type="button" class="btn btn-outline btn-close-action">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" id="btn-save-edit">Guardar Cambios</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal Ficha Técnica Imprimible -->
-    <div id="modal-ficha" class="modal-overlay">
-        <div class="modal-content print-sheet">
-            <div class="modal-header no-print">
-                <h2>Ficha del Instrumento</h2>
-                <div class="header-actions">
-                    <button class="btn btn-outline" onclick="window.print()"><i data-lucide="printer"></i> Imprimir Ficha</button>
-                    <button class="btn-close"><i data-lucide="x"></i></button>
-                </div>
-            </div>
-            <div class="modal-body printable-ficha">
-                <!-- Zona Imprimible -->
-                <div class="ficha-header">
-                    <h2>FICHA DE MEDICIONES Y CALIBRACIÓN</h2>
-                    <div class="ficha-id" id="ficha-id">ID: ---</div>
-                </div>
-                
-                <div class="ficha-section">
-                    <h3>1. Información del Equipo</h3>
-                    <div class="ficha-grid">
-                        <div class="ficha-item"><span>Instrumento:</span> <strong id="ficha-instrumento">---</strong></div>
-                        <div class="ficha-item"><span>Marca:</span> <strong id="ficha-marca">---</strong></div>
-                        <div class="ficha-item"><span>Modelo:</span> <strong id="ficha-modelo">---</strong></div>
-                        <div class="ficha-item"><span>Nº Serie:</span> <strong id="ficha-serie">---</strong></div>
-                    </div>
-                </div>
-
-                <div class="ficha-section">
-                    <h3>2. Trazabilidad Operativa</h3>
-                    <div class="ficha-grid">
-                        <div class="ficha-item"><span>Estado:</span> <strong id="ficha-estado">---</strong></div>
-                        <div class="ficha-item"><span>Fecha Calibración:</span> <strong id="ficha-fecha">---</strong></div>
-                        <div class="ficha-item"><span>Certificado:</span> <strong id="ficha-certificado">---</strong></div>
-                        <div class="ficha-item"><span>Cliente:</span> <strong id="ficha-cliente">---</strong></div>
-                    </div>
-                </div>
-
-                <div class="ficha-section">
-                    <h3>3. Resultados de Medición</h3>
-                    <table class="table-puntos ficha-table">
-                        <thead>
-                            <tr>
-                                <th>Punto</th>
-                                <th>Unidad</th>
-                                <th>Valor Referencia</th>
-                                <th>Valor Instrumento</th>
-                            </tr>
-                        </thead>
-                        <tbody id="ficha-tbody-puntos">
-                            <!-- Inyectado por JS -->
-                        </tbody>
-                    </table>
-                </div>
-
-
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Confirmar Envío de Email -->
-    <div id="modal-email-confirm" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Verificación de Envío</h2>
-                <button class="btn-icon" onclick="closeModal('modal-email-confirm')"><i data-lucide="x"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="status-check-box" id="email-file-status">
-                    <i data-lucide="loader-2" class="spin"></i> Buscando certificado en Drive...
-                </div>
-                
-                <div class="form-group">
-                    <label>Destinatario</label>
-                    <input type="text" id="email-to" readonly>
-                </div>
-                
-                <div class="form-group">
-                    <label>Asunto</label>
-                    <input type="text" id="email-subject" readonly value="Envío de Certificado de Calibración">
-                </div>
-                
-                <div class="form-group">
-                    <label>Mensaje (Previsualización)</label>
-                    <textarea id="email-body" rows="6" readonly></textarea>
-                </div>
-
-                <div id="email-error-msg" class="alert alert-danger" style="display:none; margin-top:1rem;">
-                    No se puede enviar: El archivo PDF no existe en la carpeta configurada.
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="closeModal('modal-email-confirm')">Cancelar</button>
-                <button class="btn btn-primary" id="btn-confirm-send" disabled>
-                    <i data-lucide="send"></i> Confirmar y Enviar Mail
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal: Confirmar Envío de Recordatorio (Vencimientos) -->
-    <div id="modal-reminder-confirm" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Enviar Aviso de Vencimiento</h2>
-                <button class="btn-icon" onclick="closeModal('modal-reminder-confirm')"><i data-lucide="x"></i></button>
-            </div>
-            <div class="modal-body">
-                <div class="form-group">
-                    <label>Destinatario</label>
-                    <input type="text" id="reminder-to" readonly>
-                </div>
-                
-                <div class="form-group">
-                    <label>Asunto</label>
-                    <input type="text" id="reminder-subject" readonly value="Aviso de Próximo Vencimiento - CR MEDICION">
-                </div>
-                
-                <div class="form-group">
-                    <label>Mensaje (Previsualización)</label>
-                    <textarea id="reminder-body" rows="8" readonly></textarea>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn btn-outline" onclick="closeModal('modal-reminder-confirm')">Cancelar</button>
-                <button class="btn btn-primary" id="btn-confirm-reminder">
-                    <i data-lucide="send"></i> Enviar Recordatorio
-                </button>
-            </div>
-        </div>
-    </div>
-
-
-
-
-
-    <!-- Login Container -->
-    <div id="login-container" class="login-container" style="display: flex;">
-        <div class="login-card">
-            <div class="login-header">
-                <div class="login-logo">
-                    <img src="logo_schwyz.png?v=6" alt="Schwyz" class="brand-logo-login" style="width: 260px; height: auto; object-fit: contain;">
-                </div>
-                <h2>MetroMLStock v20</h2>
-                <p class="login-subtitle">Metrología y Control de Instrumentos</p>
-            </div>
+        const ActionButton = ({ label, subLabel, iconName, href, variant = 'primary', onClick }) => {
+            const baseStyles = "group w-full flex items-center justify-between px-6 py-4 rounded-xl transition-all duration-300 transform border backdrop-blur-sm relative overflow-hidden cursor-pointer no-underline";
             
-            <form id="login-form" class="login-form">
-                <div class="login-input-group">
-                    <label for="login-username">Usuario</label>
-                    <div class="input-wrapper">
-                        <i data-lucide="user" class="input-icon"></i>
-                        <input type="text" id="login-username" placeholder="Ingresa tu usuario" required autocomplete="username">
-                    </div>
-                </div>
-                
-                <div class="login-input-group">
-                    <label for="login-password">Contraseña</label>
-                    <div class="input-wrapper">
-                        <i data-lucide="lock" class="input-icon"></i>
-                        <input type="password" id="login-password" placeholder="••••••••" required autocomplete="current-password">
-                        <button type="button" id="btn-toggle-password" class="btn-toggle-password" title="Mostrar contraseña">
-                            <i data-lucide="eye" id="toggle-password-icon"></i>
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="login-options">
-                    <label class="remember-me-label">
-                        <input type="checkbox" id="login-remember" checked>
-                        <span class="custom-checkbox"></span>
-                        Recordar sesión
-                    </label>
-                </div>
-                
-                <button type="submit" class="btn btn-primary btn-login-submit" id="btn-login-submit">
-                    <span>Ingresar</span>
-                    <i data-lucide="arrow-right"></i>
-                </button>
-            </form>
-        </div>
-    </div>
+            const variants = {
+                primary: "bg-gradient-to-br from-white to-gray-100 border-white/50 text-[#002654] hover:shadow-lg hover:shadow-white/10 hover:-translate-y-1",
+                cta: "bg-white border-[#FFC700]/30 text-[#002654] hover:shadow-lg hover:shadow-white/10 hover:-translate-y-1 hover:border-[#FFC700]/60",
+                secondary: "bg-white/5 border-white/20 text-white hover:bg-white/10 hover:border-white/40 hover:-translate-y-1",
+                whatsapp: "bg-gradient-to-r from-[#25D366] to-[#128C7E] border-transparent text-white hover:shadow-lg hover:shadow-green-500/20 hover:-translate-y-1",
+            };
 
-    <script src="script.js?v=22.0"></script>
+            return (
+                <a 
+                    href={href} 
+                    target={href === '#' ? undefined : "_blank"} 
+                    rel={href === '#' ? undefined : "noopener noreferrer"}
+                    className={`${baseStyles} ${variants[variant]}`}
+                    onClick={onClick}
+                >
+                    <div className="absolute inset-0 bg-white/20 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out pointer-events-none"></div>
+
+                    <div className="flex items-center gap-4 relative z-10 flex-1">
+                        {iconName && (
+                            <div className={`p-2 rounded-lg shrink-0 ${variant === 'primary' || variant === 'cta' ? 'bg-[#002654]/10' : 'bg-white/20'} flex items-center justify-center`}>
+                                <Icon name={iconName} className="w-5 h-5" />
+                            </div>
+                        )}
+                        <div className="flex flex-col items-start text-left">
+                            <span className="font-bold text-base sm:text-lg leading-tight">{label}</span>
+                            {subLabel && (
+                                <span className={`text-xs mt-0.5 font-medium ${variant === 'primary' || variant === 'cta' ? 'text-[#002654]/70' : 'text-white/80'}`}>
+                                    {subLabel}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                    <div className={`transition-transform group-hover:translate-x-1 shrink-0 ${variant === 'primary' || variant === 'cta' ? 'text-[#002654]' : 'text-white/80'}`}>
+                        <Icon name="chevron-right" className="w-5 h-5" />
+                    </div>
+                </a>
+            );
+        };
+
+        const FormInput = ({ iconName, label, id, ...props }) => (
+            <div className="space-y-1.5 group">
+                <label htmlFor={id} className="text-xs font-semibold text-gray-300 ml-1 uppercase tracking-wide group-focus-within:text-[#FFC700] transition-colors duration-300">
+                    {label}
+                </label>
+                <div className="relative">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#FFC700]/70 group-focus-within:text-[#FFC700] group-focus-within:scale-110 transition-all duration-300 flex items-center">
+                        <Icon name={iconName} className="w-5 h-5" />
+                    </div>
+                    <input 
+                        id={id}
+                        {...props}
+                        className="w-full bg-black/20 border border-white/10 rounded-xl pl-10 pr-4 py-3.5 text-white placeholder-white/20 focus:outline-none focus:border-[#FFC700]/50 focus:bg-black/30 focus:ring-4 focus:ring-[#FFC700]/10 transition-all shadow-inner"
+                    />
+                </div>
+            </div>
+        );
+
+        // --- MAIN APP ---
+
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwsL9Ex0x3RtkJ4DSu0iSNtPSXm_Vlrtyf0FfA5fGtPfjG6y4b3SLIrnhGjxI0niaAS/exec";
+
+        function App() {
+            const [currentView, setCurrentView] = useState('menu');
+            const [isLoading, setIsLoading] = useState(false);
+            const [formData, setFormData] = useState({
+                empresa: '',
+                contacto: '',
+                email: '',
+                codigo: '' // Volvemos al nombre simple para asegurar compatibilidad
+            });
+
+            useEffect(() => {
+                document.body.classList.add('loaded');
+            }, []);
+
+            const handleInputChange = (e) => {
+                const { name, value } = e.target;
+                setFormData(prev => ({ ...prev, [name]: value }));
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setIsLoading(true);
+
+                const timestamp = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
+                
+                // LOG DE CONSOLA: Útil para depuración rápida en el navegador (F12)
+                console.log(`%c [LOG] Iniciando envío de solicitud - ${timestamp} `, 'background: #002654; color: #FFC700; font-weight: bold;');
+                console.log('[LOG] Datos capturados:', formData);
+
+                try {
+                    // Enviamos los datos incluyendo el timestamp para el historial
+                    await fetch(GOOGLE_SCRIPT_URL, {
+                        method: 'POST',
+                        mode: 'no-cors', 
+                        body: JSON.stringify({
+                            ...formData,
+                            timestamp: timestamp,
+                            tipo_evento: 'SOLICITUD_CERTIFICADO'
+                        })
+                    });
+                    
+                    console.log('%c [LOG] Envío completado con éxito (Modo no-cors) ', 'color: #22c55e; font-weight: bold;');
+                    setCurrentView('success');
+                } catch (error) {
+                    console.error('%c [LOG] Error crítico en el envío: ', 'color: #ef4444; font-weight: bold;', error);
+                    alert("Hubo un error al enviar. Por favor, intenta contactarnos por WhatsApp.");
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+
+            const resetApp = () => {
+                setFormData({ empresa: '', contacto: '', email: '', codigo: '' });
+                setCurrentView('menu');
+            };
+
+            return (
+                <main className="min-h-screen bg-gradient-to-br from-[#002654] via-[#001a3d] to-black flex flex-col items-center justify-center p-4 relative overflow-hidden">
+                    
+                    <div className="absolute inset-0 bg-grid-pattern opacity-30 pointer-events-none"></div>
+                    
+                    <div className="absolute top-0 left-0 w-full h-full overflow-hidden pointer-events-none">
+                        <div className="absolute -top-[10%] -left-[10%] w-[500px] h-[500px] bg-[#002654] rounded-full blur-[100px] opacity-60 mix-blend-screen animate-pulse-slow"></div>
+                        <div className="absolute top-[40%] right-[-10%] w-[300px] h-[300px] bg-[#FFC700] rounded-full blur-[120px] opacity-10"></div>
+                    </div>
+
+                    <div className="z-10 w-full max-w-lg animate-fade-in-up">
+                        
+                        <div className="bg-white/5 backdrop-blur-xl border border-white/10 shadow-2xl rounded-3xl p-6 sm:p-8 relative overflow-hidden">
+                            
+                            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent"></div>
+
+                            <header className={`flex flex-col items-center gap-0 text-center transition-all duration-500 ${currentView === 'menu' ? 'mb-8' : 'mb-6'}`}>
+                                <Logo size={currentView === 'menu' ? 'lg' : 'md'} />
+                                <div className="h-px w-12 bg-[#FFC700]/50 mt-0 mb-1"></div>
+                                <p className="text-gray-300 text-xs sm:text-sm tracking-[0.3em] uppercase font-medium opacity-80">
+                                    Soluciones Integrales
+                                </p>
+                            </header>
+
+                            {currentView === 'menu' && (
+                                <nav className="flex flex-col gap-6 animate-fade-in">
+                                    <div className="text-center space-y-2">
+                                        <h2 className="text-xl font-bold text-white tracking-tight">Solicitud de Certificado</h2>
+                                        <p className="text-gray-400 text-sm px-4 leading-relaxed">
+                                            Completa el formulario para recibir tu certificado oficial.
+                                        </p>
+                                    </div>
+
+                                    <ActionButton 
+                                        label="Solicitar certificado"
+                                        subLabel="Obtén el documento de tu equipo"
+                                        href="#"
+                                        onClick={(e) => { e.preventDefault(); setCurrentView('form'); }}
+                                        iconName="file-text"
+                                        variant="cta"
+                                    />
+                                    
+                                    <div className="flex flex-col items-center pt-4 border-t border-white/5">
+                                        <a 
+                                            href="https://schwyz.com.ar/" 
+                                            target="_blank" 
+                                            rel="noopener noreferrer"
+                                            className="group flex items-center gap-2 text-white/40 hover:text-white transition-all duration-300 text-sm"
+                                        >
+                                            <Icon name="external-link" size={14} className="opacity-50 group-hover:opacity-100 group-hover:scale-110 transition-all" />
+                                            <span className="font-medium">Visitar sitio web oficial</span>
+                                        </a>
+                                    </div>
+                                </nav>
+                            )}
+
+                            {currentView === 'form' && (
+                                <div className="animate-fade-in">
+                                    <div className="flex items-center mb-6 relative">
+                                        <button 
+                                            onClick={() => setCurrentView('menu')} 
+                                            className="absolute left-0 p-2 -ml-2 text-white/60 hover:text-[#FFC700] hover:bg-white/5 rounded-full transition-all flex items-center justify-center"
+                                        >
+                                            <Icon name="arrow-left" className="w-5 h-5" />
+                                        </button>
+                                        <h2 className="w-full text-center text-lg font-bold text-white tracking-wide">Nuevo Certificado</h2>
+                                    </div>
+
+                                    <form id="request-form" onSubmit={handleSubmit} className="space-y-4" autoComplete="off">
+                                        <FormInput 
+                                            id="input-empresa"
+                                            iconName="building-2"
+                                            label="Empresa"
+                                            name="empresa"
+                                            autoComplete="nope"
+                                            value={formData.empresa}
+                                            onChange={handleInputChange}
+                                            placeholder="Nombre de la empresa"
+                                        />
+
+                                        <FormInput 
+                                            id="input-contacto"
+                                            iconName="user"
+                                            label="Nombre de contacto"
+                                            name="contacto"
+                                            autoComplete="nope"
+                                            required
+                                            value={formData.contacto}
+                                            onChange={handleInputChange}
+                                            placeholder="Su nombre completo"
+                                        />
+
+                                        <FormInput 
+                                            id="input-email"
+                                            iconName="mail"
+                                            label="Correo electrónico"
+                                            type="email"
+                                            name="email"
+                                            autoComplete="nope"
+                                            required
+                                            value={formData.email}
+                                            onChange={handleInputChange}
+                                            placeholder="email@empresa.com"
+                                        />
+
+                                        <div className="pt-2">
+                                            <div className="relative group p-1 bg-gradient-to-r from-[#FFC700]/20 via-white/5 to-[#FFC700]/20 rounded-2xl transition-all duration-500 focus-within:shadow-[0_0_25px_rgba(255,199,0,0.15)]">
+                                                <div className="bg-[#0a1e36] rounded-xl p-4 border border-[#FFC700]/20">
+                                                    <label htmlFor="input-tag-id" className="text-xs font-semibold text-[#FFC700] mb-2 block uppercase tracking-wide flex items-center gap-2 group-focus-within:translate-x-1 transition-transform duration-300">
+                                                        <Icon name="barcode" className="w-4 h-4 group-focus-within:animate-pulse" /> Código de etiqueta
+                                                    </label>
+                                                    <input 
+                                                        id="input-tag-id"
+                                                        type="text" 
+                                                        name="codigo"
+                                                        autoComplete="new-password"
+                                                        required
+                                                        pattern="[a-zA-Z0-9]{6}-[a-zA-Z0-9]{2}-[a-zA-Z0-9]{4,6}"
+                                                        title="El formato debe ser XXXXXX-XX-XXXXX (Ej: 202603-CA-11111)"
+                                                        value={formData.codigo}
+                                                        onChange={handleInputChange}
+                                                        className="w-full bg-black/30 border border-white/10 rounded-lg px-4 py-3 text-white text-lg font-mono tracking-wider placeholder-white/20 focus:outline-none focus:border-[#FFC700] focus:ring-4 focus:ring-[#FFC700]/10 transition-all text-center invalid:border-red-500/50 invalid:text-red-200"
+                                                        placeholder="202603-CA-11111"
+                                                    />
+                                                    <div className="mt-3 flex gap-3 items-start bg-[#FFC700]/5 p-2 rounded border border-[#FFC700]/10">
+                                                        <span className="text-lg">📌</span>
+                                                        <p className="text-xs text-gray-400 leading-relaxed">
+                                                            Busca este código en la etiqueta pegada al instrumento.<br/>
+                                                            <span className="text-[#FFC700]/80">Formato: 202603-CA-11111</span>
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <button 
+                                            type="submit" 
+                                            disabled={isLoading}
+                                            className="w-full mt-4 bg-[#FFC700] text-[#002654] font-bold py-4 rounded-xl hover:bg-[#ffdb4d] hover:shadow-[0_0_20px_rgba(255,199,0,0.3)] transition-all transform active:scale-[0.98] flex items-center justify-center gap-2 disabled:opacity-70 disabled:cursor-not-allowed group"
+                                        >
+                                            {isLoading ? (
+                                                <>
+                                                    <Icon name="loader-2" className="w-5 h-5 animate-spin" />
+                                                    Procesando...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Icon name="send" className="w-5 h-5 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
+                                                    Enviar Solicitud
+                                                </>
+                                            )}
+                                        </button>
+                                    </form>
+                                </div>
+                            )}
+
+                            {currentView === 'success' && (
+                                <div className="text-center animate-fade-in py-8">
+                                    <div className="w-24 h-24 bg-green-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-[0_0_30px_rgba(34,197,94,0.4)] animate-bounce">
+                                        <Icon name="check-circle" className="w-12 h-12 text-white" />
+                                    </div>
+                                    <h2 className="text-2xl font-bold mb-3 text-white">¡Solicitud Enviada!</h2>
+                                    <p className="text-gray-300 mb-8 max-w-xs mx-auto text-sm leading-relaxed">
+                                        Hemos recibido tu información. El certificado será enviado a tu correo electrónico en las próximas 24 horas.
+                                    </p>
+                                    <button 
+                                        onClick={resetApp}
+                                        className="px-8 py-3 bg-white/10 border border-white/20 text-white font-semibold rounded-full hover:bg-white hover:text-[#002654] transition-all"
+                                    >
+                                        Volver al inicio
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="mt-8 pt-6 border-t border-white/10 text-center">
+                                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/5 rounded-full border border-white/5 mb-3">
+                                    <Icon name="help-circle" className="w-3.5 h-3.5 text-[#FFC700]" />
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">¿Necesitas ayuda?</span>
+                                </div>
+                                <p className="text-xs text-gray-300 leading-relaxed max-w-[280px] mx-auto">
+                                    Por cualquier consulta con respecto al certificado, escríbanos a:
+                                    <a 
+                                        href="mailto:dario.delreal@todomedicion.com" 
+                                        className="block mt-1 text-[#FFC700] hover:text-[#ffdb4d] transition-colors font-semibold underline underline-offset-4 decoration-[#FFC700]/30"
+                                    >
+                                        dario.delreal@todomedicion.com
+                                    </a>
+                                </p>
+                            </div>
+
+                        </div>
+
+                        {currentView !== 'form' && (
+                            <footer className="mt-8 text-center">
+                                <p className="text-white/30 text-[10px] uppercase tracking-widest hover:text-white/50 transition-colors cursor-default">
+                                    © {new Date().getFullYear()} SCHWYZ Importaciones
+                                </p>
+                            </footer>
+                        )}
+                    </div>
+                </main>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
 </body>
 </html>
