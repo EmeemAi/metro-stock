@@ -434,12 +434,12 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Registrar Service Worker para PWA
+    // Desregistrar Service Workers anteriores para evitar problemas de caché agresivos
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('Service Worker registrado.', reg))
-                .catch(err => console.log('Error al registrar Service Worker.', err));
+        navigator.serviceWorker.getRegistrations().then(registrations => {
+            for (let registration of registrations) {
+                registration.unregister().then(() => console.log('Service Worker desregistrado con éxito.'));
+            }
         });
     }
 
@@ -688,6 +688,10 @@ async function fetchData() {
 
 
 async function saveFullUpdate(record) {
+    // Normalizar estados para la base de datos (compatibilidad con Sheets)
+    if (record.estado === 'VENDIDO - DESPACHADO') record.estado = 'RESERVADO';
+    if (record.estado === 'VENDIDO - ENTREGADO') record.estado = 'ENTREGADO';
+
     if(GOOGLE_SHEETS_API_URL !== '') {
         const response = await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
@@ -705,10 +709,16 @@ async function saveFullUpdate(record) {
 
 async function updateStateRecord(id, newState, extraData) {
     console.log(">>> Solicitando cambio de estado:", { id, newState, extraData });
+    
+    // Normalizar estados para la base de datos (compatibilidad con Sheets)
+    let apiState = newState;
+    if (apiState === 'VENDIDO - DESPACHADO') apiState = 'RESERVADO';
+    if (apiState === 'VENDIDO - ENTREGADO') apiState = 'ENTREGADO';
+
     if(GOOGLE_SHEETS_API_URL !== '') {
         const requestData = { 
             action: 'update_status', 
-            data: { id: String(id).trim(), estado: newState, ...extraData } 
+            data: { id: String(id).trim(), estado: apiState, ...extraData } 
         };
         const response = await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
@@ -722,7 +732,7 @@ async function updateStateRecord(id, newState, extraData) {
         await new Promise(r => setTimeout(r, 800));
         const index = mockDatabase.findIndex(x => x.id === id);
         if(index > -1) {
-            mockDatabase[index].estado = newState;
+            mockDatabase[index].estado = apiState;
             if(extraData.certificado) mockDatabase[index].certificado = extraData.certificado;
             if(extraData.fecha) mockDatabase[index].fecha_calibracion = extraData.fecha;
             if(extraData.cliente) mockDatabase[index].cliente = extraData.cliente;
@@ -733,6 +743,10 @@ async function updateStateRecord(id, newState, extraData) {
 }
 
 async function saveNewRecord(record) {
+    // Normalizar estados para la base de datos (compatibilidad con Sheets)
+    if (record.estado === 'VENDIDO - DESPACHADO') record.estado = 'RESERVADO';
+    if (record.estado === 'VENDIDO - ENTREGADO') record.estado = 'ENTREGADO';
+
     if(GOOGLE_SHEETS_API_URL !== '') {
         const response = await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
@@ -830,14 +844,23 @@ function updateDashboard() {
         const key = `${item.marca} ${item.modelo}`.toUpperCase();
         if(!stats[key]) stats[key] = { disponible: 0, entregado: 0 };
         
-        if(item.estado === 'DISPONIBLE') {
+        const est = (item.estado || '').toUpperCase();
+        if(est === 'DISPONIBLE') {
             stats[key].disponible++;
             totalAvailable++;
-        } else if (item.estado === 'ENTREGADO' || item.estado === 'RESERVADO') {
+        } else if (est === 'ENTREGADO' || est === 'VENDIDO - ENTREGADO' || est === 'RESERVADO' || est === 'VENDIDO - DESPACHADO' || est === 'VENTA INTERNA') {
             stats[key].entregado++;
             totalVentas++;
-        } else if (item.estado === 'CERTIFICANDO') {
+        } else if (est === 'CERTIFICANDO') {
             totalCertificando++;
+        }
+    });
+
+    // Calcular total de modelos inmovilizados (en stock pero con 0 ventas)
+    let totalInmovilizados = 0;
+    Object.values(stats).forEach(s => {
+        if (s.disponible > 0 && s.entregado === 0) {
+            totalInmovilizados++;
         }
     });
 
@@ -848,6 +871,8 @@ function updateDashboard() {
     if (elVentas) elVentas.innerText = totalVentas;
     const elCertificando = document.getElementById('kpi-certificando');
     if (elCertificando) elCertificando.innerText = totalCertificando;
+    const elInmovilizados = document.getElementById('kpi-inmovilizados');
+    if (elInmovilizados) elInmovilizados.innerText = totalInmovilizados;
 
     // 3. Radar de Reposición (Lógica Crítica)
     const replenishmentList = document.getElementById('replenishment-list');
@@ -879,9 +904,43 @@ function updateDashboard() {
                             <span class="alert-model">${item.name}</span>
                             <span class="alert-reason">${reason}</span>
                         </div>
-                        <div class="alert-action-badge">${item.disponible === 0 ? 'Reponer' : 'Pedir'}</div>
+                        <div class="alert-action-badge">${item.disponible === 0 ? 'Calibrar' : 'Reponer'}</div>
                     `;
                     replenishmentList.appendChild(div);
+                });
+            }
+        }
+
+        // Alertas de Baja Rotación
+        const lowRotationList = document.getElementById('low-rotation-list');
+        if (lowRotationList) {
+            lowRotationList.innerHTML = '';
+            
+            const lowRotationItems = Object.entries(stats)
+                .map(([name, s]) => ({ name, ...s }))
+                .filter(s => s.disponible > 0 && s.entregado <= 1)
+                .sort((a,b) => a.entregado - b.entregado);
+            
+            if(lowRotationItems.length === 0) {
+                lowRotationList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted);">No hay alertas de stock inmovilizado.</p>';
+            } else {
+                lowRotationItems.forEach(item => {
+                    const isNula = item.entregado === 0;
+                    const label = isNula ? 'Inmovilizado' : 'Baja Rotación';
+                    const reason = isNula 
+                        ? `Sin ventas registradas. Stock: ${item.disponible}u` 
+                        : `Solo 1 venta registrada. Stock: ${item.disponible}u`;
+                    
+                    const div = document.createElement('div');
+                    div.className = 'alert-item priority-low';
+                    div.innerHTML = `
+                        <div class="alert-info-text">
+                            <span class="alert-model">${item.name}</span>
+                            <span class="alert-reason">${reason}</span>
+                        </div>
+                        <div class="alert-action-badge">${label}</div>
+                    `;
+                    lowRotationList.appendChild(div);
                 });
             }
         }
@@ -977,7 +1036,17 @@ function renderTable() {
     // Filtrar
     let filtered = appState.data.filter(item => {
         // Filtro por Tab
-        if(appState.filter !== 'ALL' && item.estado !== appState.filter) return false;
+        if(appState.filter !== 'ALL') {
+            const fState = appState.filter;
+            const iState = item.estado;
+            if (fState === 'VENDIDO - DESPACHADO') {
+                if (iState !== 'VENDIDO - DESPACHADO' && iState !== 'RESERVADO') return false;
+            } else if (fState === 'VENDIDO - ENTREGADO') {
+                if (iState !== 'VENDIDO - ENTREGADO' && iState !== 'ENTREGADO') return false;
+            } else {
+                if (iState !== fState) return false;
+            }
+        }
         
         // Filtro por Buscador
         if(appState.search) {
@@ -1039,20 +1108,26 @@ function renderTable() {
                     <button class="btn btn-outline btn-icon-only btn-duplicate-equipo" data-id="${item.id}" data-index="${appState.data.indexOf(item)}" title="Duplicar Equipo"><i data-lucide="copy"></i></button>
                     ${item.estado === 'CERTIFICANDO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Finalizar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Finalizar <i data-lucide="check"></i></button>` : ''}
                     ${item.estado === 'DISPONIBLE' ? `
-                        <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="RESERVADO" title="Despachar">Despachar <i data-lucide="arrow-right"></i></button>
+                        <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="VENDIDO - DESPACHADO" title="Despachar">Despachar <i data-lucide="arrow-right"></i></button>
                         <button class="btn btn-outline btn-icon-only btn-change-state" data-id="${item.id}" data-target-state="VENTA INTERNA" title="Venta Interna" style="color: #6b7280; border-color: #cbd5e1;"><i data-lucide="home"></i></button>
                     ` : ''}
-                    ${item.estado === 'RESERVADO' ? `<button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Asignar Cliente">Asignar Cliente <i data-lucide="user-check"></i></button>` : ''}
+                    ${(item.estado === 'RESERVADO' || item.estado === 'VENDIDO - DESPACHADO') ? `<button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar Certificado">Entregar Certificado <i data-lucide="user-check"></i></button>` : ''}
                 </div>
             `;
 
-            const stateClass = item.estado.toLowerCase().replace(/\s+/g, '-');
+            let displayEstado = item.estado;
+            if (item.estado === 'RESERVADO') {
+                displayEstado = 'VENDIDO - DESPACHADO';
+            } else if (item.estado === 'ENTREGADO') {
+                displayEstado = 'VENDIDO - ENTREGADO';
+            }
+            const stateClass = displayEstado.toLowerCase().replace(/\s+/g, '-');
 
             tr.innerHTML = `
                 <td><strong>${item.id}</strong></td>
                 <td><strong>${item.instrumento || '---'}</strong><br><small style="color: var(--text-secondary);">${item.marca} ${item.modelo}</small></td>
                 <td>${item.serie}</td>
-                <td><span class="badge ${stateClass}">${item.estado}</span></td>
+                <td><span class="badge ${stateClass}">${displayEstado}</span></td>
                 <td>${item.fecha_calibracion}</td>
                 <td><strong>${certText}</strong></td>
                 <td>${clienteText}</td>
@@ -1203,7 +1278,14 @@ function openModalEstado(id, targetState) {
 
     document.getElementById('estado-id').value = id;
     document.getElementById('estado-target').value = targetState;
-    document.getElementById('modal-estado-title').innerText = `Pasar equipo a ${targetState}`;
+    
+    let displayTargetState = targetState;
+    if (targetState === 'ENTREGADO') {
+        displayTargetState = 'VENDIDO - ENTREGADO';
+    } else if (targetState === 'RESERVADO') {
+        displayTargetState = 'VENDIDO - DESPACHADO';
+    }
+    document.getElementById('modal-estado-title').innerText = `Pasar equipo a ${displayTargetState}`;
 
     // Context Info
     document.getElementById('estado-context').innerHTML = `
@@ -1241,7 +1323,7 @@ function openModalEstado(id, targetState) {
         document.getElementById('estado-fecha').valueAsDate = new Date();
     }
 
-    if (targetState === 'RESERVADO') {
+    if (targetState === 'RESERVADO' || targetState === 'VENDIDO - DESPACHADO') {
         fReservado.style.display = 'block';
         document.getElementById('estado-certificado').required = true;
         document.getElementById('estado-fecha').required = true;
@@ -1335,7 +1417,7 @@ async function handleFormEstado(e) {
         const targetState = document.getElementById('estado-target').value;
         
         let extraData = {};
-        if(targetState === 'RESERVADO') {
+        if(targetState === 'RESERVADO' || targetState === 'VENDIDO - DESPACHADO') {
             extraData.certificado = document.getElementById('estado-certificado').value;
             extraData.fecha = document.getElementById('estado-fecha').value;
         } else if (targetState === 'ENTREGADO') {
@@ -1380,7 +1462,13 @@ function openModalFicha(id) {
     document.getElementById('ficha-serie').innerText = item.serie || '---';
 
     // Llenar Trazabilidad
-    document.getElementById('ficha-estado').innerText = item.estado;
+    let displayEstadoFicha = item.estado;
+    if (displayEstadoFicha === 'RESERVADO') {
+        displayEstadoFicha = 'VENDIDO - DESPACHADO';
+    } else if (displayEstadoFicha === 'ENTREGADO') {
+        displayEstadoFicha = 'VENDIDO - ENTREGADO';
+    }
+    document.getElementById('ficha-estado').innerText = displayEstadoFicha;
     document.getElementById('ficha-fecha').innerText = item.fecha_calibracion || '---';
     document.getElementById('ficha-certificado').innerText = item.certificado || '---';
     document.getElementById('ficha-cliente').innerText = item.cliente || '---';
@@ -1422,7 +1510,14 @@ function openModalEdit(id) {
     document.getElementById('edit-modelo').value = item.modelo || '';
     document.getElementById('edit-serie').value = item.serie || '';
     document.getElementById('edit-fecha').value = item.fecha_calibracion || '';
-    document.getElementById('edit-estado').value = item.estado;
+    
+    let selectEstado = item.estado;
+    if (selectEstado === 'RESERVADO') {
+        selectEstado = 'VENDIDO - DESPACHADO';
+    } else if (selectEstado === 'ENTREGADO') {
+        selectEstado = 'VENDIDO - ENTREGADO';
+    }
+    document.getElementById('edit-estado').value = selectEstado;
     document.getElementById('edit-certificado').value = item.certificado || '';
     document.getElementById('edit-cliente').value = item.cliente || '';
 
@@ -1492,7 +1587,7 @@ async function handleFormEdit(e) {
             modelo: document.getElementById('edit-modelo').value,
             serie: document.getElementById('edit-serie').value,
             fecha_calibracion: document.getElementById('edit-fecha').value,
-            estado: document.getElementById('edit-estado').value,
+            estado: (document.getElementById('edit-estado').value === 'VENDIDO - ENTREGADO') ? 'ENTREGADO' : document.getElementById('edit-estado').value,
             certificado: document.getElementById('edit-certificado').value,
             cliente: document.getElementById('edit-cliente').value
         };

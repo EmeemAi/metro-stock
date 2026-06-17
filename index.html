@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Charts (Chart.js) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=23.0">
+    <link rel="stylesheet" href="styles.css?v=24.2">
     
     <!-- PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -690,6 +690,16 @@
         </div>
     </div>
 
-    <script src="script.js?v=23.0"></script>
+    <script>
+        // Forzar desregistro de Service Workers para prevenir caché persistente
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.getRegistrations().then(function(registrations) {
+                for (var registration of registrations) {
+                    registration.unregister();
+                }
+            });
+        }
+    </script>
+    <script src="script.js?v=24.2"></script>
 </body>
 </html>
