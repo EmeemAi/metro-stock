@@ -1249,7 +1249,7 @@ td:nth-child(6)  /* Cert */ {
    ========================================== */
 .bi-charts-grid {
     display: grid;
-    grid-template-columns: 1.2fr 1fr 1fr;
+    grid-template-columns: 1.2fr 1fr;
     gap: 1.5rem;
     width: 100%;
 }

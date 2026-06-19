@@ -507,19 +507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    const mainRadarList = document.getElementById('main-radar-list');
-    if (mainRadarList) {
-        mainRadarList.addEventListener('click', (e) => {
-            const btn = e.target.closest('.btn-reponer-radar');
-            if (btn) {
-                const id = btn.getAttribute('data-id');
-                if (id) {
-                    switchView('gestion');
-                    openModalDuplicate(id);
-                }
-            }
-        });
-    }
+
 
     // Tabla de botones dinámicos (Delegación de eventos)
     const tableBody = document.getElementById('table-body');
@@ -1014,20 +1002,18 @@ function updateDashboard() {
 }
 
 function renderRadarList(criticalItems) {
-    // 1. Radar en la pestaña de Gestión (Alerta Prominente)
-    const mainRadarAlert = document.getElementById('main-radar-alert');
-    const mainRadarList = document.getElementById('main-radar-list');
-    const mainRadarCount = document.getElementById('main-radar-count');
+    const replenishmentList = document.getElementById('replenishment-list');
+    const kpiReposicionCount = document.getElementById('kpi-reposicion-count');
+    
+    if (kpiReposicionCount) {
+        kpiReposicionCount.innerText = `${criticalItems.length} modelo${criticalItems.length !== 1 ? 's' : ''}`;
+    }
 
-    if (mainRadarAlert && mainRadarList) {
+    if (replenishmentList) {
+        replenishmentList.innerHTML = '';
         if (criticalItems.length === 0) {
-            mainRadarAlert.style.display = 'none';
+            replenishmentList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted); grid-column: 1 / -1;">No hay alertas críticas de reposición.</p>';
         } else {
-            mainRadarAlert.style.display = 'flex';
-            if (mainRadarCount) {
-                mainRadarCount.innerText = `${criticalItems.length} modelo${criticalItems.length > 1 ? 's' : ''}`;
-            }
-            mainRadarList.innerHTML = '';
             criticalItems.forEach(item => {
                 const priorityClass = item.disponible === 0 ? 'priority-high' : 'priority-medium';
                 const reason = item.disponible === 0 
@@ -1040,38 +1026,6 @@ function renderRadarList(criticalItems) {
                 const div = document.createElement('div');
                 div.className = `alert-item ${priorityClass}`;
                 div.style.margin = '0';
-                div.innerHTML = `
-                    <div class="alert-info-text">
-                        <span class="alert-model">${item.name}</span>
-                        <span class="alert-reason">${reason}</span>
-                    </div>
-                    <button type="button" class="alert-action-badge btn-reponer-radar" data-id="${targetId}">
-                        ${item.disponible === 0 ? 'Calibrar' : 'Reponer'}
-                    </button>
-                `;
-                mainRadarList.appendChild(div);
-            });
-        }
-    }
-
-    // 2. Radar en la pestaña de Inteligencia de Negocio (Dashboard)
-    const replenishmentList = document.getElementById('replenishment-list');
-    if (replenishmentList) {
-        replenishmentList.innerHTML = '';
-        if (criticalItems.length === 0) {
-            replenishmentList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted);">No hay alertas críticas de reposición.</p>';
-        } else {
-            criticalItems.forEach(item => {
-                const priorityClass = item.disponible === 0 ? 'priority-high' : 'priority-medium';
-                const reason = item.disponible === 0 
-                    ? `SIN STOCK. Ventas: ${item.entregado}u` 
-                    : `STOCK CRÍTICO (${item.disponible}u). Ventas: ${item.entregado}u`;
-                
-                const matchedItem = appState.data.find(x => `${x.marca} ${x.modelo}`.toUpperCase() === item.name);
-                const targetId = matchedItem ? matchedItem.id : '';
-                
-                const div = document.createElement('div');
-                div.className = `alert-item ${priorityClass}`;
                 div.innerHTML = `
                     <div class="alert-info-text">
                         <span class="alert-model">${item.name}</span>
