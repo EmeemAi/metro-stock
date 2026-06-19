@@ -1344,7 +1344,26 @@ td:nth-child(6)  /* Cert */ {
     padding: 0.2rem 0.5rem;
     border-radius: var(--radius-sm);
     text-transform: uppercase;
+    transition: all 0.2s ease;
 }
+
+button.alert-action-badge {
+    cursor: pointer;
+    border: none;
+    font-family: inherit;
+}
+
+button.alert-action-badge:hover {
+    filter: brightness(1.15);
+    transform: scale(1.05);
+}
+
+.radar-filter-btn.active {
+    background-color: var(--primary) !important;
+    color: #ffffff !important;
+    border-color: var(--primary) !important;
+}
+
 
 .priority-medium .alert-action-badge {
     background: #f59e0b;

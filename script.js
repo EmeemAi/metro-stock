@@ -406,7 +406,8 @@ let appState = {
     vencimientos: [],
     loading: false,
     filter: 'ALL',
-    search: ''
+    search: '',
+    radarItems: []
 };
 
 // ==========================================
@@ -464,6 +465,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+
+
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
@@ -489,6 +492,35 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnAddPuntoEdit = document.getElementById('btn-add-punto-edit');
     if (btnAddPuntoEdit) btnAddPuntoEdit.addEventListener('click', () => addPuntoRowEdit());
     
+    // Radares de Reposición (Delegación de eventos click)
+    const replenishmentList = document.getElementById('replenishment-list');
+    if (replenishmentList) {
+        replenishmentList.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-reponer-radar');
+            if (btn) {
+                const id = btn.getAttribute('data-id');
+                if (id) {
+                    switchView('gestion');
+                    openModalDuplicate(id);
+                }
+            }
+        });
+    }
+
+    const mainRadarList = document.getElementById('main-radar-list');
+    if (mainRadarList) {
+        mainRadarList.addEventListener('click', (e) => {
+            const btn = e.target.closest('.btn-reponer-radar');
+            if (btn) {
+                const id = btn.getAttribute('data-id');
+                if (id) {
+                    switchView('gestion');
+                    openModalDuplicate(id);
+                }
+            }
+        });
+    }
+
     // Tabla de botones dinámicos (Delegación de eventos)
     const tableBody = document.getElementById('table-body');
     if (tableBody) {
@@ -885,31 +917,8 @@ function updateDashboard() {
     const elReposicion = document.getElementById('kpi-reposicion');
     if (elReposicion) elReposicion.innerText = criticalItems.length;
 
-    if(biSection.style.display !== 'none') {
-        if (replenishmentList) {
-            replenishmentList.innerHTML = '';
-            if(criticalItems.length === 0) {
-                replenishmentList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted);">No hay alertas críticas de reposición.</p>';
-            } else {
-                criticalItems.forEach(item => {
-                    const priorityClass = item.disponible === 0 ? 'priority-high' : 'priority-medium';
-                    const reason = item.disponible === 0 
-                        ? `SIN STOCK. Ventas registradas: ${item.entregado}u` 
-                        : `STOCK CRÍTICO (${item.disponible}u). Ventas: ${item.entregado}u`;
-                    
-                    const div = document.createElement('div');
-                    div.className = `alert-item ${priorityClass}`;
-                    div.innerHTML = `
-                        <div class="alert-info-text">
-                            <span class="alert-model">${item.name}</span>
-                            <span class="alert-reason">${reason}</span>
-                        </div>
-                        <div class="alert-action-badge">${item.disponible === 0 ? 'Calibrar' : 'Reponer'}</div>
-                    `;
-                    replenishmentList.appendChild(div);
-                });
-            }
-        }
+    appState.radarItems = criticalItems;
+    renderRadarList(criticalItems);
 
         // Alertas de Baja Rotación
         const lowRotationList = document.getElementById('low-rotation-list');
@@ -1002,6 +1011,79 @@ function updateDashboard() {
                 }
             }
         });
+}
+
+function renderRadarList(criticalItems) {
+    // 1. Radar en la pestaña de Gestión (Alerta Prominente)
+    const mainRadarAlert = document.getElementById('main-radar-alert');
+    const mainRadarList = document.getElementById('main-radar-list');
+    const mainRadarCount = document.getElementById('main-radar-count');
+
+    if (mainRadarAlert && mainRadarList) {
+        if (criticalItems.length === 0) {
+            mainRadarAlert.style.display = 'none';
+        } else {
+            mainRadarAlert.style.display = 'flex';
+            if (mainRadarCount) {
+                mainRadarCount.innerText = `${criticalItems.length} modelo${criticalItems.length > 1 ? 's' : ''}`;
+            }
+            mainRadarList.innerHTML = '';
+            criticalItems.forEach(item => {
+                const priorityClass = item.disponible === 0 ? 'priority-high' : 'priority-medium';
+                const reason = item.disponible === 0 
+                    ? `SIN STOCK. Ventas: ${item.entregado}u` 
+                    : `STOCK CRÍTICO (${item.disponible}u). Ventas: ${item.entregado}u`;
+                
+                const matchedItem = appState.data.find(x => `${x.marca} ${x.modelo}`.toUpperCase() === item.name);
+                const targetId = matchedItem ? matchedItem.id : '';
+                
+                const div = document.createElement('div');
+                div.className = `alert-item ${priorityClass}`;
+                div.style.margin = '0';
+                div.innerHTML = `
+                    <div class="alert-info-text">
+                        <span class="alert-model">${item.name}</span>
+                        <span class="alert-reason">${reason}</span>
+                    </div>
+                    <button type="button" class="alert-action-badge btn-reponer-radar" data-id="${targetId}">
+                        ${item.disponible === 0 ? 'Calibrar' : 'Reponer'}
+                    </button>
+                `;
+                mainRadarList.appendChild(div);
+            });
+        }
+    }
+
+    // 2. Radar en la pestaña de Inteligencia de Negocio (Dashboard)
+    const replenishmentList = document.getElementById('replenishment-list');
+    if (replenishmentList) {
+        replenishmentList.innerHTML = '';
+        if (criticalItems.length === 0) {
+            replenishmentList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted);">No hay alertas críticas de reposición.</p>';
+        } else {
+            criticalItems.forEach(item => {
+                const priorityClass = item.disponible === 0 ? 'priority-high' : 'priority-medium';
+                const reason = item.disponible === 0 
+                    ? `SIN STOCK. Ventas: ${item.entregado}u` 
+                    : `STOCK CRÍTICO (${item.disponible}u). Ventas: ${item.entregado}u`;
+                
+                const matchedItem = appState.data.find(x => `${x.marca} ${x.modelo}`.toUpperCase() === item.name);
+                const targetId = matchedItem ? matchedItem.id : '';
+                
+                const div = document.createElement('div');
+                div.className = `alert-item ${priorityClass}`;
+                div.innerHTML = `
+                    <div class="alert-info-text">
+                        <span class="alert-model">${item.name}</span>
+                        <span class="alert-reason">${reason}</span>
+                    </div>
+                    <button type="button" class="alert-action-badge btn-reponer-radar" data-id="${targetId}">
+                        ${item.disponible === 0 ? 'Calibrar' : 'Reponer'}
+                    </button>
+                `;
+                replenishmentList.appendChild(div);
+            });
+        }
     }
 }
 

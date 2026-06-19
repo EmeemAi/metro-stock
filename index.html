@@ -128,7 +128,7 @@
                     </div>
                     <div class="chart-container-card">
                         <h3><i data-lucide="alert-octagon"></i> Radar de Reposición</h3>
-                        <div id="replenishment-list" class="alert-list">
+                        <div id="replenishment-list" class="alert-list" style="max-height: 400px;">
                             <!-- Inyectado por JS -->
                         </div>
                     </div>
@@ -145,7 +145,20 @@
 
             <!-- Vista de Gestión -->
             <section id="view-gestion" style="display: flex; flex-direction: column; gap: 1.5rem;">
-                <!-- Table Controls -->
+                 <!-- Radar de Reposición Prominente (Aviso de Stock Crítico/Faltante) -->
+                 <div id="main-radar-alert" class="chart-container-card" style="display: none; border-left: 5px solid #ef4444; padding: 1.5rem; flex-direction: column; gap: 1rem; margin-bottom: 0.5rem;">
+                     <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                         <h3 style="margin: 0; color: #ef4444; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
+                             <i data-lucide="alert-octagon" style="width: 20px; height: 20px;"></i>
+                             RADAR DE REPOSICIÓN: Modelos en Stock Crítico o Faltantes
+                         </h3>
+                         <span id="main-radar-count" style="background: #ef4444; color: white; font-size: 0.75rem; font-weight: bold; padding: 0.2rem 0.6rem; border-radius: 20px;">0 modelos</span>
+                     </div>
+                     <div id="main-radar-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; width: 100%;">
+                         <!-- Inyectado por JS -->
+                     </div>
+                 </div>
+                 <!-- Table Controls -->
                 <section class="toolbar">
                     <div class="search-box">
                         <i data-lucide="search"></i>
