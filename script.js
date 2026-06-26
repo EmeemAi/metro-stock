@@ -713,11 +713,34 @@ async function saveFullUpdate(record) {
     if (record.estado === 'VENDIDO - ENTREGADO') record.estado = 'ENTREGADO';
 
     if(GOOGLE_SHEETS_API_URL !== '') {
-        const response = await fetch(GOOGLE_SHEETS_API_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'update_full', data: record })
-        });
-        return await response.json();
+        try {
+            const response = await fetch(GOOGLE_SHEETS_API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'update_full', data: record })
+            });
+            return await response.json();
+        } catch (error) {
+            console.warn("⚠️ Error en saveFullUpdate (posible CORS). Intentando verificación optimista...", error);
+            try {
+                await new Promise(r => setTimeout(r, 1000));
+                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
+                const verifyResult = await verifyResponse.json();
+                const items = verifyResult.items || [];
+                const updatedItem = items.find(x => String(x.id).trim() === String(record.id).trim());
+                if (updatedItem && updatedItem.estado === record.estado) {
+                    console.log("✅ Verificación optimista exitosa en saveFullUpdate.");
+                    appState.data = items;
+                    appState.solicitudes = verifyResult.solicitudes || [];
+                    appState.vencimientos = verifyResult.vencimientos || [];
+                    return { success: true };
+                } else {
+                    throw error;
+                }
+            } catch (verifyErr) {
+                console.error("❌ Falló la verificación de saveFullUpdate:", verifyErr);
+                throw error;
+            }
+        }
     } else {
         await new Promise(r => setTimeout(r, 800));
         const index = mockDatabase.findIndex(x => x.id === record.id);
@@ -740,13 +763,37 @@ async function updateStateRecord(id, newState, extraData) {
             action: 'update_status', 
             data: { id: String(id).trim(), estado: apiState, ...extraData } 
         };
-        const response = await fetch(GOOGLE_SHEETS_API_URL, {
-            method: 'POST',
-            body: JSON.stringify(requestData)
-        });
-        const result = await response.json();
-        console.log("<<< Respuesta del servidor:", result);
-        return result;
+        try {
+            const response = await fetch(GOOGLE_SHEETS_API_URL, {
+                method: 'POST',
+                body: JSON.stringify(requestData)
+            });
+            const result = await response.json();
+            console.log("<<< Respuesta del servidor:", result);
+            return result;
+        } catch (error) {
+            console.warn("⚠️ Error en updateStateRecord (posible CORS). Intentando verificación optimista...", error);
+            try {
+                await new Promise(r => setTimeout(r, 1000));
+                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
+                const verifyResult = await verifyResponse.json();
+                const items = verifyResult.items || [];
+                const updatedItem = items.find(x => String(x.id).trim() === String(id).trim());
+                if (updatedItem && updatedItem.estado === apiState && 
+                    (extraData.cliente === undefined || String(updatedItem.cliente).trim() === String(extraData.cliente).trim())) {
+                    console.log("✅ Verificación optimista exitosa en updateStateRecord.");
+                    appState.data = items;
+                    appState.solicitudes = verifyResult.solicitudes || [];
+                    appState.vencimientos = verifyResult.vencimientos || [];
+                    return { success: true };
+                } else {
+                    throw error;
+                }
+            } catch (verifyErr) {
+                console.error("❌ Falló la verificación de updateStateRecord:", verifyErr);
+                throw error;
+            }
+        }
     } else {
         // En Mock Local
         await new Promise(r => setTimeout(r, 800));
@@ -768,11 +815,34 @@ async function saveNewRecord(record) {
     if (record.estado === 'VENDIDO - ENTREGADO') record.estado = 'ENTREGADO';
 
     if(GOOGLE_SHEETS_API_URL !== '') {
-        const response = await fetch(GOOGLE_SHEETS_API_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'create', data: record })
-        });
-        return await response.json();
+        try {
+            const response = await fetch(GOOGLE_SHEETS_API_URL, {
+                method: 'POST',
+                body: JSON.stringify({ action: 'create', data: record })
+            });
+            return await response.json();
+        } catch (error) {
+            console.warn("⚠️ Error en saveNewRecord (posible CORS). Intentando verificación optimista...", error);
+            try {
+                await new Promise(r => setTimeout(r, 1000));
+                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
+                const verifyResult = await verifyResponse.json();
+                const items = verifyResult.items || [];
+                const createdItem = items.find(x => String(x.id).trim() === String(record.id).trim());
+                if (createdItem) {
+                    console.log("✅ Verificación optimista exitosa en saveNewRecord.");
+                    appState.data = items;
+                    appState.solicitudes = verifyResult.solicitudes || [];
+                    appState.vencimientos = verifyResult.vencimientos || [];
+                    return { success: true };
+                } else {
+                    throw error;
+                }
+            } catch (verifyErr) {
+                console.error("❌ Falló la verificación de saveNewRecord:", verifyErr);
+                throw error;
+            }
+        }
     } else {
         // En Mock Local
         await new Promise(r => setTimeout(r, 800));
@@ -1488,51 +1558,328 @@ function openModalFicha(id) {
     const item = appState.data.find(x => x.id === id);
     if(!item) return;
 
+    // Helper: Formatear fecha a DD / MM / YYYY o dejar en blanco si no tiene
+    const formatRegDate = (dateStr) => {
+        const str = String(dateStr || '').trim();
+        if (str === '' || str === '---') {
+            return '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;/&nbsp;&nbsp;2026';
+        }
+        const parts = str.split('-');
+        if (parts.length === 3) {
+            return `${parts[2]} / ${parts[1]} / ${parts[0]}`;
+        }
+        const partsSlash = str.split('/');
+        if (partsSlash.length === 3) {
+            return `${partsSlash[0]} / ${partsSlash[1]} / ${partsSlash[2]}`;
+        }
+        return str;
+    };
 
+    // Helper: Obtener especificaciones del instrumento
+    const getInstrumentSpecs = (instrumento, certificado) => {
+        const name = (instrumento || '').toUpperCase();
+        const cert = (certificado || '').toUpperCase();
+        
+        let rango = '---';
+        let resolucion = '---';
+        let tolerancia = '---';
+        
+        if (name.includes('DECIBEL') || name.includes('SONÓMETRO') || name.includes('SONOMETRO') || cert.includes('-DE-') || cert.includes('-DB-') || cert.includes('-DC-')) {
+            rango = '30 a 130 dB';
+            resolucion = '0,1 dB';
+        } else if (name.includes('DINAM') || cert.includes('-DN-')) {
+            rango = '0 a 500 N';
+            resolucion = '0,1 N';
+        } else if (name.includes('TERMOHIGR') || cert.includes('-TH-')) {
+            rango = 'Temp: 0 a 50 °C / Hum: 10 a 95 %Hr';
+            resolucion = 'Temp: 0,1 °C / Hum: 1 %Hr';
+        } else if (name.includes('LUX') || cert.includes('-LX-')) {
+            rango = '0 a 20000 Lux';
+            resolucion = '1 Lux';
+        } else if (name.includes('TERMÓM') || name.includes('TERMOM') || cert.includes('-TE-') || cert.includes('-TC-')) {
+            rango = '-30 a 150 °C';
+            resolucion = '0,1 °C';
+        } else if (name.includes('CALIBRE') || cert.includes('-CA-')) {
+            rango = '0 a 150 mm';
+            resolucion = '0,01 mm';
+        }
+        
+        return { rango, resolucion, tolerancia };
+    };
 
-    // Llenar Cabecera
-    document.getElementById('ficha-id').innerText = `ID: ${item.id}`;
-    document.getElementById('ficha-instrumento').innerText = item.instrumento || '---';
-    document.getElementById('ficha-marca').innerText = item.marca || '---';
-    document.getElementById('ficha-modelo').innerText = item.modelo || '---';
-    document.getElementById('ficha-serie').innerText = item.serie || '---';
+    // Helper: Generar tabla de mediciones (Puntos, V.Ref, V.Inst...)
+    const generateTableHTML = (unit, points) => {
+        let rowsHTML = '';
+        for (let i = 0; i < 3; i++) {
+            const p = points[i] || {};
+            const refVal = p.ref !== undefined ? String(p.ref).replace('.', ',') : '';
+            const instVal = p.inst !== undefined ? String(p.inst).replace('.', ',') : '';
+            
+            rowsHTML += `
+                <tr>
+                    <td style="text-align: center; font-weight: bold; width: 10%;">${i + 1}</td>
+                    <td style="width: 15%; text-align: center;">${refVal}</td>
+                    <td style="width: 15%; text-align: center;">${instVal}</td>
+                    <td style="width: 15%;"></td>
+                    <td style="width: 15%;"></td>
+                    <td style="width: 15%;"></td>
+                    <td style="width: 15%;"></td>
+                </tr>
+            `;
+        }
+        
+        return `
+            <div style="display: flex; flex-direction: column; width: 100%; margin-top: 10px; page-break-inside: avoid;">
+                <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; width: 100%; margin-bottom: 5px;">
+                    <span style="font-size: 0.8rem; font-weight: bold;">Unid Med:</span>
+                    <span style="border: 2px solid black; padding: 2px 10px; font-size: 0.85rem; font-weight: bold; min-width: 60px; text-align: center; background: white; color: black;">${unit}</span>
+                </div>
+                <table class="reg-measurement-table">
+                    <thead>
+                        <tr>
+                            <th>PUNTOS</th>
+                            <th>V.Ref</th>
+                            <th>V.Inst</th>
+                            <th>V.Ref</th>
+                            <th>V.Inst</th>
+                            <th>V.Ref</th>
+                            <th>V.Inst</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHTML}
+                    </tbody>
+                </table>
+            </div>
+        `;
+    };
 
-    // Llenar Trazabilidad
-    let displayEstadoFicha = item.estado;
-    if (displayEstadoFicha === 'RESERVADO') {
-        displayEstadoFicha = 'VENDIDO - DESPACHADO';
-    } else if (displayEstadoFicha === 'ENTREGADO') {
-        displayEstadoFicha = 'VENDIDO - ENTREGADO';
-    }
-    document.getElementById('ficha-estado').innerText = displayEstadoFicha;
-    document.getElementById('ficha-fecha').innerText = item.fecha_calibracion || '---';
-    document.getElementById('ficha-certificado').innerText = item.certificado || '---';
-    document.getElementById('ficha-cliente').innerText = item.cliente || '---';
-
-    // Llenar Puntos (Tabla)
-    const tbody = document.getElementById('ficha-tbody-puntos');
-    tbody.innerHTML = '';
+    // Datos del equipo
+    const cliente = (item.cliente || '').trim();
+    const fechaFormatted = formatRegDate(item.fecha_calibracion);
+    const instrumento = (item.instrumento || '').trim();
+    const marca = (item.marca || '').trim();
+    const modelo = (item.modelo || '').trim();
+    const serie = (item.serie || '').trim();
+    const idInstrumento = (item.id || '').trim();
+    const certificado = (item.certificado || '').trim();
     
+    // Obtener Rango, Resolución, Tolerancia
+    const specs = getInstrumentSpecs(instrumento, certificado);
+
+    // Parsear puntos
     let puntosArray = [];
     try {
         if(item.puntos) puntosArray = JSON.parse(item.puntos);
     } catch(e) { console.error("Error leyendo puntos Json", e); }
 
-    if(puntosArray.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color: #9ca3af;">Sin puntos de medición registrados.</td></tr>';
+    // Determinar si es Termohigrómetro
+    const instUpper = instrumento.toUpperCase();
+    const certUpper = certificado.toUpperCase();
+    const isTH = instUpper.includes('TERMOHIGR') || certUpper.includes('-TH-');
+
+    // Generar tablas de resultados
+    let tablesHTML = '';
+    if (isTH) {
+        // Puntos de temperatura (no contienen M2 y la unidad no es %)
+        const tempPts = puntosArray.filter(p => !String(p.pt).toUpperCase().includes('M2') && !String(p.unidad).includes('%'));
+        // Puntos de humedad (contienen M2 o la unidad es %)
+        const humPts = puntosArray.filter(p => String(p.pt).toUpperCase().includes('M2') || String(p.unidad).includes('%'));
+        
+        tablesHTML = `
+            ${generateTableHTML('°C', tempPts)}
+            ${generateTableHTML('%Hr', humPts)}
+        `;
     } else {
-        puntosArray.forEach(p => {
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-                <td><strong>${p.pt}</strong></td>
-                <td>${p.unidad || '-'}</td>
-                <td>${p.ref || '-'}</td>
-                <td>${p.inst || '-'}</td>
-            `;
-            tbody.appendChild(tr);
-        });
+        const unit = puntosArray.length > 0 ? (puntosArray[0].unidad || '°C') : '°C';
+        tablesHTML = generateTableHTML(unit, puntosArray);
     }
 
+    // Parsear patrones seleccionados
+    let patronesStr = '';
+    if (item.patrones) {
+        try {
+            const pats = JSON.parse(item.patrones);
+            if (Array.isArray(pats)) {
+                patronesStr = pats.join(', ');
+            }
+        } catch(e) {
+            patronesStr = String(item.patrones);
+        }
+    }
+    if (!patronesStr && isTH) {
+        patronesStr = 'THGP-001'; // Default para Termohigrómetro si está en blanco
+    }
+
+    // Construir HTML del registro
+    const htmlContent = `
+        <div class="registro-calibracion-container">
+            <!-- Cabecera -->
+            <div class="reg-header">
+                <div class="reg-title">REGISTRO DE CALIBRACION</div>
+                <img src="logo_schwyz.png" alt="SchwyzLab" class="reg-logo">
+            </div>
+            
+            <div class="reg-divider"></div>
+            
+            <!-- Cliente & Fecha -->
+            <div class="reg-row">
+                <div class="reg-field" style="flex: 2;">
+                    <span class="reg-label">CLIENTE:</span>
+                    <span class="reg-value-underline" style="font-weight: 500;">${cliente}</span>
+                </div>
+                <div class="reg-field" style="flex: 1; justify-content: flex-end;">
+                    <span class="reg-label">Fecha:</span>
+                    <span class="reg-value-date">${fechaFormatted}</span>
+                </div>
+            </div>
+            
+            <div class="reg-divider"></div>
+            
+            <!-- Grid de Información de Instrumento y Acción Tomada -->
+            <div class="reg-info-grid">
+                <!-- Columna Izquierda: Información -->
+                <div class="reg-info-col-left">
+                    <div class="reg-field-line">
+                        <span class="reg-label-fixed">INSTRUMENTO:</span>
+                        <span class="reg-value-underline">${instrumento}</span>
+                    </div>
+                    <div class="reg-field-line">
+                        <span class="reg-label-fixed">MARCA:</span>
+                        <span class="reg-value-underline">${marca}</span>
+                    </div>
+                    <div class="reg-field-line">
+                        <span class="reg-label-fixed">MODELO:</span>
+                        <span class="reg-value-underline">${modelo}</span>
+                    </div>
+                    <div class="reg-field-line">
+                        <span class="reg-label-fixed">Nº SERIE:</span>
+                        <span class="reg-value-underline">${serie}</span>
+                    </div>
+                    <div class="reg-field-line">
+                        <span class="reg-label-fixed">RANGO:</span>
+                        <span class="reg-value-underline">${specs.rango}</span>
+                    </div>
+                    <div class="reg-field-line">
+                        <span class="reg-label-fixed">DIV. MIN(RES):</span>
+                        <span class="reg-value-underline">${specs.resolucion}</span>
+                    </div>
+                    <div class="reg-field-line">
+                        <span class="reg-label-fixed">TOLERANCIA:</span>
+                        <span class="reg-value-underline">${specs.tolerancia}</span>
+                    </div>
+                    <div class="reg-field-line">
+                        <span class="reg-label-fixed">ID INSTRUMENTO:</span>
+                        <span class="reg-value-underline" style="font-weight: bold;">${idInstrumento}</span>
+                    </div>
+                </div>
+                
+                <!-- Columna Derecha: Acción y Nº Certificado -->
+                <div class="reg-info-col-right">
+                    <div class="reg-action-taken-box">
+                        <div class="reg-action-title">Accion Tomada:</div>
+                        <table class="reg-action-table">
+                            <thead>
+                                <tr>
+                                    <th></th>
+                                    <th>SI</th>
+                                    <th>NO</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="row-label">Limpieza</td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                                <tr>
+                                    <td class="row-label">Ajuste</td>
+                                    <td></td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="reg-cert-number-box">
+                        <span class="reg-label">Nº Cert:</span>
+                        <span class="reg-value-underline" style="font-weight: bold; text-align: center;">${certificado}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="reg-divider"></div>
+            
+            <!-- Resultados -->
+            <div class="reg-results-section">
+                <div class="reg-results-title">RESULTADO ENCONTRADO</div>
+                ${tablesHTML}
+            </div>
+            
+            <!-- Pie de Página -->
+            <div class="reg-footer-section">
+                <div class="reg-footer-row-top">
+                    <div class="reg-footer-col-left">
+                        <div class="reg-field-line">
+                            <span class="reg-label-fixed-footer">Patron Utilizado:</span>
+                            <span class="reg-value-underline" style="font-weight: bold;">${patronesStr}</span>
+                        </div>
+                        <div class="reg-field-line" style="margin-top: 10px;">
+                            <span class="reg-label-fixed-footer">Observacion:</span>
+                            <span class="reg-value-underline">___________________________________</span>
+                        </div>
+                        <div class="reg-field-line">
+                            <span class="reg-label-fixed-footer"></span>
+                            <span class="reg-value-underline">___________________________________</span>
+                        </div>
+                    </div>
+                    <div class="reg-footer-col-right">
+                        <div style="font-size: 0.8rem; line-height: 1.4; color: #333; margin-top: 5px;">
+                            <strong>V.Ref</strong> - Valor Patron<br>
+                            <strong>V.Inst</strong> - Valor Instrumento
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="reg-divider" style="margin-top: 15px; margin-bottom: 15px;"></div>
+                
+                <div class="reg-footer-row-bottom">
+                    <div class="reg-field-line" style="margin-bottom: 8px;">
+                        <span class="reg-label-fixed-footer">Cond Ambientales:</span>
+                        <span class="reg-value-underline" style="width: 100px; display: inline-block; text-align: center;"></span>
+                        <span style="font-size: 0.85rem; font-weight: 500; margin-left: 5px;">°C</span>
+                    </div>
+                    <div class="reg-field-line" style="margin-bottom: 15px;">
+                        <span class="reg-label-fixed-footer"></span>
+                        <span class="reg-value-underline" style="width: 100px; display: inline-block; text-align: center;"></span>
+                        <span style="font-size: 0.85rem; font-weight: 500; margin-left: 5px;">%Hr</span>
+                    </div>
+                    
+                    <div class="reg-field-line" style="margin-top: 10px;">
+                        <span class="reg-label-fixed-footer">Calibrado por:</span>
+                        <span class="reg-value-underline" style="width: 250px; display: inline-block;"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // Inyectar HTML en la zona imprimible del modal
+    document.querySelector('.printable-ficha').innerHTML = htmlContent;
+
+    // Configurar botón "Emitir Certificado" en la cabecera del modal
+    const btnEmitir = document.getElementById('btn-emitir-certificado-ficha');
+    if (btnEmitir) {
+        if (certificado && certificado !== '---' && certificado.trim() !== '') {
+            btnEmitir.style.display = 'inline-flex';
+            btnEmitir.onclick = () => {
+                imprimirCertificado(item.id);
+            };
+        } else {
+            btnEmitir.style.display = 'none';
+        }
+    }
+
+    // Mostrar el modal
     modal.classList.add('active');
 }
 
@@ -1736,12 +2083,28 @@ function obtenerIdNumericoCertificado(cert) {
     return match ? match[0] : clean;
 }
 
+function obtenerLetrasCertificado(cert) {
+    const clean = String(cert || '').trim().toUpperCase();
+    // Quitar el año/mes del inicio si existe (4 a 6 dígitos seguidos opcionalmente por guión)
+    const sinFecha = clean.replace(/^\d{4,6}-?/, '');
+    // Extraer solo las letras
+    const match = sinFecha.match(/[A-Z]+/g);
+    return match ? match.join('') : '';
+}
+
 function certificadosCoinciden(certA, certB) {
     const cleanA = String(certA || '').trim().toUpperCase();
     const cleanB = String(certB || '').trim().toUpperCase();
     
     if (cleanA === '' || cleanB === '') return false;
     if (cleanA === cleanB) return true;
+    
+    // Validar compatibilidad de letras (tipo de instrumento, ej: TH vs LX)
+    const letrasA = obtenerLetrasCertificado(cleanA);
+    const letrasB = obtenerLetrasCertificado(cleanB);
+    if (letrasA && letrasB && letrasA !== letrasB) {
+        return false; // Conflicto de tipo (ej: TH vs LX)
+    }
     
     // Quitar todos los caracteres no alfanuméricos
     const alphaA = cleanA.replace(/[^A-Z0-9]/g, '');
