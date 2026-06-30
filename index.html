@@ -130,10 +130,24 @@
                     <div id="replenishment-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; width: 100%; overflow-y: auto; flex: 1; padding-right: 0.5rem;">
                         <!-- Inyectado por JS -->
                     </div>
+                    <div id="discontinued-container" style="border-top: 1px solid var(--border-color); padding-top: 0.75rem; display: none; flex-direction: column; gap: 0.5rem; width: 100%;">
+                        <h4 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem;">
+                            <i data-lucide="archive" style="width: 14px; height: 14px;"></i> Modelos Discontinuados
+                        </h4>
+                        <div id="discontinued-list" style="display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.75rem; max-height: 80px; overflow-y: auto;">
+                            <!-- Inyectado por JS -->
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Gráficos y Alertas -->
                 <div class="bi-charts-grid">
+                    <div class="chart-container-card chart-span-2">
+                        <h3><i data-lucide="line-chart"></i> Evolución de Ventas Mensuales</h3>
+                        <div class="chart-wrapper">
+                            <canvas id="chart-evolution"></canvas>
+                        </div>
+                    </div>
                     <div class="chart-container-card">
                         <h3><i data-lucide="trending-up"></i> Equipos Más Vendidos</h3>
                         <div class="chart-wrapper">

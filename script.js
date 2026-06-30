@@ -495,13 +495,93 @@ document.addEventListener('DOMContentLoaded', () => {
     // Radares de Reposición (Delegación de eventos click)
     const replenishmentList = document.getElementById('replenishment-list');
     if (replenishmentList) {
-        replenishmentList.addEventListener('click', (e) => {
+        replenishmentList.addEventListener('click', async (e) => {
             const btn = e.target.closest('.btn-reponer-radar');
             if (btn) {
                 const id = btn.getAttribute('data-id');
                 if (id) {
                     switchView('gestion');
                     openModalDuplicate(id);
+                }
+            }
+            
+            const btnDisc = e.target.closest('.btn-discontinuar-radar');
+            if (btnDisc) {
+                const modelName = btnDisc.getAttribute('data-model');
+                if (modelName) {
+                    if (confirm(`¿Estás seguro de que deseas marcar el modelo "${modelName}" como discontinuado? Ya no aparecerá en las sugerencias de reposición.`)) {
+                        showLoader('Marcando modelo como discontinuado...');
+                        try {
+                            const matchedItem = appState.data.find(x => `${x.marca} ${x.modelo}`.toUpperCase() === modelName.toUpperCase());
+                            if (matchedItem) {
+                                const res = await updateStateRecord(matchedItem.id, matchedItem.estado, { discontinuado: 'SI' });
+                                if (res && res.success) {
+                                    appState.data.forEach(x => {
+                                        if (`${x.marca} ${x.modelo}`.toUpperCase() === modelName.toUpperCase()) {
+                                            x.discontinuado = 'SI';
+                                        }
+                                    });
+                                    showToast(`Modelo "${modelName}" discontinuado con éxito.`, 'success');
+                                } else {
+                                    showToast('No se pudo discontinuar el modelo.', 'error');
+                                }
+                            } else {
+                                showToast('No se encontraron registros para este modelo.', 'error');
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            showToast('Error al procesar la solicitud.', 'error');
+                        } finally {
+                            hideLoader();
+                            updateDashboard();
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const discontinuedList = document.getElementById('discontinued-list');
+    if (discontinuedList) {
+        discontinuedList.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.btn-reactivar-model');
+            if (btn) {
+                const modelName = btn.getAttribute('data-model');
+                if (modelName) {
+                    if (confirm(`¿Deseas reactivar el modelo "${modelName}"? Volverá a aparecer en el Radar de Reposición si tiene stock crítico.`)) {
+                        showLoader('Reactivando modelo...');
+                        try {
+                            const matchedItems = appState.data.filter(x => `${x.marca} ${x.modelo}`.toUpperCase() === modelName.toUpperCase() && (x.discontinuado === 'SI' || x.discontinuado === 'si' || x.discontinuado === true));
+                            let success = true;
+                            for (const item of matchedItems) {
+                                const res = await updateStateRecord(item.id, item.estado, { discontinuado: '' });
+                                if (!res || !res.success) {
+                                    success = false;
+                                }
+                            }
+                            if (success) {
+                                appState.data.forEach(x => {
+                                    if (`${x.marca} ${x.modelo}`.toUpperCase() === modelName.toUpperCase()) {
+                                        x.discontinuado = '';
+                                    }
+                                });
+                                showToast(`Modelo "${modelName}" reactivado con éxito.`, 'success');
+                            } else {
+                                showToast('Hubo un inconveniente al reactivar algunas unidades.', 'warning');
+                                appState.data.forEach(x => {
+                                    if (`${x.marca} ${x.modelo}`.toUpperCase() === modelName.toUpperCase()) {
+                                        x.discontinuado = '';
+                                    }
+                                });
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            showToast('Error al procesar la solicitud.', 'error');
+                        } finally {
+                            hideLoader();
+                            updateDashboard();
+                        }
+                    }
                 }
             }
         });
@@ -644,6 +724,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const isMatte = document.body.classList.toggle('theme-matte');
         localStorage.setItem('theme', isMatte ? 'matte' : 'light');
         updateThemeToggleUI(isMatte);
+        if (typeof updateDashboard === 'function') {
+            updateDashboard();
+        }
     });
 });
 
@@ -803,6 +886,7 @@ async function updateStateRecord(id, newState, extraData) {
             if(extraData.certificado) mockDatabase[index].certificado = extraData.certificado;
             if(extraData.fecha) mockDatabase[index].fecha_calibracion = extraData.fecha;
             if(extraData.cliente) mockDatabase[index].cliente = extraData.cliente;
+            if(extraData.discontinuado !== undefined) mockDatabase[index].discontinuado = extraData.discontinuado;
         }
         appState.data = [...mockDatabase];
         return { success: true };
@@ -912,6 +996,39 @@ function switchView(view) {
 }
 
 let salesChart = null;
+let evolutionChart = null;
+
+function parseYearMonth(dateStr) {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    dateStr = dateStr.trim();
+    if (dateStr === '' || dateStr === '---') return null;
+
+    // Try YYYY-MM-DD
+    if (dateStr.includes('-')) {
+        const parts = dateStr.split('-');
+        if (parts.length >= 2) {
+            let y = parseInt(parts[0], 10);
+            const m = parseInt(parts[1], 10);
+            if (!isNaN(y) && !isNaN(m)) {
+                if (y < 100) y += 2000;
+                return { year: y, month: m };
+            }
+        }
+    }
+    // Try DD/MM/YYYY
+    if (dateStr.includes('/')) {
+        const parts = dateStr.split('/');
+        if (parts.length >= 3) {
+            let y = parseInt(parts[2], 10);
+            const m = parseInt(parts[1], 10);
+            if (!isNaN(y) && !isNaN(m)) {
+                if (y < 100) y += 2000;
+                return { year: y, month: m };
+            }
+        }
+    }
+    return null;
+}
 
 function updateDashboard() {
     const biSection = document.getElementById('bi-dashboard');
@@ -932,7 +1049,12 @@ function updateDashboard() {
     let totalCertificando = 0;
     appState.data.forEach(item => {
         const key = `${item.marca} ${item.modelo}`.toUpperCase();
-        if(!stats[key]) stats[key] = { disponible: 0, entregado: 0 };
+        if(!stats[key]) stats[key] = { disponible: 0, entregado: 0, discontinuado: false, items: [] };
+        
+        stats[key].items.push(item);
+        if (item.discontinuado === 'SI' || item.discontinuado === 'si' || item.discontinuado === true) {
+            stats[key].discontinuado = true;
+        }
         
         const est = (item.estado || '').toUpperCase();
         if(est === 'DISPONIBLE') {
@@ -969,14 +1091,19 @@ function updateDashboard() {
     
     const criticalItems = Object.entries(stats)
         .map(([name, s]) => ({ name, ...s }))
-        .filter(s => s.entregado > 0 && s.disponible < 2) // Menos de 2 unidades y con historial de ventas
+        .filter(s => s.entregado > 0 && s.disponible < 2 && !s.discontinuado) // Menos de 2 unidades y con historial de ventas, no discontinuado
         .sort((a,b) => b.entregado - a.entregado); // Ordenar por demanda
+
+    const discontinuedModels = Object.entries(stats)
+        .map(([name, s]) => ({ name, ...s }))
+        .filter(s => s.discontinuado)
+        .map(s => s.name);
 
     const elReposicion = document.getElementById('kpi-reposicion');
     if (elReposicion) elReposicion.innerText = criticalItems.length;
 
     appState.radarItems = criticalItems;
-    renderRadarList(criticalItems);
+    renderRadarList(criticalItems, discontinuedModels);
 
         // Alertas de Baja Rotación
         const lowRotationList = document.getElementById('low-rotation-list');
@@ -1012,66 +1139,198 @@ function updateDashboard() {
             }
         }
 
-        // 4. Gráfico de Ventas (Top Demand)
-        const canvas = document.getElementById('chart-sales');
-        if(!canvas) return;
-        const ctx = canvas.getContext('2d');
-        
         const isMatte = document.body.classList.contains('theme-matte');
         const chartColor = isMatte ? '#60a5fa' : '#2563eb';
         const gridColor = isMatte ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
         const textColor = isMatte ? '#a1a1aa' : '#4b5563';
 
-        const salesData = Object.entries(stats)
-            .map(([name, s]) => ({ name, count: s.entregado }))
-            .filter(s => s.count > 0)
-            .sort((a, b) => b.count - a.count)
-            .slice(0, 5); // Top 5 para mayor estabilidad
-        
-        if(salesChart) salesChart.destroy();
-        
-        salesChart = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: salesData.map(d => d.name),
-                datasets: [{
-                    label: 'Unidades Vendidas',
-                    data: salesData.map(d => d.count),
-                    backgroundColor: chartColor,
-                    borderRadius: 4,
-                    barThickness: 4
-                }]
-            },
-            options: {
-                indexAxis: 'y',
-                responsive: true,
-                maintainAspectRatio: false,
-                animation: {
-                    duration: 500
+        // 4. Gráfico de Ventas (Top Demand)
+        const canvas = document.getElementById('chart-sales');
+        if(canvas) {
+            const ctx = canvas.getContext('2d');
+            const salesData = Object.entries(stats)
+                .map(([name, s]) => ({ name, count: s.entregado }))
+                .filter(s => s.count > 0)
+                .sort((a, b) => b.count - a.count)
+                .slice(0, 5); // Top 5 para mayor estabilidad
+            
+            if(salesChart) salesChart.destroy();
+            
+            salesChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: salesData.map(d => d.name),
+                    datasets: [{
+                        label: 'Unidades Vendidas',
+                        data: salesData.map(d => d.count),
+                        backgroundColor: chartColor,
+                        borderRadius: 4,
+                        barThickness: 4
+                    }]
                 },
-                plugins: {
-                    legend: { display: false }
-                },
-                scales: {
-                    x: { 
-                        beginAtZero: true, 
-                        grid: { display: false },
-                        ticks: { stepSize: 1, color: textColor } 
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 500
                     },
-                    y: { 
-                        grid: { display: false },
-                        ticks: {
-                            autoSkip: false,
-                            font: { size: 10 },
-                            color: textColor
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: { 
+                            beginAtZero: true, 
+                            grid: { display: false },
+                            ticks: { stepSize: 1, color: textColor } 
+                        },
+                        y: { 
+                            grid: { display: false },
+                            ticks: {
+                                autoSkip: false,
+                                font: { size: 10 },
+                                color: textColor
+                            }
                         }
                     }
                 }
+            });
+        }
+
+        // 5. Gráfico Evolutivo de Ventas Mensuales
+        const canvasEvol = document.getElementById('chart-evolution');
+        if(canvasEvol) {
+            const ctxEvol = canvasEvol.getContext('2d');
+            
+            const salesByMonth = {};
+            appState.data.forEach(item => {
+                const est = (item.estado || '').toUpperCase();
+                if (est === 'ENTREGADO' || est === 'VENDIDO - ENTREGADO' || est === 'RESERVADO' || est === 'VENDIDO - DESPACHADO' || est === 'VENTA INTERNA') {
+                    const dateParsed = parseYearMonth(item.fecha_calibracion);
+                    if (dateParsed) {
+                        const key = `${dateParsed.year}-${String(dateParsed.month).padStart(2, '0')}`;
+                        salesByMonth[key] = (salesByMonth[key] || 0) + 1;
+                    }
+                }
+            });
+
+            const keys = Object.keys(salesByMonth);
+            let sortedData = [];
+            if (keys.length > 0) {
+                keys.sort();
+                const minKey = keys[0];
+                const maxKey = keys[keys.length - 1];
+
+                const [minY, minM] = minKey.split('-').map(Number);
+                const [maxY, maxM] = maxKey.split('-').map(Number);
+
+                let currY = minY;
+                let currM = minM;
+                const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+
+                while (currY < maxY || (currY === maxY && currM <= maxM)) {
+                    const key = `${currY}-${String(currM).padStart(2, '0')}`;
+                    const label = `${monthNames[currM - 1]} ${currY}`;
+                    const count = salesByMonth[key] || 0;
+                    sortedData.push({ label, count });
+
+                    currM++;
+                    if (currM > 12) {
+                        currM = 1;
+                        currY++;
+                    }
+                }
+            } else {
+                const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+                let d = new Date();
+                for (let i = 5; i >= 0; i--) {
+                    let temp = new Date(d.getFullYear(), d.getMonth() - i, 1);
+                    sortedData.push({ label: `${monthNames[temp.getMonth()]} ${temp.getFullYear()}`, count: 0 });
+                }
             }
-        });
+
+            // Create a gorgeous gradient for the area chart
+            const gradient = ctxEvol.createLinearGradient(0, 0, 0, 200);
+            if (isMatte) {
+                gradient.addColorStop(0, 'rgba(96, 165, 250, 0.3)');
+                gradient.addColorStop(1, 'rgba(96, 165, 250, 0.0)');
+            } else {
+                gradient.addColorStop(0, 'rgba(37, 99, 235, 0.2)');
+                gradient.addColorStop(1, 'rgba(37, 99, 235, 0.0)');
+            }
+
+            if(evolutionChart) evolutionChart.destroy();
+
+            evolutionChart = new Chart(ctxEvol, {
+                type: 'line',
+                data: {
+                    labels: sortedData.map(d => d.label),
+                    datasets: [{
+                        label: 'Ventas Mensuales',
+                        data: sortedData.map(d => d.count),
+                        borderColor: chartColor,
+                        backgroundColor: gradient,
+                        fill: true,
+                        tension: 0.4,
+                        borderWidth: 2,
+                        pointBackgroundColor: chartColor,
+                        pointBorderColor: isMatte ? '#0f0f0f' : '#ffffff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    animation: {
+                        duration: 500
+                    },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false,
+                            backgroundColor: isMatte ? '#1f2937' : '#ffffff',
+                            titleColor: isMatte ? '#ffffff' : '#1f2937',
+                            bodyColor: isMatte ? '#d1d5db' : '#4b5563',
+                            borderColor: isMatte ? '#374151' : '#e5e7eb',
+                            borderWidth: 1,
+                            padding: 10,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return ` Ventas: ${context.parsed.y} u`;
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { 
+                                display: true,
+                                color: gridColor
+                            },
+                            ticks: { color: textColor }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { 
+                                display: true,
+                                color: gridColor
+                            },
+                            ticks: { 
+                                stepSize: 1, 
+                                color: textColor 
+                            }
+                        }
+                    }
+                }
+            });
+        }
 }
 
-function renderRadarList(criticalItems) {
+function renderRadarList(criticalItems, discontinuedModels = []) {
     const replenishmentList = document.getElementById('replenishment-list');
     const kpiReposicionCount = document.getElementById('kpi-reposicion-count');
     
@@ -1101,13 +1360,47 @@ function renderRadarList(criticalItems) {
                         <span class="alert-model">${item.name}</span>
                         <span class="alert-reason">${reason}</span>
                     </div>
-                    <button type="button" class="alert-action-badge btn-reponer-radar" data-id="${targetId}">
-                        ${item.disponible === 0 ? 'Calibrar' : 'Reponer'}
-                    </button>
+                    <div style="display: flex; gap: 0.5rem; align-items: center;">
+                        <button type="button" class="btn btn-outline btn-sm btn-discontinuar-radar" data-model="${item.name}" title="Discontinuar Modelo" style="padding: 0.25rem 0.5rem; height: 32px; border-color: rgba(220, 38, 38, 0.2); color: #dc2626; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; background: transparent;">
+                            <i data-lucide="archive" style="width: 14px; height: 14px;"></i>
+                        </button>
+                        <button type="button" class="alert-action-badge btn-reponer-radar" data-id="${targetId}" style="height: 32px; border: none; cursor: pointer; display: inline-flex; align-items: center;">
+                            ${item.disponible === 0 ? 'Calibrar' : 'Reponer'}
+                        </button>
+                    </div>
                 `;
                 replenishmentList.appendChild(div);
             });
         }
+    }
+
+    // Renderizar lista de modelos discontinuados
+    const discontinuedContainer = document.getElementById('discontinued-container');
+    const discontinuedList = document.getElementById('discontinued-list');
+    if (discontinuedContainer && discontinuedList) {
+        discontinuedList.innerHTML = '';
+        if (discontinuedModels.length > 0) {
+            discontinuedModels.forEach(modelName => {
+                const span = document.createElement('span');
+                span.className = 'badge';
+                span.style.cssText = 'background: rgba(107, 114, 128, 0.1); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.35rem 0.6rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.5rem; margin-bottom: 0.5rem;';
+                span.innerHTML = `
+                    ${modelName}
+                    <button type="button" class="btn-reactivar-model" data-model="${modelName}" style="background:none; border:none; color:#10b981; cursor:pointer; padding:0; display:inline-flex; align-items:center;" title="Reactivar Modelo">
+                        <i data-lucide="rotate-ccw" style="width:12px; height:12px;"></i>
+                    </button>
+                `;
+                discontinuedList.appendChild(span);
+            });
+            discontinuedContainer.style.display = 'flex';
+        } else {
+            discontinuedContainer.style.display = 'none';
+        }
+    }
+    
+    // Inicializar iconos de Lucide
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
     }
 }
 

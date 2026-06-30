@@ -1254,6 +1254,10 @@ td:nth-child(6)  /* Cert */ {
     width: 100%;
 }
 
+.chart-span-2 {
+    grid-column: span 2;
+}
+
 .chart-container-card {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -1375,6 +1379,9 @@ button.alert-action-badge:hover {
 @media (max-width: 1024px) {
     .bi-charts-grid {
         grid-template-columns: 1fr;
+    }
+    .chart-span-2 {
+        grid-column: span 1;
     }
 }
 
