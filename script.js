@@ -392,6 +392,22 @@ function hideLoader() {
  */
 const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbwgmgHF3DHNpOjnmTGsVBwYPEd0tLiwZDXhRsZaTknXEkhBbpOZEqtDlXhH5pyhSWE/exec';
 
+// Configuración de Firebase Firestore
+const firebaseConfig = {
+  apiKey: "AIzaSyAhNkR8-grFyC7QZ0Zpidu12-E3DZMXims",
+  authDomain: "metromlstock.firebaseapp.com",
+  projectId: "metromlstock",
+  storageBucket: "metromlstock.firebasestorage.app",
+  messagingSenderId: "350986843825",
+  appId: "1:350986843825:web:8586b31a7c9df6b2f89490",
+  measurementId: "G-VDB4314N2F"
+};
+
+// Inicializar Firebase
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+
 // ==========================================
 // MOCK DATA (Para probar sin Google Sheets)
 // ==========================================
@@ -747,38 +763,106 @@ function updateThemeToggleUI(isMatte) {
 }
 
 
-// ==========================================
-// OPERACIONES DE DATOS (Simulando API)
-// ==========================================
 async function fetchData() {
     appState.loading = true;
     updateUIState();
     showLoader('Sincronizando base de datos...');
 
     try {
-        if(GOOGLE_SHEETS_API_URL !== '') {
-            // Se inyecta un Timestamp para forzar al navegador a ignorar el caché (Cache-Busting)
-            const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
-                credentials: 'omit'
-            });
-            const result = await response.json();
-            appState.data = result.items || [];
-            appState.solicitudes = result.solicitudes || [];
-            appState.vencimientos = result.vencimientos || [];
+        // Cargar desde Firebase Firestore
+        const itemsSnapshot = await db.collection("instrumentos").get();
+        let items = itemsSnapshot.docs.map(doc => doc.data());
+
+        const solicitudesSnapshot = await db.collection("solicitudes").get();
+        let solicitudes = solicitudesSnapshot.docs.map(doc => doc.data());
+
+        const vencimientosSnapshot = await db.collection("vencimientos").get();
+        let vencimientos = vencimientosSnapshot.docs.map(doc => doc.data());
+
+        // MIGRACIÓN AUTOMÁTICA: Si Firebase está vacío, traer los datos de Google Sheets e importarlos
+        if (items.length === 0 && GOOGLE_SHEETS_API_URL !== '') {
+            console.log("⚠️ Base de datos de Firebase vacía. Iniciando migración automática desde Google Sheets en el navegador...");
+            showLoader('Migrando datos desde Google Sheets a Firebase (esto ocurrirá solo una vez)...');
             
-            console.log(">>> DATOS RECIBIDOS DEL SERVIDOR:");
-            console.table(appState.data.slice(0, 5).map(i => ({ID: i.id, Modelo: i.modelo, Estado: i.estado})));
-            
-            renderTable();
-        } else {
-            // Mock
-            await new Promise(r => setTimeout(r, 1000));
-            appState.data = [...mockDatabase];
-            appState.solicitudes = [];
+            try {
+                const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
+                const result = await response.json();
+                
+                const sheetsItems = result.items || [];
+                const sheetsSolicitudes = result.solicitudes || [];
+                const sheetsVencimientos = result.vencimientos || [];
+                
+                console.log(`Descargados de Sheets: ${sheetsItems.length} equipos, ${sheetsSolicitudes.length} solicitudes, ${sheetsVencimientos.length} vencimientos.`);
+                
+                // Agrupar todas las escrituras
+                const allWrites = [];
+                sheetsItems.forEach(item => {
+                    if (item.id) {
+                        allWrites.push({ collection: "instrumentos", docId: String(item.id).trim(), data: item });
+                    }
+                });
+                sheetsSolicitudes.forEach((sol, idx) => {
+                    const ts = sol.timestamp || '';
+                    const emp = sol.empresa || '';
+                    let docId = `sol_${idx}_${ts.replace(/\s+/g, '_').replace(/\//g, '-')}_${emp.replace(/\s+/g, '_')}`;
+                    docId = docId.replace(/[^a-zA-Z0-9_-]/g, '');
+                    if (!docId) docId = `sol_auto_${idx}`;
+                    allWrites.push({ collection: "solicitudes", docId: docId, data: sol });
+                });
+                sheetsVencimientos.forEach(venc => {
+                    if (venc.id) {
+                        allWrites.push({ collection: "vencimientos", docId: String(venc.id).trim(), data: venc });
+                    }
+                });
+
+                // Escribir en lotes de 400 (límite de Firestore es 500 por lote)
+                const batchSize = 400;
+                for (let i = 0; i < allWrites.length; i += batchSize) {
+                    const chunk = allWrites.slice(i, i + batchSize);
+                    const batch = db.batch();
+                    chunk.forEach(w => {
+                        const ref = db.collection(w.collection).doc(w.docId);
+                        batch.set(ref, w.data);
+                    });
+                    await batch.commit();
+                    console.log(`✅ Subido lote de ${chunk.length} registros a Firebase.`);
+                }
+                
+                showToast("¡Datos migrados con éxito a Firebase!", "success");
+                
+                // Asignar los datos migrados para mostrar en la app
+                items = sheetsItems;
+                solicitudes = sheetsSolicitudes;
+                vencimientos = sheetsVencimientos;
+            } catch (migErr) {
+                console.error("Error durante la migración automática:", migErr);
+                showToast("Error al migrar los datos desde Google Sheets.", "error");
+            }
         }
+
+        // Ordenar instrumentos por ID numérico descendente para mantener orden cronológico
+        items.sort((a, b) => {
+            const numA = parseInt(String(a.id || '').replace(/\D/g, '')) || 0;
+            const numB = parseInt(String(b.id || '').replace(/\D/g, '')) || 0;
+            return numB - numA;
+        });
+
+        // Ordenar solicitudes por timestamp
+        solicitudes.sort((a, b) => {
+            return new Date(b.timestamp) - new Date(a.timestamp);
+        });
+
+        appState.data = items;
+        appState.solicitudes = solicitudes;
+        appState.vencimientos = vencimientos;
+
+        console.log(">>> DATOS RECIBIDOS DE FIREBASE:");
+        console.table(appState.data.slice(0, 5).map(i => ({ID: i.id, Modelo: i.modelo, Estado: i.estado})));
+
+        renderTable();
     } catch (err) {
-        console.error("Error al cargar datos:", err);
-        showToast("Hubo un error cargando los datos desde Google Sheets.", "error");
+        console.error("Error al cargar datos de Firebase:", err);
+        showToast("Hubo un error cargando los datos desde Firebase Firestore.", "error");
     } finally {
         appState.loading = false;
         updateUIState();
@@ -791,159 +875,102 @@ async function fetchData() {
     }
 }
 
-
 async function saveFullUpdate(record) {
-    // Normalizar estados para la base de datos (compatibilidad con Sheets)
+    // Normalizar estados para la base de datos
     if (record.estado === 'VENDIDO - DESPACHADO') record.estado = 'RESERVADO';
     if (record.estado === 'VENDIDO - ENTREGADO') record.estado = 'ENTREGADO';
 
-    if(GOOGLE_SHEETS_API_URL !== '') {
-        try {
-            const response = await fetch(GOOGLE_SHEETS_API_URL, {
-                method: 'POST',
-                credentials: 'omit',
-                body: JSON.stringify({ action: 'update_full', data: record })
-            });
-            return await response.json();
-        } catch (error) {
-            console.warn("⚠️ Error en saveFullUpdate (posible CORS). Intentando verificación optimista...", error);
-            try {
-                await new Promise(r => setTimeout(r, 1000));
-                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
-                    credentials: 'omit'
-                });
-                const verifyResult = await verifyResponse.json();
-                const items = verifyResult.items || [];
-                const updatedItem = items.find(x => String(x.id).trim() === String(record.id).trim());
-                if (updatedItem && updatedItem.estado === record.estado) {
-                    console.log("✅ Verificación optimista exitosa en saveFullUpdate.");
-                    appState.data = items;
-                    appState.solicitudes = verifyResult.solicitudes || [];
-                    appState.vencimientos = verifyResult.vencimientos || [];
-                    return { success: true };
-                } else {
-                    throw error;
-                }
-            } catch (verifyErr) {
-                console.error("❌ Falló la verificación de saveFullUpdate:", verifyErr);
-                throw error;
-            }
-        }
-    } else {
-        await new Promise(r => setTimeout(r, 800));
-        const index = mockDatabase.findIndex(x => x.id === record.id);
-        if(index > -1) mockDatabase[index] = record;
-        appState.data = [...mockDatabase];
+    try {
+        const docId = String(record.id).trim();
+        await db.collection("instrumentos").doc(docId).set(record);
+        console.log(`✅ Registro ${docId} actualizado por completo en Firebase.`);
         return { success: true };
+    } catch (error) {
+        console.error("❌ Error en saveFullUpdate en Firebase:", error);
+        throw error;
     }
 }
 
 async function updateStateRecord(id, newState, extraData) {
-    console.log(">>> Solicitando cambio de estado:", { id, newState, extraData });
+    console.log(">>> Solicitando cambio de estado en Firebase:", { id, newState, extraData });
     
-    // Normalizar estados para la base de datos (compatibilidad con Sheets)
     let apiState = newState;
     if (apiState === 'VENDIDO - DESPACHADO') apiState = 'RESERVADO';
     if (apiState === 'VENDIDO - ENTREGADO') apiState = 'ENTREGADO';
 
-    if(GOOGLE_SHEETS_API_URL !== '') {
-        const requestData = { 
-            action: 'update_status', 
-            data: { id: String(id).trim(), estado: apiState, ...extraData } 
-        };
-        try {
-            const response = await fetch(GOOGLE_SHEETS_API_URL, {
-                method: 'POST',
-                credentials: 'omit',
-                body: JSON.stringify(requestData)
-            });
-            const result = await response.json();
-            console.log("<<< Respuesta del servidor:", result);
-            return result;
-        } catch (error) {
-            console.warn("⚠️ Error en updateStateRecord (posible CORS). Intentando verificación optimista...", error);
-            try {
-                await new Promise(r => setTimeout(r, 1000));
-                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
-                    credentials: 'omit'
-                });
-                const verifyResult = await verifyResponse.json();
-                const items = verifyResult.items || [];
-                const updatedItem = items.find(x => String(x.id).trim() === String(id).trim());
-                if (updatedItem && updatedItem.estado === apiState && 
-                    (extraData.cliente === undefined || String(updatedItem.cliente).trim() === String(extraData.cliente).trim())) {
-                    console.log("✅ Verificación optimista exitosa en updateStateRecord.");
-                    appState.data = items;
-                    appState.solicitudes = verifyResult.solicitudes || [];
-                    appState.vencimientos = verifyResult.vencimientos || [];
-                    return { success: true };
-                } else {
-                    throw error;
+    try {
+        const docId = String(id).trim();
+        const docRef = db.collection("instrumentos").doc(docId);
+        const docSnap = await docRef.get();
+        if (!docSnap.exists) {
+            throw new Error(`No se encontró el equipo con ID: ${docId}`);
+        }
+        const currentData = docSnap.data();
+
+        const updates = { estado: apiState };
+        if (extraData.cliente !== undefined) updates.cliente = String(extraData.cliente || '');
+        if (extraData.certificado !== undefined) updates.certificado = String(extraData.certificado || '');
+        if (extraData.fecha !== undefined) updates.fecha_calibracion = String(extraData.fecha || '');
+        if (extraData.patrones !== undefined) updates.patrones = String(extraData.patrones || '[]');
+        if (extraData.discontinuado !== undefined) updates.discontinuado = String(extraData.discontinuado || '');
+
+        await docRef.update(updates);
+        console.log(`✅ Estado de ${docId} actualizado en Firebase.`);
+
+        if (apiState === 'ENTREGADO') {
+            const fullItem = {
+                id: docId,
+                instrumento: String(currentData.instrumento || '') + " " + String(currentData.modelo || ''),
+                certificado: extraData.certificado !== undefined ? String(extraData.certificado) : String(currentData.certificado || ''),
+                fecha_calibracion: extraData.fecha !== undefined ? String(extraData.fecha) : String(currentData.fecha_calibracion || ''),
+                cliente: extraData.cliente !== undefined ? String(extraData.cliente) : String(currentData.cliente || ''),
+                email: String(currentData.email || '---'),
+                estado_recordatorio: 'pendiente'
+            };
+            
+            if (fullItem.fecha_calibracion && fullItem.fecha_calibracion !== "") {
+                try {
+                    const parts = fullItem.fecha_calibracion.split('/');
+                    if (parts.length === 3) {
+                        const day = parseInt(parts[0], 10);
+                        const month = parseInt(parts[1], 10) - 1;
+                        const year = parseInt(parts[2], 10) + 1;
+                        const vencDate = new Date(year, month, day);
+                        const dStr = String(vencDate.getDate()).padStart(2, '0');
+                        const mStr = String(vencDate.getMonth() + 1).padStart(2, '0');
+                        fullItem.fecha_vencimiento = `${dStr}/${mStr}/${vencDate.getFullYear()}`;
+                    }
+                } catch(e) {
+                    console.error("Error calculando fecha de vencimiento:", e);
                 }
-            } catch (verifyErr) {
-                console.error("❌ Falló la verificación de updateStateRecord:", verifyErr);
-                throw error;
             }
+            if (!fullItem.fecha_vencimiento) {
+                fullItem.fecha_vencimiento = "";
+            }
+
+            await db.collection("vencimientos").doc(docId).set(fullItem);
+            console.log(`✅ Upsert de vencimiento realizado para ${docId} en Firebase.`);
         }
-    } else {
-        // En Mock Local
-        await new Promise(r => setTimeout(r, 800));
-        const index = mockDatabase.findIndex(x => x.id === id);
-        if(index > -1) {
-            mockDatabase[index].estado = apiState;
-            if(extraData.certificado) mockDatabase[index].certificado = extraData.certificado;
-            if(extraData.fecha) mockDatabase[index].fecha_calibracion = extraData.fecha;
-            if(extraData.cliente) mockDatabase[index].cliente = extraData.cliente;
-            if(extraData.discontinuado !== undefined) mockDatabase[index].discontinuado = extraData.discontinuado;
-        }
-        appState.data = [...mockDatabase];
+
         return { success: true };
+    } catch (error) {
+        console.error("❌ Error en updateStateRecord en Firebase:", error);
+        throw error;
     }
 }
 
 async function saveNewRecord(record) {
-    // Normalizar estados para la base de datos (compatibilidad con Sheets)
     if (record.estado === 'VENDIDO - DESPACHADO') record.estado = 'RESERVADO';
     if (record.estado === 'VENDIDO - ENTREGADO') record.estado = 'ENTREGADO';
 
-    if(GOOGLE_SHEETS_API_URL !== '') {
-        try {
-            const response = await fetch(GOOGLE_SHEETS_API_URL, {
-                method: 'POST',
-                credentials: 'omit',
-                body: JSON.stringify({ action: 'create', data: record })
-            });
-            return await response.json();
-        } catch (error) {
-            console.warn("⚠️ Error en saveNewRecord (posible CORS). Intentando verificación optimista...", error);
-            try {
-                await new Promise(r => setTimeout(r, 1000));
-                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
-                    credentials: 'omit'
-                });
-                const verifyResult = await verifyResponse.json();
-                const items = verifyResult.items || [];
-                const createdItem = items.find(x => String(x.id).trim() === String(record.id).trim());
-                if (createdItem) {
-                    console.log("✅ Verificación optimista exitosa en saveNewRecord.");
-                    appState.data = items;
-                    appState.solicitudes = verifyResult.solicitudes || [];
-                    appState.vencimientos = verifyResult.vencimientos || [];
-                    return { success: true };
-                } else {
-                    throw error;
-                }
-            } catch (verifyErr) {
-                console.error("❌ Falló la verificación de saveNewRecord:", verifyErr);
-                throw error;
-            }
-        }
-    } else {
-        // En Mock Local
-        await new Promise(r => setTimeout(r, 800));
-        mockDatabase.push(record);
-        appState.data = [...mockDatabase];
+    try {
+        const docId = String(record.id).trim();
+        await db.collection("instrumentos").doc(docId).set(record);
+        console.log(`✅ Nuevo registro ${docId} creado en Firebase.`);
         return { success: true };
+    } catch (error) {
+        console.error("❌ Error en saveNewRecord en Firebase:", error);
+        throw error;
     }
 }
 
@@ -2620,6 +2647,16 @@ async function confirmSendEmail() {
             body: JSON.stringify(requestData)
         });
 
+        // Actualizar solicitud en Firebase Firestore
+        if (appState.pendingEmail) {
+            await updateSolicitudStatusInFirestore(
+                appState.pendingEmail.timestamp,
+                appState.pendingEmail.email,
+                certificado,
+                'enviado'
+            );
+        }
+
         // AUTO-ACTUALIZACIÓN DEL EQUIPO ASOCIADO: De RESERVADO a ENTREGADO con asignación de cliente
         if (appState.pendingEmail && appState.pendingEmail.equipoId) {
             const equipoId = appState.pendingEmail.equipoId;
@@ -2868,6 +2905,16 @@ async function confirmSendReminder() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
         });
+
+        // Actualizar recordatorio en Firebase Firestore
+        try {
+            await db.collection("vencimientos").doc(appState.pendingReminder.id).update({
+                estado_recordatorio: "Enviado"
+            });
+            console.log("✅ Vencimiento marcado como Enviado en Firebase.");
+        } catch(errV) {
+            console.error("❌ Error al actualizar vencimiento en Firebase:", errV);
+        }
         
         // Marcado local temporal para feedback instantáneo
         const index = appState.vencimientos.findIndex(e => e.id === appState.pendingReminder.id);
@@ -3839,6 +3886,25 @@ function performVerifyCertSearch() {
     lucide.createIcons();
 }
 
+async function updateSolicitudStatusInFirestore(timestamp, email, certificado, newStatus) {
+    try {
+        const querySnapshot = await db.collection("solicitudes")
+            .where("timestamp", "==", String(timestamp || ''))
+            .where("email", "==", String(email || ''))
+            .where("certificado", "==", String(certificado || ''))
+            .get();
+            
+        const batch = db.batch();
+        querySnapshot.forEach(doc => {
+            batch.update(doc.ref, { estado: newStatus });
+        });
+        await batch.commit();
+        console.log("✅ Solicitud actualizada en Firebase.");
+    } catch(e) {
+        console.error("❌ Error al actualizar solicitud en Firebase:", e);
+    }
+}
+
 async function markRequestAsAlreadySent() {
     const index = appState.currentSolicitudIndex;
     if (index === undefined) {
@@ -3882,6 +3948,9 @@ async function markRequestAsAlreadySent() {
                 body: JSON.stringify(requestData)
             });
         }
+
+        // Actualizar en Firebase Firestore
+        await updateSolicitudStatusInFirestore(s.timestamp, s.email, s.certificado, targetStatus);
         
         // Auto-actualización del equipo asociado a ENTREGADO si existe
         if (appState.pendingEmail && appState.pendingEmail.equipoId) {
