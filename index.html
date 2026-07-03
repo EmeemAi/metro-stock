@@ -551,10 +551,22 @@
     <div id="modal-email-confirm" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <h2>Verificación de Envío</h2>
+                <h2>Verificación y Envío de Certificado</h2>
                 <button class="btn-icon" onclick="closeModal('modal-email-confirm')"><i data-lucide="x"></i></button>
             </div>
-            <div class="modal-body">
+            
+            <!-- Selector de Opciones (Pestañas) -->
+            <div class="modal-tabs">
+                <button id="tab-btn-email" class="modal-tab-btn active" onclick="switchAtenderTab('email')">
+                    <i data-lucide="mail" style="width: 14px; height: 14px; margin-right: 4px;"></i> Enviar Email
+                </button>
+                <button id="tab-btn-verify" class="modal-tab-btn" onclick="switchAtenderTab('verify')">
+                    <i data-lucide="search" style="width: 14px; height: 14px; margin-right: 4px;"></i> Verificar / Marcar
+                </button>
+            </div>
+
+            <!-- Contenido de Pestaña: Enviar Email -->
+            <div id="tab-content-email" class="modal-body modal-tab-content">
                 <div class="status-check-box" id="email-file-status">
                     <i data-lucide="loader-2" class="spin"></i> Buscando certificado en Drive...
                 </div>
@@ -578,7 +590,48 @@
                     No se puede enviar: El archivo PDF no existe en la carpeta configurada.
                 </div>
             </div>
-            <div class="modal-footer">
+
+            <!-- Contenido de Pestaña: Verificar Envío Previo -->
+            <div id="tab-content-verify" class="modal-body modal-tab-content" style="display: none;">
+                <div class="form-group">
+                    <label>Buscar Historial por Certificado</label>
+                    <div style="display: flex; gap: 0.5rem; margin-bottom: 1rem;">
+                        <input type="text" id="search-verify-cert" placeholder="Ej: 202606-LX-16997" style="flex: 1;">
+                        <button class="btn btn-outline" onclick="performVerifyCertSearch()">
+                            <i data-lucide="search"></i> Buscar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Alertas e información de búsqueda -->
+                <div id="verify-search-results">
+                    <!-- Dinámico -->
+                </div>
+                
+                <div style="margin-top: 1.5rem; padding: 1rem; background-color: var(--table-header-bg); border-radius: var(--radius-sm); border: 1px dashed var(--border-strong);">
+                    <h4 style="margin-top: 0; margin-bottom: 0.5rem; font-size: 0.85rem; display: flex; align-items: center; gap: 4px; color: var(--text-primary);">
+                        <i data-lucide="info" style="width: 14px; height: 14px; color: var(--primary);"></i>
+                        Acción de marcado rápido
+                    </h4>
+                    <p style="font-size: 0.75rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                        Si la solicitud ya fue atendida por otro medio o es un duplicado, puedes cambiar su estado manualmente sin enviar correo electrónico.
+                    </p>
+                    
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label>Estado a asignar</label>
+                        <select id="mark-status-select" style="width: 100%; padding: 0.4rem; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-card); color: var(--text-primary);">
+                            <option value="enviado anteriormente">Enviado Anteriormente</option>
+                            <option value="duplicada">Solicitud Duplicada</option>
+                        </select>
+                    </div>
+
+                    <button class="btn btn-success" id="btn-mark-already-sent" onclick="markRequestAsAlreadySent()" style="width: 100%; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                        <i data-lucide="check-square"></i> Aplicar Estado Seleccionado
+                    </button>
+                </div>
+            </div>
+            
+            <div class="modal-footer" id="modal-email-footer" style="display: flex; justify-content: flex-end; gap: 0.5rem; padding: 1rem 1.5rem; border-top: 1px solid var(--border-color); background-color: var(--table-header-bg); border-radius: 0 0 var(--radius-md) var(--radius-md);">
                 <button class="btn btn-outline" onclick="closeModal('modal-email-confirm')">Cancelar</button>
                 <button class="btn btn-primary" id="btn-confirm-send" disabled>
                     <i data-lucide="send"></i> Confirmar y Enviar Mail

@@ -758,7 +758,9 @@ async function fetchData() {
     try {
         if(GOOGLE_SHEETS_API_URL !== '') {
             // Se inyecta un Timestamp para forzar al navegador a ignorar el caché (Cache-Busting)
-            const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
+            const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
+                credentials: 'omit'
+            });
             const result = await response.json();
             appState.data = result.items || [];
             appState.solicitudes = result.solicitudes || [];
@@ -799,6 +801,7 @@ async function saveFullUpdate(record) {
         try {
             const response = await fetch(GOOGLE_SHEETS_API_URL, {
                 method: 'POST',
+                credentials: 'omit',
                 body: JSON.stringify({ action: 'update_full', data: record })
             });
             return await response.json();
@@ -806,7 +809,9 @@ async function saveFullUpdate(record) {
             console.warn("⚠️ Error en saveFullUpdate (posible CORS). Intentando verificación optimista...", error);
             try {
                 await new Promise(r => setTimeout(r, 1000));
-                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
+                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
+                    credentials: 'omit'
+                });
                 const verifyResult = await verifyResponse.json();
                 const items = verifyResult.items || [];
                 const updatedItem = items.find(x => String(x.id).trim() === String(record.id).trim());
@@ -849,6 +854,7 @@ async function updateStateRecord(id, newState, extraData) {
         try {
             const response = await fetch(GOOGLE_SHEETS_API_URL, {
                 method: 'POST',
+                credentials: 'omit',
                 body: JSON.stringify(requestData)
             });
             const result = await response.json();
@@ -858,7 +864,9 @@ async function updateStateRecord(id, newState, extraData) {
             console.warn("⚠️ Error en updateStateRecord (posible CORS). Intentando verificación optimista...", error);
             try {
                 await new Promise(r => setTimeout(r, 1000));
-                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
+                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
+                    credentials: 'omit'
+                });
                 const verifyResult = await verifyResponse.json();
                 const items = verifyResult.items || [];
                 const updatedItem = items.find(x => String(x.id).trim() === String(id).trim());
@@ -902,6 +910,7 @@ async function saveNewRecord(record) {
         try {
             const response = await fetch(GOOGLE_SHEETS_API_URL, {
                 method: 'POST',
+                credentials: 'omit',
                 body: JSON.stringify({ action: 'create', data: record })
             });
             return await response.json();
@@ -909,7 +918,9 @@ async function saveNewRecord(record) {
             console.warn("⚠️ Error en saveNewRecord (posible CORS). Intentando verificación optimista...", error);
             try {
                 await new Promise(r => setTimeout(r, 1000));
-                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
+                const verifyResponse = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
+                    credentials: 'omit'
+                });
                 const verifyResult = await verifyResponse.json();
                 const items = verifyResult.items || [];
                 const createdItem = items.find(x => String(x.id).trim() === String(record.id).trim());
@@ -2337,12 +2348,23 @@ function renderSolicitudes() {
         const tr = document.createElement('tr');
         if (isEnviado) tr.style.opacity = '0.6';
         
+        let badgeClass = 'reservado';
+        if (est === 'enviado') {
+            badgeClass = 'entregado';
+        } else if (est === 'enviado anteriormente') {
+            badgeClass = 'enviado-anteriormente';
+        } else if (est === 'duplicada' || est === 'duplicado') {
+            badgeClass = 'duplicada';
+        } else if (isEnviado) {
+            badgeClass = 'entregado';
+        }
+        
         tr.innerHTML = `
             <td>${s.timestamp}</td>
             <td><strong>${s.empresa}</strong><br><small>${s.contacto}</small></td>
             <td><code>${s.certificado}</code></td>
             <td>${s.email}</td>
-            <td><span class="badge ${isEnviado ? 'entregado' : 'reservado'}">${s.estado || 'pendiente'}</span></td>
+            <td><span class="badge ${badgeClass}">${s.estado || 'pendiente'}</span></td>
             <td>
                 <div style="display: flex; gap: 0.25rem;">
                     ${isEnviado ? '' : `<button class="btn btn-primary btn-sm btn-atender-solicitud" data-index="${index}"><i data-lucide="external-link" style="width:14px; height:14px;"></i> Atender</button>`}
@@ -2460,6 +2482,15 @@ function handleAtenderSolicitud(index) {
     emailTo.value = s.email;
     emailBody.value = `Estimado/a ${s.contacto || s.empresa || 'Cliente'},\n\nAdjunto al presente correo encontrará el certificado de calibración solicitado, correspondiente al código ${s.certificado}. Agradecemos confirmar la correcta recepción de este mensaje.\n\nLe informamos que somos proveedores de instrumentos de medición y certificamos. Puede consultarnos de manera directa si:\n* Tiene otros instrumentos para certificar: Realizamos la calibración y emisión de certificados para todo su equipamiento.\n* Quiere consultar por equipo nuevo: Lo asesoramos y proveemos en la adquisición de nuevo instrumental.\n\nPara cualquier consulta técnica o cotización, puede responder a este correo o escribirnos vía WhatsApp al +54 11 4971-7053.\n\nQuedamos a su entera disposición.\n\nSaludos cordiales,\n\nDarío Del Real\nCR MEDICION | SchwyzLab Laboratorio de Metrología\nPerú 1297 - CABA - Argentina\nTel.: +54 11 4361-3499 / 3680\nWeb: www.todomedicion.com`;
     
+    // Configurar pestaña inicial (Email) y buscador de historial
+    switchAtenderTab('email');
+    const searchVerifyCert = document.getElementById('search-verify-cert');
+    if (searchVerifyCert) {
+        searchVerifyCert.value = s.certificado || '';
+    }
+    // Pre-cargar la verificación en segundo plano
+    performVerifyCertSearch();
+    
     console.log("Abriendo modal confirmación...");
     openModal('modal-email-confirm');
     checkFileInDrive(s.certificado);
@@ -2476,8 +2507,26 @@ async function checkFileInDrive(certificado) {
     errorMsg.style.display = 'none';
     lucide.createIcons();
 
+    if (!certificado || String(certificado).trim() === '') {
+        statusBox.innerHTML = `<i data-lucide="alert-circle" style="color:var(--danger);"></i> Certificado no especificado o vacío.`;
+        statusBox.classList.add('danger');
+        errorMsg.style.display = 'block';
+        lucide.createIcons();
+        return;
+    }
+
     try {
-        const response = await fetch(`${GOOGLE_SHEETS_API_URL}?action=check_file&certificado=${encodeURIComponent(certificado)}`);
+        const response = await fetch(`${GOOGLE_SHEETS_API_URL}?action=check_file&certificado=${encodeURIComponent(certificado)}`, {
+            credentials: 'omit'
+        });
+
+        const contentType = response.headers.get("content-type");
+        if (contentType && contentType.indexOf("application/json") === -1) {
+            const htmlText = await response.text();
+            console.error("GAS returned HTML instead of JSON:", htmlText);
+            throw new Error("El servidor de Google retornó una página HTML en lugar de JSON. Verifique la sesión de Google.");
+        }
+
         const result = await response.json();
 
         if (result.found) {
@@ -2565,6 +2614,7 @@ async function confirmSendEmail() {
         await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
             mode: 'no-cors',
+            credentials: 'omit',
             cache: 'no-cache',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(requestData)
@@ -2813,6 +2863,7 @@ async function confirmSendReminder() {
         await fetch(GOOGLE_SHEETS_API_URL, {
             method: 'POST',
             mode: 'no-cors',
+            credentials: 'omit',
             cache: 'no-cache',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(payload)
@@ -2868,19 +2919,20 @@ function getHeaderHTML(certNum, pageNum, totalPages) {
             </div>
             <div class="cert-company-details">
                 <strong>CR Medición</strong><br>
-                Perú 1297, C1141ACA C.A.B.A<br>
+                Perú 1297,C1141ACA C.A.B.A<br>
                 ventas@todomedicion.com<br>
                 www.todomedicion.com<br>
                 Tel: 4361-3499 / 3680
             </div>
         </header>
-        <hr class="cert-divider-thin">
+        <hr class="cert-divider-thick">
     `;
 }
 
 function getIntermediateFooterHTML() {
     return `
         <footer class="cert-footer">
+            <hr class="cert-divider-thick">
             <div class="cert-footer-text">
                 Los resultados contenidos en el presente certificado se refieren a los equipos o instrumentos sometidos a la calibración o medición, así como al momento y las condiciones en que se realizaron las mediciones. El Laboratorio que emite no se responsabiliza de los perjuicios que puedan derivarse del uso inadecuado de este certificado.
             </div>
@@ -2894,19 +2946,11 @@ function getLastFooterHTML(identificacionVal) {
         <footer class="cert-footer cert-footer-pg2">
             <div class="signatures-container">
                 <div class="signature-box">
-                    <div class="signature-line">
-                        <svg viewBox="0 0 100 40" class="sig-svg">
-                            <path d="M 15 30 C 5 30 5 10 15 10 C 30 10 25 30 45 30 C 60 30 70 20 80 10 M 55 30 L 75 2" fill="none" stroke="#000000" stroke-width="1.5" stroke-linecap="round"/>
-                        </svg>
-                    </div>
-                    <div class="signature-name">Aprobado por</div>
-                    <div class="signature-author">Albert Mesa</div>
+                    <div class="signature-line-blank"></div>
+                    <div class="signature-name">Aprobado por Albert Mesa</div>
                 </div>
             </div>
             <div class="cert-fin-row">
-                <div class="cert-info-adicional">
-                    <strong>Información Adicional:</strong> <span>${identificacionVal}</span>
-                </div>
                 <div class="cert-fin-text">Fin de Certificado</div>
             </div>
             <hr class="cert-divider-thick">
@@ -3090,10 +3134,10 @@ window.imprimirCertificado = function(id) {
                 
                 resultsRowsHTML += `
                     <tr>
-                        <td>${refStr} ${unit}</td>
-                        <td>${instStr} ${unit}</td>
-                        <td>${errorStr} ${unit}</td>
-                        <td>${incStr} ${unit}</td>
+                        <td>${refStr}</td>
+                        <td>${instStr}</td>
+                        <td>${errorStr}</td>
+                        <td>${incStr}</td>
                     </tr>
                 `;
             });
@@ -3139,9 +3183,9 @@ window.imprimirCertificado = function(id) {
                     <div class="cert-row-side-by-side">
                         <div class="cert-row-label">Condiciones ambientales</div>
                         <div class="cert-row-value">
-                            <div class="condiciones-val-grid">
-                                <div><strong>Temperatura:</strong> ${temp}</div>
-                                <div><strong>Humedad:</strong> ${hum}</div>
+                            <div class="condiciones-val-grid" style="font-weight: bold;">
+                                <div>Temperatura: ${temp}</div>
+                                <div>Humedad: ${hum}</div>
                             </div>
                         </div>
                     </div>
@@ -3151,29 +3195,18 @@ window.imprimirCertificado = function(id) {
                         <div class="cert-row-label">Resultados</div>
                         <div class="cert-row-value">
                             <div class="resultados-meta">
-                                <div class="rango-resolucion-row">
-                                    <span><strong>Rango de medición:</strong> ${rangoHdr}</span>
-                                    <span><strong>Resolución:</strong> ${resolucionHdr}</span>
+                                <div class="rango-resolucion-row" style="font-weight: bold;">
+                                    <span>Rango de medición: ${rangoHdr}</span>
+                                    <span>Resolución: ${resolucionHdr}</span>
                                 </div>
                             </div>
                             <table class="cert-results-table">
                                 <thead>
-                                    <tr class="table-hdr-top">
-                                        <th class="hdr-empty"></th>
-                                        <th colspan="2" class="hdr-val-enc">Valores Encontrados</th>
-                                        <th class="hdr-empty"></th>
-                                    </tr>
-                                    <tr class="table-hdr-sub-1">
-                                        <th>Valor de</th>
-                                        <th>Valor</th>
-                                        <th>Error</th>
-                                        <th>Incertidumbre</th>
-                                    </tr>
-                                    <tr class="table-hdr-sub-2">
-                                        <th>Referencia</th>
-                                        <th>Instrumento</th>
-                                        <th>Obtenido</th>
-                                        <th>Expandida</th>
+                                    <tr>
+                                        <th>Valor de<br>Referencia</th>
+                                        <th>Valor<br>Instrumento</th>
+                                        <th>Error<br>Obtenido</th>
+                                        <th>Incertidumbre<br>Expandida</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -3266,9 +3299,9 @@ window.imprimirCertificado = function(id) {
                     <div class="cert-row-side-by-side">
                         <div class="cert-row-label">Condiciones ambientales</div>
                         <div class="cert-row-value">
-                            <div class="condiciones-val-grid">
-                                <div><strong>Temperatura:</strong> ${temp}</div>
-                                <div><strong>Humedad:</strong> ${hum}</div>
+                            <div class="condiciones-val-grid" style="font-weight: bold;">
+                                <div>Temperatura: ${temp}</div>
+                                <div>Humedad: ${hum}</div>
                             </div>
                         </div>
                     </div>
@@ -3378,10 +3411,10 @@ function renderSubTableHTML(title, points) {
         
         rowsHTML += `
             <tr>
-                <td>${refStr} ${unit}</td>
-                <td>${instStr} ${unit}</td>
-                <td>${errorStr} ${unit}</td>
-                <td>${incStr} ${unit}</td>
+                <td>${refStr}</td>
+                <td>${instStr}</td>
+                <td>${errorStr}</td>
+                <td>${incStr}</td>
             </tr>
         `;
     });
@@ -3436,10 +3469,10 @@ function renderTermohigrometroTableHTML(title, points, rango, resolucion, isHumi
         
         rowsHTML += `
             <tr>
-                <td>${refStr} ${unit}</td>
-                <td>${instStr} ${unit}</td>
-                <td>${errorStr} ${unit}</td>
-                <td>${incStr} ${unit}</td>
+                <td>${refStr}</td>
+                <td>${instStr}</td>
+                <td>${errorStr}</td>
+                <td>${incStr}</td>
             </tr>
         `;
     });
@@ -3449,9 +3482,9 @@ function renderTermohigrometroTableHTML(title, points, rango, resolucion, isHumi
             Valores Encontrados - ${title}
         </div>
         <div class="resultados-meta">
-            <div class="rango-resolucion-row">
-                <span><strong>Rango de medición:</strong> ${rango}</span>
-                <span><strong>Resolución:</strong> ${resolucion}</span>
+            <div class="rango-resolucion-row" style="font-weight: bold;">
+                <span>Rango de medición: ${rango}</span>
+                <span>Resolución: ${resolucion}</span>
             </div>
         </div>
         <table class="cert-results-table">
@@ -3663,4 +3696,229 @@ function handleLogout() {
     }
     
     lucide.createIcons();
+}
+
+// ==========================================
+// FUNCIONES DE CONTROL DE PESTAÑAS Y VERIFICACIÓN (ATENDER)
+// ==========================================
+
+function switchAtenderTab(tabName) {
+    const tabEmail = document.getElementById('tab-btn-email');
+    const tabVerify = document.getElementById('tab-btn-verify');
+    const contentEmail = document.getElementById('tab-content-email');
+    const contentVerify = document.getElementById('tab-content-verify');
+    const footerEmailBtn = document.getElementById('btn-confirm-send');
+    
+    if (!tabEmail || !tabVerify || !contentEmail || !contentVerify) return;
+    
+    if (tabName === 'email') {
+        tabEmail.classList.add('active');
+        tabVerify.classList.remove('active');
+        contentEmail.style.display = 'block';
+        contentVerify.style.display = 'none';
+        if (footerEmailBtn) footerEmailBtn.style.display = 'inline-flex';
+    } else {
+        tabVerify.classList.add('active');
+        tabEmail.classList.remove('active');
+        contentVerify.style.display = 'block';
+        contentEmail.style.display = 'none';
+        if (footerEmailBtn) footerEmailBtn.style.display = 'none';
+        
+        // Ejecutar búsqueda con el valor actual
+        performVerifyCertSearch();
+    }
+}
+
+function performVerifyCertSearch() {
+    const searchInput = document.getElementById('search-verify-cert');
+    if (!searchInput) return;
+    const searchVal = String(searchInput.value || '').trim().toUpperCase();
+    const resultsContainer = document.getElementById('verify-search-results');
+    if (!resultsContainer) return;
+    
+    if (searchVal === '') {
+        resultsContainer.innerHTML = '<div class="alert alert-warning" style="font-size:0.75rem;">Por favor ingrese un número de certificado para buscar.</div>';
+        return;
+    }
+    
+    // Obtener la solicitud seleccionada actualmente
+    const currentSolIndex = appState.currentSolicitudIndex;
+    const currentSol = currentSolIndex !== undefined ? appState.solicitudes[currentSolIndex] : null;
+    
+    // 1. Buscar en solicitudes
+    const matchingSolicitudes = appState.solicitudes.filter(s => {
+        return certificadosCoinciden(s.certificado, searchVal);
+    });
+    
+    // 2. Buscar en inventario
+    const matchingEquipos = appState.data.filter(e => {
+        return certificadosCoinciden(e.certificado, searchVal);
+    });
+    
+    let html = '';
+    
+    // 3. Renderizar coincidencia en solicitudes
+    html += `<div style="margin-bottom:1rem;">`;
+    html += `<h4 style="margin:0 0 0.5rem 0; font-size:0.85rem; color:var(--text-primary);">Coincidencias en Solicitudes de Clientes:</h4>`;
+    if (matchingSolicitudes.length === 0) {
+        html += `<p style="font-size:0.75rem; color:var(--text-muted); margin:0;">No se encontraron solicitudes con este certificado.</p>`;
+    } else {
+        html += `<ul style="margin:0; padding-left:1.2rem; font-size:0.75rem; color:var(--text-secondary); display:flex; flex-direction:column; gap:0.25rem;">`;
+        matchingSolicitudes.forEach(s => {
+            const isCurrent = currentSol && s.timestamp === currentSol.timestamp && s.email === currentSol.email && s.certificado === currentSol.certificado;
+            
+            const estClean = (s.estado || '').trim().toLowerCase();
+            let labelClass = 'reservado';
+            if (estClean === 'enviado') {
+                labelClass = 'entregado';
+            } else if (estClean === 'enviado anteriormente') {
+                labelClass = 'enviado-anteriormente';
+            } else if (estClean === 'duplicada' || estClean === 'duplicado') {
+                labelClass = 'duplicada';
+            } else if (estClean !== '' && estClean !== 'pendiente') {
+                labelClass = 'entregado';
+            }
+            
+            const statusLabel = `<span class="badge ${labelClass}" style="font-size:0.6rem; padding:1px 4px;">${s.estado || 'pendiente'}</span>`;
+                
+            html += `<li>
+                <strong>${s.empresa}</strong> (${s.timestamp}) - ${s.email} - Estado: ${statusLabel} ${isCurrent ? ' <span style="color:var(--primary); font-weight:600;">(Actual)</span>' : ''}
+            </li>`;
+        });
+        html += `</ul>`;
+    }
+    html += `</div>`;
+    
+    // 4. Renderizar coincidencia en inventario
+    html += `<div style="margin-bottom:1rem;">`;
+    html += `<h4 style="margin:0 0 0.5rem 0; font-size:0.85rem; color:var(--text-primary);">Coincidencias en Inventario de Equipos:</h4>`;
+    if (matchingEquipos.length === 0) {
+        html += `<p style="font-size:0.75rem; color:var(--text-muted); margin:0;">No se encontró ningún equipo en el inventario con este certificado.</p>`;
+    } else {
+        html += `<ul style="margin:0; padding-left:1.2rem; font-size:0.75rem; color:var(--text-secondary); display:flex; flex-direction:column; gap:0.25rem;">`;
+        matchingEquipos.forEach(e => {
+            const statusLabel = e.estado === 'ENTREGADO'
+                ? `<span class="badge entregado" style="font-size:0.6rem; padding:1px 4px;">ENTREGADO</span>`
+                : `<span class="badge disponible" style="font-size:0.6rem; padding:1px 4px;">${e.estado}</span>`;
+            html += `<li>
+                <strong>${e.marca} ${e.modelo}</strong> (S/N: ${e.serie || 'N/A'}) - Cert: <code>${e.certificado}</code> - Cliente: ${e.cliente || 'Ninguno'} - Estado: ${statusLabel}
+            </li>`;
+        });
+        html += `</ul>`;
+    }
+    html += `</div>`;
+    
+    // 5. Alertas de duplicados / envíos previos
+    const yaEnviadoSol = matchingSolicitudes.some(s => {
+        const isCurrent = currentSol && s.timestamp === currentSol.timestamp && s.email === currentSol.email && s.certificado === currentSol.certificado;
+        const estClean = (s.estado || '').trim().toLowerCase();
+        return !isCurrent && estClean !== '' && estClean !== 'pendiente';
+    });
+    
+    const yaEntregadoEq = matchingEquipos.some(e => e.estado === 'ENTREGADO');
+    
+    if (yaEnviadoSol || yaEntregadoEq) {
+        html += `<div class="alert alert-warning" style="margin-top:0.5rem; display:flex; align-items:flex-start; gap:0.5rem; font-size:0.75rem; background-color:var(--alert-medium-bg); border:1px solid var(--alert-medium-border); color:var(--alert-medium-text); padding:0.5rem; border-radius:var(--radius-sm);">
+            <i data-lucide="alert-triangle" style="flex-shrink:0; width:16px; height:16px; margin-top:2px;"></i>
+            <div>
+                <strong>¡Atención! Envío previo detectado.</strong> El certificado ya fue enviado/entregado anteriormente:
+                <ul style="margin: 0.25rem 0 0 1rem; padding: 0;">
+                    ${yaEnviadoSol ? '<li>Se registró otro escaneo del QR ya marcado como enviado/duplicado.</li>' : ''}
+                    ${yaEntregadoEq ? '<li>El equipo asociado está registrado como ENTREGADO en la base de datos.</li>' : ''}
+                </ul>
+            </div>
+        </div>`;
+    } else {
+        html += `<div class="alert alert-info" style="margin-top:0.5rem; display:flex; align-items:center; gap:0.5rem; font-size:0.75rem; background-color:var(--state-entregado-bg); border:1px solid var(--border-color); color:var(--state-entregado); padding:0.5rem; border-radius:var(--radius-sm);">
+            <i data-lucide="info" style="flex-shrink:0; width:16px; height:16px;"></i>
+            <span>No se registran envíos exitosos previos de este certificado en otras solicitudes.</span>
+        </div>`;
+    }
+    
+    resultsContainer.innerHTML = html;
+    lucide.createIcons();
+}
+
+async function markRequestAsAlreadySent() {
+    const index = appState.currentSolicitudIndex;
+    if (index === undefined) {
+        showToast("Error: No hay una solicitud seleccionada.", "error");
+        return;
+    }
+    const s = appState.solicitudes[index];
+    if (!s) {
+        showToast("Error: Solicitud no válida.", "error");
+        return;
+    }
+    
+    const markSelect = document.getElementById('mark-status-select');
+    const targetStatus = markSelect ? markSelect.value : 'enviado anteriormente';
+    
+    const btn = document.getElementById('btn-mark-already-sent');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<i data-lucide="loader-2" class="spin"></i> Procesando...';
+    lucide.createIcons();
+    showLoader(`Marcando solicitud como: ${targetStatus}...`);
+    
+    const requestData = {
+        action: 'mark_request_sent',
+        data: {
+            timestamp: s.timestamp,
+            email: s.email,
+            certificado: s.certificado,
+            status: targetStatus
+        }
+    };
+    
+    try {
+        if (GOOGLE_SHEETS_API_URL !== '') {
+            await fetch(GOOGLE_SHEETS_API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                credentials: 'omit',
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestData)
+            });
+        }
+        
+        // Auto-actualización del equipo asociado a ENTREGADO si existe
+        if (appState.pendingEmail && appState.pendingEmail.equipoId) {
+            const equipoId = appState.pendingEmail.equipoId;
+            const clienteName = appState.pendingEmail.empresa || '';
+            const eqIndex = appState.data.findIndex(e => e.id === equipoId);
+            if (eqIndex > -1) {
+                appState.data[eqIndex].estado = 'ENTREGADO';
+                appState.data[eqIndex].cliente = clienteName;
+                renderTable();
+            }
+            try {
+                await updateStateRecord(equipoId, 'ENTREGADO', { cliente: clienteName });
+            } catch(e) {
+                console.error("Error al actualizar estado de equipo asociado:", e);
+            }
+        }
+        
+        // Marcado local de la solicitud
+        appState.solicitudes[index].estado = targetStatus;
+        renderSolicitudes();
+        updateBadge();
+        
+        setTimeout(async () => {
+            await fetchData();
+            closeModal('modal-email-confirm');
+            hideLoader();
+            showToast(`Solicitud marcada como "${targetStatus}" con éxito.`, "success");
+        }, 1500);
+        
+    } catch(e) {
+        console.error("Error al marcar solicitud como enviada:", e);
+        hideLoader();
+        showToast("Error de conexión al marcar la solicitud.", "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        lucide.createIcons();
+    }
 }
