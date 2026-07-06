@@ -467,6 +467,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnNewEquipo = document.getElementById('btn-new-equipo');
     if (btnNewEquipo) btnNewEquipo.addEventListener('click', openModalNuevo);
     
+    const btnMasivoEquipo = document.getElementById('btn-masivo-equipo');
+    if (btnMasivoEquipo) btnMasivoEquipo.addEventListener('click', openModalMasivo);
+    
     // Configurar Modales (Cerrar)
     document.querySelectorAll('.btn-close, .btn-close-action').forEach(btn => {
         btn.addEventListener('click', closeAllModals);
@@ -501,6 +504,16 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const formEdit = document.getElementById('form-edit');
     if (formEdit) formEdit.addEventListener('submit', handleFormEdit);
+    
+    const formMasivo = document.getElementById('form-masivo');
+    if (formMasivo) formMasivo.addEventListener('submit', handleFormMasivo);
+
+    // Escuchar cambios de estado para alternar visibilidad de campos de calibración
+    const nuevoEstado = document.getElementById('nuevo-estado');
+    if (nuevoEstado) nuevoEstado.addEventListener('change', toggleNuevoStateFields);
+
+    const editEstado = document.getElementById('edit-estado');
+    if (editEstado) editEstado.addEventListener('change', toggleEditStateFields);
     
     const btnAddPunto = document.getElementById('btn-add-punto');
     if (btnAddPunto) btnAddPunto.addEventListener('click', addPuntoRow);
@@ -1085,6 +1098,7 @@ function updateDashboard() {
     let totalVentas = 0;
 
     let totalCertificando = 0;
+    let totalDeposito = 0;
     appState.data.forEach(item => {
         const key = `${item.marca} ${item.modelo}`.toUpperCase();
         if(!stats[key]) stats[key] = { disponible: 0, entregado: 0, discontinuado: false, items: [] };
@@ -1103,6 +1117,8 @@ function updateDashboard() {
             totalVentas++;
         } else if (est === 'CERTIFICANDO') {
             totalCertificando++;
+        } else if (est === 'SIN CERTIFICAR' || est === 'EN DEPÓSITO') {
+            totalDeposito++;
         }
     });
 
@@ -1121,6 +1137,8 @@ function updateDashboard() {
     if (elVentas) elVentas.innerText = totalVentas;
     const elCertificando = document.getElementById('kpi-certificando');
     if (elCertificando) elCertificando.innerText = totalCertificando;
+    const elDeposito = document.getElementById('kpi-deposito');
+    if (elDeposito) elDeposito.innerText = totalDeposito;
     const elInmovilizados = document.getElementById('kpi-inmovilizados');
     if (elInmovilizados) elInmovilizados.innerText = totalInmovilizados;
 
@@ -1543,6 +1561,7 @@ function renderTable() {
                     <button class="btn btn-outline btn-icon-only btn-view-ficha" data-id="${item.id}" title="Ver Ficha"><i data-lucide="eye"></i></button>
                     <button class="btn btn-outline btn-icon-only btn-edit-equipo" data-id="${item.id}" title="Editar Equipo" style="color: var(--warning); border-color: var(--warning);"><i data-lucide="edit-2"></i></button>
                     <button class="btn btn-outline btn-icon-only btn-duplicate-equipo" data-id="${item.id}" data-index="${appState.data.indexOf(item)}" title="Duplicar Equipo"><i data-lucide="copy"></i></button>
+                    ${item.estado === 'EN DEPÓSITO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="CERTIFICANDO" title="Certificar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Certificar <i data-lucide="activity"></i></button>` : ''}
                     ${item.estado === 'CERTIFICANDO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Finalizar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Finalizar <i data-lucide="check"></i></button>` : ''}
                     ${item.estado === 'DISPONIBLE' ? `
                         <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="VENDIDO - DESPACHADO" title="Despachar">Despachar <i data-lucide="arrow-right"></i></button>
@@ -1596,8 +1615,67 @@ function closeModal(id) {
     if (modal) modal.classList.remove('active');
 }
 
+function toggleNuevoStateFields() {
+    const nuevoEstado = document.getElementById('nuevo-estado');
+    const nuevoFecha = document.getElementById('nuevo-fecha');
+    const nuevoPatronesSection = document.getElementById('nuevo-patrones-section');
+    const nuevoPuntosSection = document.getElementById('nuevo-puntos-section');
+    
+    if (!nuevoEstado) return;
+    
+    if (nuevoEstado.value === 'EN DEPÓSITO') {
+        if (nuevoFecha) {
+            nuevoFecha.required = false;
+            nuevoFecha.closest('.form-group').style.display = 'none';
+        }
+        if (nuevoPatronesSection) nuevoPatronesSection.style.display = 'none';
+        if (nuevoPuntosSection) nuevoPuntosSection.style.display = 'none';
+    } else {
+        if (nuevoFecha) {
+            nuevoFecha.required = true;
+            nuevoFecha.closest('.form-group').style.display = 'block';
+        }
+        if (nuevoPatronesSection) nuevoPatronesSection.style.display = 'block';
+        if (nuevoPuntosSection) nuevoPuntosSection.style.display = 'block';
+    }
+}
+
+function toggleEditStateFields() {
+    const editEstado = document.getElementById('edit-estado');
+    const editFecha = document.getElementById('edit-fecha');
+    const editCertificado = document.getElementById('edit-certificado');
+    const editCliente = document.getElementById('edit-cliente');
+    const editPatronesSection = document.getElementById('edit-patrones-section');
+    const editPuntosSection = document.getElementById('edit-puntos-section');
+    
+    if (!editEstado) return;
+    
+    if (editEstado.value === 'EN DEPÓSITO') {
+        if (editFecha) {
+            editFecha.required = false;
+            editFecha.closest('.form-group').style.display = 'none';
+        }
+        if (editCertificado) editCertificado.closest('.form-group').style.display = 'none';
+        if (editCliente) editCliente.closest('.form-group').style.display = 'none';
+        if (editPatronesSection) editPatronesSection.style.display = 'none';
+        if (editPuntosSection) editPuntosSection.style.display = 'none';
+    } else {
+        if (editFecha) {
+            editFecha.required = true;
+            editFecha.closest('.form-group').style.display = 'block';
+        }
+        if (editCertificado) editCertificado.closest('.form-group').style.display = 'block';
+        if (editCliente) editCliente.closest('.form-group').style.display = 'block';
+        if (editPatronesSection) editPatronesSection.style.display = 'block';
+        if (editPuntosSection) editPuntosSection.style.display = 'block';
+    }
+}
+
 function openModalNuevo() {
     const modal = document.getElementById('modal-nuevo');
+    
+    // Resetear visibilidad de campos de calibración según estado inicial
+    toggleNuevoStateFields();
     
     // Generar ID Correlativo
     let lastNum = 999;
@@ -1628,6 +1706,78 @@ function openModalNuevo() {
     updatePatronesChecklist('nuevo', []);
     
     modal.classList.add('active');
+}
+
+function openModalMasivo() {
+    const modal = document.getElementById('modal-masivo');
+    document.getElementById('form-masivo').reset();
+    modal.classList.add('active');
+}
+
+async function handleFormMasivo(e) {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-masivo');
+    btn.disabled = true;
+    btn.innerText = 'Registrando...';
+    
+    const nombre = document.getElementById('masivo-nombre').value;
+    const marca = document.getElementById('masivo-marca').value;
+    const modelo = document.getElementById('masivo-modelo').value;
+    const cantidad = parseInt(document.getElementById('masivo-cantidad').value) || 0;
+    
+    if (cantidad <= 0) {
+        showToast("Por favor ingresa una cantidad válida mayor a 0", "error");
+        btn.disabled = false;
+        btn.innerText = 'Registrar Lote';
+        return;
+    }
+    
+    try {
+        showLoader(`Generando ${cantidad} equipos en depósito...`);
+        
+        // Obtener el correlativo ID inicial
+        let lastNum = 999;
+        if(appState.data && appState.data.length > 0) {
+            const ids = appState.data.map(item => {
+                const match = String(item.id).match(/\d+/);
+                return match ? parseInt(match[0]) : 0;
+            });
+            const maxIdNum = Math.max(...ids);
+            if(maxIdNum >= 1000) lastNum = maxIdNum;
+        }
+        
+        // Escribir en lotes usando Firestore batch
+        const batch = db.batch();
+        for (let i = 0; i < cantidad; i++) {
+            const newId = 'INST-' + (lastNum + 1 + i);
+            const ref = db.collection("instrumentos").doc(newId);
+            batch.set(ref, {
+                id: newId,
+                instrumento: nombre,
+                marca: marca,
+                modelo: modelo,
+                serie: 'S/N',
+                fecha_calibracion: '',
+                estado: 'EN DEPÓSITO',
+                certificado: '',
+                cliente: '',
+                patrones: '[]',
+                puntos: '[]'
+            });
+        }
+        
+        await batch.commit();
+        closeAllModals();
+        await fetchData(); // Recargar base de datos
+        showToast(`Se registraron ${cantidad} equipos en Depósito con éxito.`, "success");
+    } catch(err) {
+        console.error("Error en ingreso masivo:", err);
+        showToast("⚠️ Falla al realizar ingreso masivo: " + err.toString(), "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Registrar Lote';
+        hideLoader();
+    }
 }
 
 function addPuntoRow() {
@@ -1795,30 +1945,34 @@ async function handleFormNuevo(e) {
             marca: document.getElementById('nuevo-marca').value,
             modelo: document.getElementById('nuevo-modelo').value,
             serie: document.getElementById('nuevo-serie').value,
-            fecha_calibracion: document.getElementById('nuevo-fecha').value,
-            estado: 'CERTIFICANDO',
+            fecha_calibracion: document.getElementById('nuevo-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('nuevo-fecha').value,
+            estado: document.getElementById('nuevo-estado').value,
             certificado: '',
             cliente: ''
         };
 
         const checkedPats = [];
-        document.querySelectorAll('#nuevo-patrones-checklist input[type="checkbox"]:checked').forEach(function(cb) {
-            checkedPats.push(cb.value);
-        });
+        if (record.estado !== 'EN DEPÓSITO') {
+            document.querySelectorAll('#nuevo-patrones-checklist input[type="checkbox"]:checked').forEach(function(cb) {
+                checkedPats.push(cb.value);
+            });
+        }
         record.patrones = JSON.stringify(checkedPats);
 
         const puntos = [];
-        const trs = document.querySelectorAll('#tbody-puntos tr');
-        trs.forEach((tr) => {
-            puntos.push({
-                pt: tr.querySelector('input[name="pt-name"]').value,
-                variable: '', 
-                unidad: tr.querySelector('input[name="pt-unit"]').value,
-                ref: tr.querySelector('input[name="pt-ref"]').value,
-                inst: tr.querySelector('input[name="pt-inst"]').value,
-                inc: tr.querySelector('input[name="pt-inc"]').value
+        if (record.estado !== 'EN DEPÓSITO') {
+            const trs = document.querySelectorAll('#tbody-puntos tr');
+            trs.forEach((tr) => {
+                puntos.push({
+                    pt: tr.querySelector('input[name="pt-name"]').value,
+                    variable: '', 
+                    unidad: tr.querySelector('input[name="pt-unit"]').value,
+                    ref: tr.querySelector('input[name="pt-ref"]').value,
+                    inst: tr.querySelector('input[name="pt-inst"]').value,
+                    inc: tr.querySelector('input[name="pt-inc"]').value
+                });
             });
-        });
+        }
         record.puntos = JSON.stringify(puntos);
 
         const result = await saveNewRecord(record);
@@ -1960,7 +2114,7 @@ function openModalFicha(id) {
         }
         
         return `
-            <div style="display: flex; flex-direction: column; width: 100%; margin-top: 10px; page-break-inside: avoid;">
+            <div class="reg-table-wrapper" style="display: flex; flex-direction: column; width: 100%; margin-top: 10px; page-break-inside: avoid;">
                 <div style="display: flex; justify-content: flex-end; align-items: center; gap: 8px; width: 100%; margin-bottom: 5px;">
                     <span style="font-size: 0.8rem; font-weight: bold;">Unid Med:</span>
                     <span style="border: 2px solid black; padding: 2px 10px; font-size: 0.85rem; font-weight: bold; min-width: 60px; text-align: center; background: white; color: black;">${unit}</span>
@@ -2232,6 +2386,7 @@ function openModalEdit(id) {
         selectEstado = 'VENDIDO - ENTREGADO';
     }
     document.getElementById('edit-estado').value = selectEstado;
+    toggleEditStateFields();
     document.getElementById('edit-certificado').value = item.certificado || '';
     document.getElementById('edit-cliente').value = item.cliente || '';
 
@@ -2300,29 +2455,33 @@ async function handleFormEdit(e) {
             marca: document.getElementById('edit-marca').value,
             modelo: document.getElementById('edit-modelo').value,
             serie: document.getElementById('edit-serie').value,
-            fecha_calibracion: document.getElementById('edit-fecha').value,
+            fecha_calibracion: document.getElementById('edit-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('edit-fecha').value,
             estado: (document.getElementById('edit-estado').value === 'VENDIDO - ENTREGADO') ? 'ENTREGADO' : document.getElementById('edit-estado').value,
-            certificado: document.getElementById('edit-certificado').value,
-            cliente: document.getElementById('edit-cliente').value
+            certificado: document.getElementById('edit-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('edit-certificado').value,
+            cliente: document.getElementById('edit-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('edit-cliente').value
         };
 
         const checkedPats = [];
-        document.querySelectorAll('#edit-patrones-checklist input[type="checkbox"]:checked').forEach(function(cb) {
-            checkedPats.push(cb.value);
-        });
+        if (record.estado !== 'EN DEPÓSITO') {
+            document.querySelectorAll('#edit-patrones-checklist input[type="checkbox"]:checked').forEach(function(cb) {
+                checkedPats.push(cb.value);
+            });
+        }
         record.patrones = JSON.stringify(checkedPats);
 
         const puntos = [];
-        document.querySelectorAll('#edit-tbody-puntos tr').forEach(tr => {
-            puntos.push({
-                pt: tr.querySelector('input[name="pt-name"]').value,
-                variable: '', 
-                unidad: tr.querySelector('input[name="pt-unit"]').value,
-                ref: tr.querySelector('input[name="pt-ref"]').value,
-                inst: tr.querySelector('input[name="pt-inst"]').value,
-                inc: tr.querySelector('input[name="pt-inc"]').value
+        if (record.estado !== 'EN DEPÓSITO') {
+            document.querySelectorAll('#edit-tbody-puntos tr').forEach(tr => {
+                puntos.push({
+                    pt: tr.querySelector('input[name="pt-name"]').value,
+                    variable: '', 
+                    unidad: tr.querySelector('input[name="pt-unit"]').value,
+                    ref: tr.querySelector('input[name="pt-ref"]').value,
+                    inst: tr.querySelector('input[name="pt-inst"]').value,
+                    inc: tr.querySelector('input[name="pt-inc"]').value
+                });
             });
-        });
+        }
         record.puntos = JSON.stringify(puntos);
 
         const result = await saveFullUpdate(record);
