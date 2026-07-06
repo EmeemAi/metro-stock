@@ -204,6 +204,7 @@
                     <table id="instrumentos-table">
                         <thead>
                             <tr>
+                                <th style="width: 40px; text-align: center;"><input type="checkbox" id="bulk-select-all" style="width: 16px; height: 16px; cursor: pointer;"></th>
                                 <th>ID</th>
                                 <th>Instrumento / Modelo</th>
                                 <th>Nº Serie</th>
@@ -795,6 +796,71 @@
             });
         }
     </script>
+
+    <!-- Barra de Acciones Masivas (Bulk Actions) -->
+    <div id="bulk-action-bar" class="bulk-action-bar">
+        <div class="bulk-action-content">
+            <span id="bulk-selected-count">0 seleccionados</span>
+            <div class="bulk-buttons">
+                <button class="btn btn-outline btn-sm" id="btn-bulk-certificar" style="color: var(--state-certificando); border-color: var(--state-certificando);">
+                    <i data-lucide="play" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> Certificar
+                </button>
+                <button class="btn btn-outline btn-sm" id="btn-bulk-editar" style="color: var(--warning); border-color: var(--warning);">
+                    <i data-lucide="edit-2" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> Editar Datos
+                </button>
+                <button class="btn btn-primary btn-sm" id="btn-bulk-eliminar" style="background-color: var(--error); border-color: var(--error); color: white;">
+                    <i data-lucide="trash-2" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> Eliminar
+                </button>
+                <button class="btn btn-outline btn-sm" id="btn-bulk-cancelar">
+                    Cancelar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Edición Masiva -->
+    <div id="modal-bulk-edit" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Editar Equipos Seleccionados</h2>
+                <button class="btn-close"><i data-lucide="x"></i></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    Ingresa solo los datos que deseas cambiar en los equipos seleccionados. Los campos que dejes vacíos no se modificarán.
+                </div>
+                <form id="form-bulk-edit">
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label>Nombre del Instrumento</label>
+                        <input type="text" id="bulk-edit-nombre" placeholder="Sin cambios">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label>Marca</label>
+                        <input type="text" id="bulk-edit-marca" placeholder="Sin cambios">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1rem;">
+                        <label>Modelo</label>
+                        <input type="text" id="bulk-edit-modelo" placeholder="Sin cambios">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 1.5rem;">
+                        <label>Estado</label>
+                        <select id="bulk-edit-estado" style="width: 100%; height: 38px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-card); color: var(--text-primary); padding: 0.35rem 0.5rem;">
+                            <option value="">-- Sin cambios --</option>
+                            <option value="EN DEPÓSITO">EN DEPÓSITO</option>
+                            <option value="CERTIFICANDO">CERTIFICANDO</option>
+                            <option value="DISPONIBLE">DISPONIBLE</option>
+                            <option value="VENTA INTERNA">VENTA INTERNA</option>
+                        </select>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline btn-close-action">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="btn-save-bulk-edit">Aplicar Cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <div id="printable-certificate" style="display: none;"></div>
     <!-- Firebase SDK (Compat v10) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>

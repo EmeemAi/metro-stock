@@ -2514,3 +2514,50 @@ button.alert-action-badge:hover {
     }
 }
 
+/* Bulk Action Bar */
+.bulk-action-bar {
+    position: fixed;
+    bottom: -120px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-strong);
+    box-shadow: var(--modal-shadow);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    width: calc(100% - 2rem);
+    max-width: 800px;
+    z-index: 1000;
+    transition: bottom 0.3s ease, opacity 0.3s ease;
+    opacity: 0;
+}
+.bulk-action-bar.active {
+    bottom: 20px;
+    opacity: 1;
+}
+.bulk-action-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+#bulk-selected-count {
+    font-weight: 600;
+    color: var(--primary);
+}
+.bulk-buttons {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+@media (max-width: 600px) {
+    .bulk-action-content {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .bulk-buttons {
+        justify-content: flex-end;
+    }
+}
+

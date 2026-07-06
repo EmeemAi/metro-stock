@@ -757,6 +757,9 @@ document.addEventListener('DOMContentLoaded', () => {
             updateDashboard();
         }
     });
+
+    // Inicializar eventos de selección masiva
+    initBulkEvents();
 });
 
 function updateThemeToggleUI(isMatte) {
@@ -777,6 +780,9 @@ function updateThemeToggleUI(isMatte) {
 
 
 async function fetchData() {
+    if (typeof clearBulkSelection === 'function') {
+        clearBulkSelection();
+    }
     appState.loading = true;
     updateUIState();
     showLoader('Sincronizando base de datos...');
@@ -895,8 +901,24 @@ async function saveFullUpdate(record) {
 
     try {
         const docId = String(record.id).trim();
-        await db.collection("instrumentos").doc(docId).set(record);
+        await db.collection("instrumentos").doc(docId).set(record, { merge: true });
         console.log(`✅ Registro ${docId} actualizado por completo en Firebase.`);
+
+        // Sincronización asíncrona en segundo plano con Google Sheets
+        if (GOOGLE_SHEETS_API_URL !== '') {
+            fetch(GOOGLE_SHEETS_API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                credentials: 'omit',
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'update_full',
+                    data: record
+                })
+            }).catch(err => console.error("Error al sincronizar actualización completa con Google Sheets:", err));
+        }
+
         return { success: true };
     } catch (error) {
         console.error("❌ Error en saveFullUpdate en Firebase:", error);
@@ -978,8 +1000,24 @@ async function saveNewRecord(record) {
 
     try {
         const docId = String(record.id).trim();
-        await db.collection("instrumentos").doc(docId).set(record);
+        await db.collection("instrumentos").doc(docId).set(record, { merge: true });
         console.log(`✅ Nuevo registro ${docId} creado en Firebase.`);
+
+        // Sincronización asíncrona en segundo plano con Google Sheets
+        if (GOOGLE_SHEETS_API_URL !== '') {
+            fetch(GOOGLE_SHEETS_API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                credentials: 'omit',
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'create',
+                    data: record
+                })
+            }).catch(err => console.error("Error al sincronizar nuevo registro con Google Sheets:", err));
+        }
+
         return { success: true };
     } catch (error) {
         console.error("❌ Error en saveNewRecord en Firebase:", error);
@@ -1579,7 +1617,9 @@ function renderTable() {
             }
             const stateClass = displayEstado.toLowerCase().replace(/\s+/g, '-');
 
+            const isChecked = (appState.selectedIds && appState.selectedIds.has(item.id)) ? 'checked' : '';
             tr.innerHTML = `
+                <td style="text-align: center;"><input type="checkbox" class="bulk-item-select" data-id="${item.id}" ${isChecked} style="width: 16px; height: 16px; cursor: pointer;"></td>
                 <td><strong>${item.id}</strong></td>
                 <td><strong>${item.instrumento || '---'}</strong><br><small style="color: var(--text-secondary);">${item.marca} ${item.modelo}</small></td>
                 <td>${item.serie}</td>
@@ -1623,13 +1663,21 @@ function toggleNuevoStateFields() {
     
     if (!nuevoEstado) return;
     
-    if (nuevoEstado.value === 'EN DEPÓSITO') {
+    const val = nuevoEstado.value;
+    if (val === 'EN DEPÓSITO') {
         if (nuevoFecha) {
             nuevoFecha.required = false;
             nuevoFecha.closest('.form-group').style.display = 'none';
         }
         if (nuevoPatronesSection) nuevoPatronesSection.style.display = 'none';
         if (nuevoPuntosSection) nuevoPuntosSection.style.display = 'none';
+    } else if (val === 'CERTIFICANDO') {
+        if (nuevoFecha) {
+            nuevoFecha.required = false;
+            nuevoFecha.closest('.form-group').style.display = 'block';
+        }
+        if (nuevoPatronesSection) nuevoPatronesSection.style.display = 'block';
+        if (nuevoPuntosSection) nuevoPuntosSection.style.display = 'block';
     } else {
         if (nuevoFecha) {
             nuevoFecha.required = true;
@@ -1650,7 +1698,8 @@ function toggleEditStateFields() {
     
     if (!editEstado) return;
     
-    if (editEstado.value === 'EN DEPÓSITO') {
+    const val = editEstado.value;
+    if (val === 'EN DEPÓSITO') {
         if (editFecha) {
             editFecha.required = false;
             editFecha.closest('.form-group').style.display = 'none';
@@ -1659,6 +1708,15 @@ function toggleEditStateFields() {
         if (editCliente) editCliente.closest('.form-group').style.display = 'none';
         if (editPatronesSection) editPatronesSection.style.display = 'none';
         if (editPuntosSection) editPuntosSection.style.display = 'none';
+    } else if (val === 'CERTIFICANDO') {
+        if (editFecha) {
+            editFecha.required = false;
+            editFecha.closest('.form-group').style.display = 'block';
+        }
+        if (editCertificado) editCertificado.closest('.form-group').style.display = 'block';
+        if (editCliente) editCliente.closest('.form-group').style.display = 'block';
+        if (editPatronesSection) editPatronesSection.style.display = 'block';
+        if (editPuntosSection) editPuntosSection.style.display = 'block';
     } else {
         if (editFecha) {
             editFecha.required = true;
@@ -4148,5 +4206,292 @@ async function markRequestAsAlreadySent() {
         btn.disabled = false;
         btn.innerHTML = originalText;
         lucide.createIcons();
+    }
+}
+
+// ==========================================
+// ACCIONES MASIVAS (BULK ACTIONS)
+// ==========================================
+appState.selectedIds = new Set();
+
+function initBulkEvents() {
+    // 1. Checkbox header click (Seleccionar todo)
+    const selectAllCheckbox = document.getElementById('bulk-select-all');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function(e) {
+            const checked = e.target.checked;
+            const checkboxes = document.querySelectorAll('.bulk-item-select');
+            checkboxes.forEach(cb => {
+                const id = cb.getAttribute('data-id');
+                cb.checked = checked;
+                if (checked) {
+                    appState.selectedIds.add(id);
+                } else {
+                    appState.selectedIds.delete(id);
+                }
+            });
+            updateBulkActionBar();
+        });
+    }
+
+    // 2. Click en checkboxes individuales (Delegado en el table-body)
+    const tableBody = document.getElementById('table-body');
+    if (tableBody) {
+        tableBody.addEventListener('change', function(e) {
+            const cb = e.target.closest('.bulk-item-select');
+            if (cb) {
+                const id = cb.getAttribute('data-id');
+                if (cb.checked) {
+                    appState.selectedIds.add(id);
+                } else {
+                    appState.selectedIds.delete(id);
+                }
+                updateBulkActionBar();
+            }
+        });
+    }
+
+    // 3. Botones de acciones masivas
+    const btnCancel = document.getElementById('btn-bulk-cancelar');
+    if (btnCancel) {
+        btnCancel.addEventListener('click', clearBulkSelection);
+    }
+
+    const btnCertificar = document.getElementById('btn-bulk-certificar');
+    if (btnCertificar) {
+        btnCertificar.addEventListener('click', bulkCertificar);
+    }
+
+    const btnEditar = document.getElementById('btn-bulk-editar');
+    if (btnEditar) {
+        btnEditar.addEventListener('click', openBulkEditModal);
+    }
+
+    const btnEliminar = document.getElementById('btn-bulk-eliminar');
+    if (btnEliminar) {
+        btnEliminar.addEventListener('click', bulkEliminar);
+    }
+
+    // 4. Formulario de edición masiva
+    const formBulkEdit = document.getElementById('form-bulk-edit');
+    if (formBulkEdit) {
+        formBulkEdit.addEventListener('submit', handleFormBulkEdit);
+    }
+}
+
+function updateBulkActionBar() {
+    const bar = document.getElementById('bulk-action-bar');
+    const countSpan = document.getElementById('bulk-selected-count');
+    const selectAllCheckbox = document.getElementById('bulk-select-all');
+    
+    const count = appState.selectedIds.size;
+    if (countSpan) countSpan.innerText = `${count} equipo${count === 1 ? '' : 's'} seleccionado${count === 1 ? '' : 's'}`;
+    
+    if (count > 0) {
+        if (bar) bar.classList.add('active');
+    } else {
+        if (bar) bar.classList.remove('active');
+    }
+
+    // Alinear checkbox global
+    if (selectAllCheckbox) {
+        const visibleCheckboxes = document.querySelectorAll('.bulk-item-select');
+        const checkedCount = Array.from(visibleCheckboxes).filter(cb => cb.checked).length;
+        if (visibleCheckboxes.length > 0) {
+            selectAllCheckbox.checked = (checkedCount === visibleCheckboxes.length);
+            selectAllCheckbox.indeterminate = (checkedCount > 0 && checkedCount < visibleCheckboxes.length);
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+    }
+}
+
+function clearBulkSelection() {
+    appState.selectedIds.clear();
+    const selectAllCheckbox = document.getElementById('bulk-select-all');
+    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+    
+    document.querySelectorAll('.bulk-item-select').forEach(cb => {
+        cb.checked = false;
+    });
+    updateBulkActionBar();
+}
+
+async function bulkCertificar() {
+    const count = appState.selectedIds.size;
+    if (count === 0) return;
+    
+    if (!confirm(`¿Estás seguro de que deseas cambiar a CERTIFICANDO los ${count} equipos seleccionados?`)) {
+        return;
+    }
+    
+    showLoader(`Actualizando estado de ${count} equipos a CERTIFICANDO...`);
+    try {
+        const batch = db.batch();
+        const promises = [];
+        
+        appState.selectedIds.forEach(id => {
+            const docRef = db.collection("instrumentos").doc(id);
+            batch.update(docRef, { estado: 'CERTIFICANDO' });
+            
+            // Sincronizar asíncronamente con Sheets
+            if (GOOGLE_SHEETS_API_URL !== '') {
+                promises.push(
+                    fetch(GOOGLE_SHEETS_API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        credentials: 'omit',
+                        cache: 'no-cache',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'update_status',
+                            data: { id: id, estado: 'CERTIFICANDO' }
+                        })
+                    }).catch(err => console.error("Error al sincronizar estado masivo con Sheets:", err))
+                );
+            }
+        });
+        
+        await batch.commit();
+        clearBulkSelection();
+        await fetchData();
+        showToast(`Se pasaron ${count} equipos a "CERTIFICANDO" con éxito.`, "success");
+    } catch(err) {
+        console.error("Error al certificar en lote:", err);
+        showToast("⚠️ Falla al cambiar estados en lote: " + err.toString(), "error");
+    } finally {
+        hideLoader();
+    }
+}
+
+function openBulkEditModal() {
+    const count = appState.selectedIds.size;
+    if (count === 0) return;
+    document.getElementById('form-bulk-edit').reset();
+    document.getElementById('modal-bulk-edit').classList.add('active');
+}
+
+async function handleFormBulkEdit(e) {
+    e.preventDefault();
+    const count = appState.selectedIds.size;
+    if (count === 0) return;
+
+    const nombre = document.getElementById('bulk-edit-nombre').value.trim();
+    const marca = document.getElementById('bulk-edit-marca').value.trim();
+    const modelo = document.getElementById('bulk-edit-modelo').value.trim();
+    const estado = document.getElementById('bulk-edit-estado').value;
+
+    const updates = {};
+    if (nombre) updates.instrumento = nombre;
+    if (marca) updates.marca = marca;
+    if (modelo) updates.modelo = modelo;
+    if (estado) {
+        updates.estado = (estado === 'VENDIDO - ENTREGADO') ? 'ENTREGADO' : estado;
+        if (estado === 'EN DEPÓSITO') {
+            updates.fecha_calibracion = '';
+            updates.certificado = '';
+            updates.cliente = '';
+            updates.patrones = '[]';
+            updates.puntos = '[]';
+        }
+    }
+
+    if (Object.keys(updates).length === 0) {
+        showToast("Por favor, ingresa al menos un dato para cambiar.", "warning");
+        return;
+    }
+
+    const btn = document.getElementById('btn-save-bulk-edit');
+    btn.disabled = true;
+    btn.innerText = 'Aplicando...';
+
+    showLoader(`Aplicando cambios en lote a ${count} equipos...`);
+    try {
+        const batch = db.batch();
+        const promises = [];
+
+        appState.selectedIds.forEach(id => {
+            const docRef = db.collection("instrumentos").doc(id);
+            batch.set(docRef, updates, { merge: true });
+
+            // Sincronizar asíncronamente con Sheets
+            if (GOOGLE_SHEETS_API_URL !== '') {
+                // Obtenemos los datos actuales en memoria para enviar la actualización completa
+                const current = appState.data.find(x => x.id === id) || {};
+                const merged = Object.assign({}, current, updates);
+                promises.push(
+                    fetch(GOOGLE_SHEETS_API_URL, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        credentials: 'omit',
+                        cache: 'no-cache',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'update_full',
+                            data: merged
+                        })
+                    }).catch(err => console.error("Error al sincronizar edición masiva con Sheets:", err))
+                );
+            }
+        });
+
+        await batch.commit();
+        closeAllModals();
+        clearBulkSelection();
+        await fetchData();
+        showToast(`Se actualizaron los datos de ${count} equipos con éxito.`, "success");
+    } catch(err) {
+        console.error("Error al editar en lote:", err);
+        showToast("⚠️ Falla al actualizar datos en lote: " + err.toString(), "error");
+    } finally {
+        btn.disabled = false;
+        btn.innerText = 'Aplicar Cambios';
+        hideLoader();
+    }
+}
+
+async function bulkEliminar() {
+    const count = appState.selectedIds.size;
+    if (count === 0) return;
+
+    if (!confirm(`🚨 ¡ATENCIÓN! ¿Estás seguro de que deseas eliminar permanentemente del inventario los ${count} equipos seleccionados?`)) {
+        return;
+    }
+
+    showLoader(`Eliminando ${count} equipos del inventario...`);
+    try {
+        const batch = db.batch();
+        const idsArray = Array.from(appState.selectedIds);
+        
+        idsArray.forEach(id => {
+            const docRef = db.collection("instrumentos").doc(id);
+            batch.delete(docRef);
+        });
+
+        // Sincronización con Sheets
+        if (GOOGLE_SHEETS_API_URL !== '') {
+            await fetch(GOOGLE_SHEETS_API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                credentials: 'omit',
+                cache: 'no-cache',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'delete_bulk',
+                    ids: idsArray
+                })
+            }).catch(err => console.error("Error al eliminar masivo de Sheets:", err));
+        }
+
+        await batch.commit();
+        clearBulkSelection();
+        await fetchData();
+        showToast(`Se eliminaron ${count} equipos con éxito del inventario.`, "success");
+    } catch(err) {
+        console.error("Error al eliminar en lote:", err);
+        showToast("⚠️ Falla al eliminar equipos en lote: " + err.toString(), "error");
+    } finally {
+        hideLoader();
     }
 }
