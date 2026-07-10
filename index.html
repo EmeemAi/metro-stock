@@ -338,7 +338,7 @@
                         </div>
                         <div class="form-group">
                             <label>Estado Inicial</label>
-                            <select id="nuevo-estado" style="width: 100%; height: 38px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-card); color: var(--text-primary); padding: 0.35rem 0.5rem; outline: none; font-family: var(--font-ui);">
+                            <select id="nuevo-estado">
                                 <option value="CERTIFICANDO">CERTIFICANDO</option>
                                 <option value="EN DEPÓSITO">EN DEPÓSITO</option>
                             </select>
@@ -405,7 +405,7 @@
                 <form id="form-masivo">
                     <div class="form-group" style="margin-bottom: 1rem;" id="masivo-articulo-group">
                         <label>Seleccionar Artículo Existente</label>
-                        <select id="masivo-articulo-select" required style="width: 100%; height: 38px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-card); color: var(--text-primary); padding: 0.35rem 0.5rem; outline: none; font-family: var(--font-ui);">
+                        <select id="masivo-articulo-select" required>
                             <!-- Opciones cargadas dinámicamente por JS -->
                         </select>
                     </div>
@@ -697,7 +697,7 @@
                     
                     <div class="form-group" style="margin-bottom: 1rem;">
                         <label>Estado a asignar</label>
-                        <select id="mark-status-select" style="width: 100%; padding: 0.4rem; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-card); color: var(--text-primary);">
+                        <select id="mark-status-select">
                             <option value="enviado anteriormente">Enviado Anteriormente</option>
                             <option value="duplicada">Solicitud Duplicada</option>
                         </select>
@@ -859,7 +859,7 @@
                     </div>
                     <div class="form-group" style="margin-bottom: 1.5rem;">
                         <label>Estado</label>
-                        <select id="bulk-edit-estado" style="width: 100%; height: 38px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-card); color: var(--text-primary); padding: 0.35rem 0.5rem;">
+                        <select id="bulk-edit-estado">
                             <option value="">-- Sin cambios --</option>
                             <option value="EN DEPÓSITO">EN DEPÓSITO</option>
                             <option value="CERTIFICANDO">CERTIFICANDO</option>
