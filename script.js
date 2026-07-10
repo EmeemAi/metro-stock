@@ -470,6 +470,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnMasivoEquipo = document.getElementById('btn-masivo-equipo');
     if (btnMasivoEquipo) btnMasivoEquipo.addEventListener('click', openModalMasivo);
     
+    const chkMasivoNuevo = document.getElementById('masivo-nuevo-articulo-chk');
+    if (chkMasivoNuevo) chkMasivoNuevo.addEventListener('change', toggleMasivoFields);
+    
     // Configurar Modales (Cerrar)
     document.querySelectorAll('.btn-close, .btn-close-action').forEach(btn => {
         btn.addEventListener('click', closeAllModals);
@@ -1549,7 +1552,7 @@ function renderTable() {
         return true;
     });
 
-    // Gestión del Resumen de Disponibles
+    // Gestión del Resumen de Disponibles y Todos
     if (appState.filter === 'DISPONIBLE' && filtered.length > 0) {
         const counts = {};
         filtered.forEach(item => {
@@ -1569,10 +1572,67 @@ function renderTable() {
                 summaryHTML += `
                     <div class="summary-card" title="${key}">
                         <span class="summary-label">${key}</span>
-                        <span class="summary-count">${count} ${count === 1 ? 'u' : 'u'}</span>
+                        <span class="summary-count">${count} u</span>
                     </div>
                 `;
             });
+        
+        summaryHTML += `</div>`;
+        summaryContainer.innerHTML = summaryHTML;
+        summaryContainer.style.display = 'flex';
+    } else if (appState.filter === 'ALL' && filtered.length > 0) {
+        const counts = {};
+        filtered.forEach(item => {
+            let stateName = (item.estado || 'SIN ESTADO').toUpperCase();
+            if (stateName === 'RESERVADO') stateName = 'VENDIDO - DESPACHADO';
+            if (stateName === 'ENTREGADO') stateName = 'VENDIDO - ENTREGADO';
+            counts[stateName] = (counts[stateName] || 0) + 1;
+        });
+
+        let summaryHTML = `
+            <div class="summary-title"><i data-lucide="bar-chart-2" style="width:14px;"></i> Cantidad de Equipos por Estado</div>
+            <div class="summary-grid">
+        `;
+        
+        const stateOrder = [
+            'EN DEPÓSITO',
+            'SIN CERTIFICAR',
+            'CERTIFICANDO',
+            'DISPONIBLE',
+            'VENDIDO - DESPACHADO',
+            'VENDIDO - ENTREGADO',
+            'VENTA INTERNA'
+        ];
+
+        const sortedStates = Object.keys(counts).sort((a, b) => {
+            const idxA = stateOrder.indexOf(a);
+            const idxB = stateOrder.indexOf(b);
+            if (idxA === -1 && idxB === -1) return a.localeCompare(b);
+            if (idxA === -1) return 1;
+            if (idxB === -1) return -1;
+            return idxA - idxB;
+        });
+
+        sortedStates.forEach(stateName => {
+            const count = counts[stateName];
+            let displayLabel = stateName.toLowerCase();
+            // Convert to nice case
+            if (displayLabel === 'en depósito') displayLabel = 'En Depósito';
+            else if (displayLabel === 'sin certificar') displayLabel = 'Sin Certificar';
+            else if (displayLabel === 'certificando') displayLabel = 'Certificando';
+            else if (displayLabel === 'disponible') displayLabel = 'Disponible';
+            else if (displayLabel === 'vendido - despachado') displayLabel = 'Vendido - Despachado';
+            else if (displayLabel === 'vendido - entregado') displayLabel = 'Vendido - Entregado';
+            else if (displayLabel === 'venta interna') displayLabel = 'Venta Interna';
+            else displayLabel = displayLabel.charAt(0).toUpperCase() + displayLabel.slice(1);
+            
+            summaryHTML += `
+                <div class="summary-card" title="${stateName}">
+                    <span class="summary-label">${displayLabel}</span>
+                    <span class="summary-count">${count} u</span>
+                </div>
+            `;
+        });
         
         summaryHTML += `</div>`;
         summaryContainer.innerHTML = summaryHTML;
@@ -1766,9 +1826,83 @@ function openModalNuevo() {
     modal.classList.add('active');
 }
 
+function toggleMasivoFields() {
+    const chk = document.getElementById('masivo-nuevo-articulo-chk');
+    const container = document.getElementById('masivo-nuevos-campos-container');
+    const groupSelect = document.getElementById('masivo-articulo-group');
+    const select = document.getElementById('masivo-articulo-select');
+    const nameInput = document.getElementById('masivo-nombre');
+    const brandInput = document.getElementById('masivo-marca');
+    const modelInput = document.getElementById('masivo-modelo');
+    
+    if (!chk) return;
+    
+    if (chk.checked) {
+        if (container) container.style.display = 'block';
+        if (groupSelect) groupSelect.style.display = 'none';
+        if (select) select.required = false;
+        if (nameInput) nameInput.required = true;
+        if (brandInput) brandInput.required = true;
+        if (modelInput) modelInput.required = true;
+    } else {
+        if (container) container.style.display = 'none';
+        if (groupSelect) groupSelect.style.display = 'block';
+        if (select) select.required = true;
+        if (nameInput) nameInput.required = false;
+        if (brandInput) brandInput.required = false;
+        if (modelInput) modelInput.required = false;
+    }
+}
+
 function openModalMasivo() {
     const modal = document.getElementById('modal-masivo');
     document.getElementById('form-masivo').reset();
+    
+    const chk = document.getElementById('masivo-nuevo-articulo-chk');
+    if (chk) chk.checked = false;
+    toggleMasivoFields();
+    
+    // Obtener artículos únicos de la base de datos local
+    const uniqueArticles = [];
+    const seen = new Set();
+    
+    if (appState.data && appState.data.length > 0) {
+        appState.data.forEach(item => {
+            const inst = (item.instrumento || '').trim();
+            const brand = (item.marca || '').trim();
+            const model = (item.modelo || '').trim();
+            if (!inst && !brand && !model) return;
+            
+            const key = `${inst}|${brand}|${model}`.toUpperCase();
+            if (!seen.has(key)) {
+                seen.add(key);
+                uniqueArticles.push({ instrumento: inst, marca: brand, modelo: model });
+            }
+        });
+    }
+    
+    // Ordenar alfabéticamente
+    uniqueArticles.sort((a, b) => {
+        const compInst = a.instrumento.localeCompare(b.instrumento);
+        if (compInst !== 0) return compInst;
+        const compBrand = a.marca.localeCompare(b.marca);
+        if (compBrand !== 0) return compBrand;
+        return a.modelo.localeCompare(b.modelo);
+    });
+    
+    const select = document.getElementById('masivo-articulo-select');
+    if (select) {
+        select.innerHTML = '<option value="">-- Seleccionar Artículo Existente --</option>';
+        uniqueArticles.forEach(art => {
+            const optVal = JSON.stringify(art);
+            const optText = `${art.instrumento} (Marca: ${art.marca}, Modelo: ${art.modelo})`;
+            const option = document.createElement('option');
+            option.value = optVal;
+            option.innerText = optText;
+            select.appendChild(option);
+        });
+    }
+    
     modal.classList.add('active');
 }
 
@@ -1778,11 +1912,34 @@ async function handleFormMasivo(e) {
     btn.disabled = true;
     btn.innerText = 'Registrando...';
     
-    const nombre = document.getElementById('masivo-nombre').value;
-    const marca = document.getElementById('masivo-marca').value;
-    const modelo = document.getElementById('masivo-modelo').value;
-    const cantidad = parseInt(document.getElementById('masivo-cantidad').value) || 0;
+    const chk = document.getElementById('masivo-nuevo-articulo-chk');
+    let nombre = '';
+    let marca = '';
+    let modelo = '';
     
+    if (chk && chk.checked) {
+        nombre = document.getElementById('masivo-nombre').value.trim();
+        marca = document.getElementById('masivo-marca').value.trim();
+        modelo = document.getElementById('masivo-modelo').value.trim();
+    } else {
+        const selectVal = document.getElementById('masivo-articulo-select').value;
+        if (!selectVal) {
+            showToast("Por favor selecciona un artículo existente o activa la casilla para registrar uno nuevo.", "warning");
+            btn.disabled = false;
+            btn.innerText = 'Registrar Lote';
+            return;
+        }
+        try {
+            const art = JSON.parse(selectVal);
+            nombre = art.instrumento;
+            marca = art.marca;
+            modelo = art.modelo;
+        } catch(err) {
+            console.error("Error al parsear artículo de select:", err);
+        }
+    }
+    
+    const cantidad = parseInt(document.getElementById('masivo-cantidad').value) || 0;
     if (cantidad <= 0) {
         showToast("Por favor ingresa una cantidad válida mayor a 0", "error");
         btn.disabled = false;

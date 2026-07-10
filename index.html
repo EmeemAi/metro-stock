@@ -403,18 +403,33 @@
             </div>
             <div class="modal-body">
                 <form id="form-masivo">
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label>Nombre del Instrumento</label>
-                        <input type="text" id="masivo-nombre" required placeholder="Ej. Calibrador de Proceso">
+                    <div class="form-group" style="margin-bottom: 1rem;" id="masivo-articulo-group">
+                        <label>Seleccionar Artículo Existente</label>
+                        <select id="masivo-articulo-select" required style="width: 100%; height: 38px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background-color: var(--bg-card); color: var(--text-primary); padding: 0.35rem 0.5rem; outline: none; font-family: var(--font-ui);">
+                            <!-- Opciones cargadas dinámicamente por JS -->
+                        </select>
                     </div>
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label>Marca</label>
-                        <input type="text" id="masivo-marca" required placeholder="Ej. Fluke">
+
+                    <div style="margin-bottom: 1.25rem; display: flex; align-items: center; gap: 0.5rem;">
+                        <input type="checkbox" id="masivo-nuevo-articulo-chk" style="width: 16px; height: 16px; cursor: pointer;">
+                        <label for="masivo-nuevo-articulo-chk" style="font-weight: 500; cursor: pointer; user-select: none; font-size: 0.85rem;">Crear un nuevo artículo (no figura en la lista)</label>
                     </div>
-                    <div class="form-group" style="margin-bottom: 1rem;">
-                        <label>Modelo</label>
-                        <input type="text" id="masivo-modelo" required placeholder="Ej. 115">
+
+                    <div id="masivo-nuevos-campos-container" style="display: none; border: 1px dashed var(--border-strong); padding: 1rem; border-radius: 8px; margin-bottom: 1.25rem; background-color: rgba(0,0,0,0.02);">
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label>Nombre del Instrumento / Magnitud</label>
+                            <input type="text" id="masivo-nombre" placeholder="Ej. Calibrador de Proceso">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label>Marca</label>
+                            <input type="text" id="masivo-marca" placeholder="Ej. Fluke">
+                        </div>
+                        <div class="form-group" style="margin-bottom: 1rem;">
+                            <label>Modelo</label>
+                            <input type="text" id="masivo-modelo" placeholder="Ej. 115">
+                        </div>
                     </div>
+
                     <div class="form-group" style="margin-bottom: 1rem;">
                         <label>Cantidad de Equipos</label>
                         <input type="number" id="masivo-cantidad" required min="1" max="100" value="10">
