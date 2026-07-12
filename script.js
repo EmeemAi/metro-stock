@@ -817,7 +817,9 @@ async function fetchData() {
         // e importamos cualquier solicitud o vencimiento nuevo, o actualizamos su estado si cambió.
         if (items.length > 0 && GOOGLE_SHEETS_API_URL !== '') {
             try {
-                const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
+                const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
+                    credentials: 'omit'
+                });
                 const result = await response.json();
                 
                 const sheetsSolicitudes = result.solicitudes || [];
@@ -910,7 +912,9 @@ async function fetchData() {
             showLoader('Migrando datos desde Google Sheets a Firebase (esto ocurrirá solo una vez)...');
             
             try {
-                const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
+                const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
+                    credentials: 'omit'
+                });
                 const result = await response.json();
                 
                 const sheetsItems = result.items || [];
