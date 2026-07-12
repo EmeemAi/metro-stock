@@ -469,6 +469,9 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const btnMasivoEquipo = document.getElementById('btn-masivo-equipo');
     if (btnMasivoEquipo) btnMasivoEquipo.addEventListener('click', openModalMasivo);
+
+    const btnSyncSolicitudes = document.getElementById('btn-sync-solicitudes');
+    if (btnSyncSolicitudes) btnSyncSolicitudes.addEventListener('click', fetchData);
     
     const chkMasivoNuevo = document.getElementById('masivo-nuevo-articulo-chk');
     if (chkMasivoNuevo) chkMasivoNuevo.addEventListener('change', toggleMasivoFields);
@@ -796,10 +799,110 @@ async function fetchData() {
         let items = itemsSnapshot.docs.map(doc => doc.data());
 
         const solicitudesSnapshot = await db.collection("solicitudes").get();
-        let solicitudes = solicitudesSnapshot.docs.map(doc => doc.data());
+        let solicitudes = solicitudesSnapshot.docs.map(doc => {
+            const data = doc.data();
+            data.firestoreId = doc.id;
+            return data;
+        });
 
         const vencimientosSnapshot = await db.collection("vencimientos").get();
-        let vencimientos = vencimientosSnapshot.docs.map(doc => doc.data());
+        let vencimientos = vencimientosSnapshot.docs.map(doc => {
+            const data = doc.data();
+            data.firestoreId = doc.id;
+            return data;
+        });
+
+        // SINCRONIZACIÓN AUTOMÁTICA CON GOOGLE SHEETS:
+        // Si Firestore tiene datos y hay una URL de Sheets, descargamos los datos más recientes de Sheets
+        // e importamos cualquier solicitud o vencimiento nuevo, o actualizamos su estado si cambió.
+        if (items.length > 0 && GOOGLE_SHEETS_API_URL !== '') {
+            try {
+                const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime());
+                const result = await response.json();
+                
+                const sheetsSolicitudes = result.solicitudes || [];
+                const sheetsVencimientos = result.vencimientos || [];
+                
+                let hasChanges = false;
+                const batch = db.batch();
+                
+                // 1. Sincronizar solicitudes
+                const firestoreSolsMap = new Map();
+                solicitudes.forEach(s => {
+                    const key = `${s.timestamp || ''}_${s.email || ''}_${s.certificado || ''}`.toLowerCase().trim();
+                    firestoreSolsMap.set(key, s);
+                });
+                
+                sheetsSolicitudes.forEach((sol, idx) => {
+                    const key = `${sol.timestamp || ''}_${sol.email || ''}_${sol.certificado || ''}`.toLowerCase().trim();
+                    
+                    if (!firestoreSolsMap.has(key)) {
+                        // Nueva solicitud en Sheets que no está en Firestore
+                        const ts = sol.timestamp || '';
+                        const email = sol.email || '';
+                        const cert = sol.certificado || '';
+                        let docId = `sol_${ts}_${email}_${cert}`.replace(/[^a-zA-Z0-9_-]/g, '_');
+                        if (!docId || docId === 'sol____') {
+                            docId = `sol_auto_${idx}_${Date.now()}`;
+                        }
+                        const newDocRef = db.collection("solicitudes").doc(docId);
+                        batch.set(newDocRef, sol);
+                        
+                        const solWithId = Object.assign({}, sol, { firestoreId: docId });
+                        solicitudes.push(solWithId);
+                        hasChanges = true;
+                    } else {
+                        // Existe, verificar si el estado cambió en Sheets
+                        const existing = firestoreSolsMap.get(key);
+                        if ((sol.estado || '').trim().toLowerCase() !== (existing.estado || '').trim().toLowerCase()) {
+                            const docRef = db.collection("solicitudes").doc(existing.firestoreId);
+                            batch.update(docRef, { estado: sol.estado });
+                            
+                            existing.estado = sol.estado;
+                            hasChanges = true;
+                        }
+                    }
+                });
+                
+                // 2. Sincronizar vencimientos
+                const firestoreVencsMap = new Map();
+                vencimientos.forEach(v => {
+                    if (v.id) firestoreVencsMap.set(String(v.id).trim().toLowerCase(), v);
+                });
+                
+                sheetsVencimientos.forEach((venc) => {
+                    if (venc.id) {
+                        const key = String(venc.id).trim().toLowerCase();
+                        if (!firestoreVencsMap.has(key)) {
+                            // Nuevo vencimiento en Sheets que no está en Firestore
+                            const newDocRef = db.collection("vencimientos").doc(String(venc.id).trim());
+                            batch.set(newDocRef, venc);
+                            
+                            const vencWithId = Object.assign({}, venc, { firestoreId: String(venc.id).trim() });
+                            vencimientos.push(vencWithId);
+                            hasChanges = true;
+                        } else {
+                            // Existe, verificar recordatorio
+                            const existing = firestoreVencsMap.get(key);
+                            if (venc.estado_recordatorio !== existing.estado_recordatorio) {
+                                const docRef = db.collection("vencimientos").doc(existing.firestoreId);
+                                batch.update(docRef, { estado_recordatorio: venc.estado_recordatorio });
+                                
+                                existing.estado_recordatorio = venc.estado_recordatorio;
+                                hasChanges = true;
+                            }
+                        }
+                    }
+                });
+                
+                if (hasChanges) {
+                    await batch.commit();
+                    console.log("✅ Firestore actualizado con los últimos datos de Google Sheets.");
+                }
+            } catch (syncErr) {
+                console.error("⚠️ Error durante la sincronización automática con Google Sheets:", syncErr);
+            }
+        }
 
         // MIGRACIÓN AUTOMÁTICA: Si Firebase está vacío, traer los datos de Google Sheets e importarlos
         if (items.length === 0 && GOOGLE_SHEETS_API_URL !== '') {
@@ -968,12 +1071,9 @@ async function updateStateRecord(id, newState, extraData) {
             
             if (fullItem.fecha_calibracion && fullItem.fecha_calibracion !== "") {
                 try {
-                    const parts = fullItem.fecha_calibracion.split('/');
-                    if (parts.length === 3) {
-                        const day = parseInt(parts[0], 10);
-                        const month = parseInt(parts[1], 10) - 1;
-                        const year = parseInt(parts[2], 10) + 1;
-                        const vencDate = new Date(year, month, day);
+                    const d = parseToDateObject(fullItem.fecha_calibracion);
+                    if (d && !isNaN(d.getTime())) {
+                        const vencDate = new Date(d.getFullYear() + 1, d.getMonth(), d.getDate());
                         const dStr = String(vencDate.getDate()).padStart(2, '0');
                         const mStr = String(vencDate.getMonth() + 1).padStart(2, '0');
                         fullItem.fecha_vencimiento = `${dStr}/${mStr}/${vencDate.getFullYear()}`;
@@ -3188,10 +3288,7 @@ function renderVencimientos() {
         
         let fechaFormateada = '---';
         if (eq.fecha_vencimiento) {
-            let parts = eq.fecha_vencimiento.split('-');
-            if (parts.length === 3) {
-                fechaFormateada = `${parts[2]}/${parts[1]}/${parts[0]}`;
-            }
+            fechaFormateada = formatToDisplayDate(eq.fecha_vencimiento);
         }
 
         const isEnviado = eq.estado_recordatorio === 'Enviado';
@@ -3221,10 +3318,7 @@ window.handleEnviarAviso = function(id) {
 
     let fechaFormateada = '---';
     if (eq.fecha_vencimiento) {
-        let parts = eq.fecha_vencimiento.split('-');
-        if (parts.length === 3) {
-            fechaFormateada = `${parts[2]}/${parts[1]}/${parts[0]}`;
-        }
+        fechaFormateada = formatToDisplayDate(eq.fecha_vencimiento);
     }
 
     if (!eq.email || !eq.email.includes('@')) {
@@ -3935,20 +4029,52 @@ function renderTermohigrometroTableHTML(title, points, rango, resolucion, isHumi
     `;
 }
 
+function parseToDateObject(dateStr) {
+    if (!dateStr || typeof dateStr !== 'string') return null;
+    dateStr = dateStr.trim();
+    if (dateStr === '' || dateStr === '---') return null;
+    
+    let parts = [];
+    if (dateStr.includes('-')) {
+        parts = dateStr.split('-');
+        if (parts.length === 3) {
+            if (parts[0].length === 4) {
+                return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            } else {
+                return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+            }
+        }
+    } else if (dateStr.includes('/')) {
+        parts = dateStr.split('/');
+        if (parts.length === 3) {
+            if (parts[0].length === 4) {
+                return new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10));
+            } else {
+                return new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
+            }
+        }
+    }
+    return null;
+}
+
+function formatToDisplayDate(dateStr) {
+    const d = parseToDateObject(dateStr);
+    if (!d || isNaN(d.getTime())) return '---';
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yyyy = d.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+}
+
 function formatToArgDate(dateStr) {
     if (!dateStr || dateStr === '---' || dateStr.trim() === '') return '---';
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-        return `${parseInt(parts[2], 10)}/${parseInt(parts[1], 10)}/${parts[0]}`;
-    }
-    return dateStr;
+    return formatToDisplayDate(dateStr);
 }
 
 function getFechaEmision(calibDateStr) {
     if (!calibDateStr || calibDateStr === '---' || calibDateStr.trim() === '') return '---';
-    const parts = calibDateStr.split('-');
-    if (parts.length === 3) {
-        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    const d = parseToDateObject(calibDateStr);
+    if (d && !isNaN(d.getTime())) {
         d.setDate(d.getDate() + 1); // Sumar 1 día
         const dd = d.getDate();
         const mm = d.getMonth() + 1;
