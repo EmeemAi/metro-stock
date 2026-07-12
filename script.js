@@ -903,6 +903,7 @@ async function fetchData() {
                 }
             } catch (syncErr) {
                 console.error("⚠️ Error durante la sincronización automática con Google Sheets:", syncErr);
+                showToast("⚠️ Falla de sincronización con Google Sheets: " + syncErr.message, "warning");
             }
         }
 
