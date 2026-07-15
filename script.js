@@ -854,13 +854,34 @@ async function fetchData() {
                         solicitudes.push(solWithId);
                         hasChanges = true;
                     } else {
-                        // Existe, verificar si el estado cambió en Sheets
+                        // Existe, verificar si algún campo relevante cambió en Sheets
                         const existing = firestoreSolsMap.get(key);
-                        if ((sol.estado || '').trim().toLowerCase() !== (existing.estado || '').trim().toLowerCase()) {
-                            const docRef = db.collection("solicitudes").doc(existing.firestoreId);
-                            batch.update(docRef, { estado: sol.estado });
+                        let needsUpdate = false;
+                        const updates = {};
+                        
+                        const fieldsToSync = ['empresa', 'contacto', 'email', 'estado'];
+                        fieldsToSync.forEach(field => {
+                            const valSheets = (sol[field] || '').trim();
+                            const valFirestore = (existing[field] || '').trim();
                             
-                            existing.estado = sol.estado;
+                            if (field === 'estado') {
+                                if (valSheets.toLowerCase() !== valFirestore.toLowerCase()) {
+                                    updates[field] = sol[field] || '';
+                                    existing[field] = sol[field] || '';
+                                    needsUpdate = true;
+                                }
+                            } else {
+                                if (valSheets !== valFirestore) {
+                                    updates[field] = sol[field] || '';
+                                    existing[field] = sol[field] || '';
+                                    needsUpdate = true;
+                                }
+                            }
+                        });
+                        
+                        if (needsUpdate) {
+                            const docRef = db.collection("solicitudes").doc(existing.firestoreId);
+                            batch.update(docRef, updates);
                             hasChanges = true;
                         }
                     }
@@ -884,13 +905,26 @@ async function fetchData() {
                             vencimientos.push(vencWithId);
                             hasChanges = true;
                         } else {
-                            // Existe, verificar recordatorio
+                            // Existe, verificar si algún campo relevante cambió en Sheets
                             const existing = firestoreVencsMap.get(key);
-                            if (venc.estado_recordatorio !== existing.estado_recordatorio) {
-                                const docRef = db.collection("vencimientos").doc(existing.firestoreId);
-                                batch.update(docRef, { estado_recordatorio: venc.estado_recordatorio });
+                            let needsUpdate = false;
+                            const updates = {};
+                            
+                            const fieldsToSync = ['instrumento', 'certificado', 'fecha_calibracion', 'fecha_vencimiento', 'cliente', 'email', 'estado_recordatorio'];
+                            fieldsToSync.forEach(field => {
+                                const valSheets = String(venc[field] || '').trim();
+                                const valFirestore = String(existing[field] || '').trim();
                                 
-                                existing.estado_recordatorio = venc.estado_recordatorio;
+                                if (valSheets !== valFirestore) {
+                                    updates[field] = venc[field] || '';
+                                    existing[field] = venc[field] || '';
+                                    needsUpdate = true;
+                                }
+                            });
+                            
+                            if (needsUpdate) {
+                                const docRef = db.collection("vencimientos").doc(existing.firestoreId);
+                                batch.update(docRef, updates);
                                 hasChanges = true;
                             }
                         }
