@@ -829,40 +829,48 @@ async function fetchData() {
                 const batch = db.batch();
                 
                 // 1. Sincronizar solicitudes
-                const firestoreSolsMap = new Map();
-                solicitudes.forEach(s => {
-                    const key = `${s.timestamp || ''}_${s.email || ''}_${s.certificado || ''}`.toLowerCase().trim();
-                    firestoreSolsMap.set(key, s);
-                });
-                
+                const matchedFirestoreIds = new Set();
+                const updatedSolicitudes = [];
+
                 sheetsSolicitudes.forEach((sol, idx) => {
-                    const key = `${sol.timestamp || ''}_${sol.email || ''}_${sol.certificado || ''}`.toLowerCase().trim();
-                    
-                    if (!firestoreSolsMap.has(key)) {
+                    const solRowId = sol.id || sol.row_id || `sol_row_${idx + 2}`;
+                    sol.id = solRowId; // ID persistente por fila de Sheets
+
+                    // Buscar coincidencia en Firestore:
+                    // 1. Por ID directo (sol_row_X)
+                    // 2. Por índice de migración inicial (sol_idx_...)
+                    // 3. Por timestamp + email (por si se editó el número de certificado en GSheets)
+                    // 4. Por timestamp + email + certificado exacto
+                    let existing = solicitudes.find(s => 
+                        !matchedFirestoreIds.has(s.firestoreId) && (
+                            s.firestoreId === solRowId ||
+                            s.id === solRowId ||
+                            (s.firestoreId && s.firestoreId.startsWith(`sol_${idx}_`)) ||
+                            (s.timestamp === sol.timestamp && (s.email || '').toLowerCase().trim() === (sol.email || '').toLowerCase().trim()) ||
+                            (`${s.timestamp || ''}_${s.email || ''}_${s.certificado || ''}`.toLowerCase().trim() === `${sol.timestamp || ''}_${sol.email || ''}_${sol.certificado || ''}`.toLowerCase().trim())
+                        )
+                    );
+
+                    if (!existing) {
                         // Nueva solicitud en Sheets que no está en Firestore
-                        const ts = sol.timestamp || '';
-                        const email = sol.email || '';
-                        const cert = sol.certificado || '';
-                        let docId = `sol_${ts}_${email}_${cert}`.replace(/[^a-zA-Z0-9_-]/g, '_');
-                        if (!docId || docId === 'sol____') {
-                            docId = `sol_auto_${idx}_${Date.now()}`;
-                        }
+                        const docId = solRowId.replace(/[^a-zA-Z0-9_-]/g, '_');
                         const newDocRef = db.collection("solicitudes").doc(docId);
                         batch.set(newDocRef, sol);
                         
                         const solWithId = Object.assign({}, sol, { firestoreId: docId });
-                        solicitudes.push(solWithId);
+                        updatedSolicitudes.push(solWithId);
+                        matchedFirestoreIds.add(docId);
                         hasChanges = true;
                     } else {
-                        // Existe, verificar si algún campo relevante cambió en Sheets
-                        const existing = firestoreSolsMap.get(key);
+                        // Marcar como vinculada para evitar borrado huérfano
+                        matchedFirestoreIds.add(existing.firestoreId);
                         let needsUpdate = false;
                         const updates = {};
                         
-                        const fieldsToSync = ['empresa', 'contacto', 'email', 'estado'];
+                        const fieldsToSync = ['empresa', 'contacto', 'email', 'certificado', 'estado', 'timestamp'];
                         fieldsToSync.forEach(field => {
-                            const valSheets = (sol[field] || '').trim();
-                            const valFirestore = (existing[field] || '').trim();
+                            const valSheets = String(sol[field] || '').trim();
+                            const valFirestore = String(existing[field] || '').trim();
                             
                             if (field === 'estado') {
                                 if (valSheets.toLowerCase() !== valFirestore.toLowerCase()) {
@@ -878,14 +886,34 @@ async function fetchData() {
                                 }
                             }
                         });
-                        
+
+                        if (!existing.id) {
+                            updates.id = solRowId;
+                            existing.id = solRowId;
+                            needsUpdate = true;
+                        }
+
                         if (needsUpdate) {
                             const docRef = db.collection("solicitudes").doc(existing.firestoreId);
                             batch.update(docRef, updates);
                             hasChanges = true;
                         }
+                        
+                        updatedSolicitudes.push(existing);
                     }
                 });
+
+                // Eliminar de Firestore cualquier documento huérfano, duplicado u obsoleto
+                solicitudes.forEach(s => {
+                    if (s.firestoreId && !matchedFirestoreIds.has(s.firestoreId)) {
+                        console.log(`🧹 Eliminando registro obsoleto/duplicado de Firestore: ${s.firestoreId} (${s.certificado})`);
+                        const docRef = db.collection("solicitudes").doc(s.firestoreId);
+                        batch.delete(docRef);
+                        hasChanges = true;
+                    }
+                });
+
+                solicitudes = updatedSolicitudes;
                 
                 // 2. Sincronizar vencimientos
                 const firestoreVencsMap = new Map();
@@ -2882,7 +2910,19 @@ function renderSolicitudes() {
         return;
     }
 
-    appState.solicitudes.forEach((s, index) => {
+    // Deduplicación defensiva antes de renderizar la tabla
+    const uniqueSolicitudes = [];
+    const seenKeys = new Set();
+
+    appState.solicitudes.forEach(s => {
+        const key = (s.id || s.firestoreId || `${s.timestamp}_${s.email}_${s.certificado}`).toLowerCase().trim();
+        if (!seenKeys.has(key)) {
+            seenKeys.add(key);
+            uniqueSolicitudes.push(s);
+        }
+    });
+
+    uniqueSolicitudes.forEach((s, index) => {
         const est = (s.estado || '').trim().toLowerCase();
         const isEnviado = est !== '' && est !== 'pendiente';
         const tr = document.createElement('tr');
@@ -4425,8 +4465,13 @@ function performVerifyCertSearch() {
     lucide.createIcons();
 }
 
-async function updateSolicitudStatusInFirestore(timestamp, email, certificado, newStatus) {
+async function updateSolicitudStatusInFirestore(timestamp, email, certificado, newStatus, firestoreId) {
     try {
+        if (firestoreId) {
+            await db.collection("solicitudes").doc(firestoreId).update({ estado: newStatus });
+            console.log("✅ Solicitud actualizada por firestoreId en Firebase.");
+            return;
+        }
         const querySnapshot = await db.collection("solicitudes")
             .where("timestamp", "==", String(timestamp || ''))
             .where("email", "==", String(email || ''))
@@ -4489,7 +4534,7 @@ async function markRequestAsAlreadySent() {
         }
 
         // Actualizar en Firebase Firestore
-        await updateSolicitudStatusInFirestore(s.timestamp, s.email, s.certificado, targetStatus);
+        await updateSolicitudStatusInFirestore(s.timestamp, s.email, s.certificado, targetStatus, s.firestoreId);
         
         // Auto-actualización del equipo asociado a ENTREGADO si existe
         if (appState.pendingEmail && appState.pendingEmail.equipoId) {
