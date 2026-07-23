@@ -1,0 +1,17 @@
+{
+  "name": "MetroMLStock",
+  "short_name": "MetroML",
+  "description": "Gestión Integral de Instrumentos de Medición",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#0f0f0f",
+  "theme_color": "#0f0f0f",
+  "icons": [
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
