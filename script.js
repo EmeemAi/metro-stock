@@ -2477,28 +2477,21 @@ function openModalFicha(id) {
     // Helper: Generar tabla de mediciones (Puntos, V.Ref, V.Inst...)
     const generateTableHTML = (unit, points) => {
         let rowsHTML = '';
-        for (let i = 0; i < 3; i++) {
-            const p1 = points[i] || {};
-            const refVal1 = p1.ref !== undefined ? String(p1.ref).replace('.', ',') : '';
-            const instVal1 = p1.inst !== undefined ? String(p1.inst).replace('.', ',') : '';
-            
-            const p2 = points[i + 3] || {};
-            const refVal2 = p2.ref !== undefined ? String(p2.ref).replace('.', ',') : '';
-            const instVal2 = p2.inst !== undefined ? String(p2.inst).replace('.', ',') : '';
-            
-            const p3 = points[i + 6] || {};
-            const refVal3 = p3.ref !== undefined ? String(p3.ref).replace('.', ',') : '';
-            const instVal3 = p3.inst !== undefined ? String(p3.inst).replace('.', ',') : '';
+        const rowCount = Math.max(3, points.length);
+        for (let i = 0; i < rowCount; i++) {
+            const p = points[i] || {};
+            const refVal = p.ref !== undefined ? String(p.ref).replace('.', ',') : '';
+            const instVal = p.inst !== undefined ? String(p.inst).replace('.', ',') : '';
             
             rowsHTML += `
                 <tr>
                     <td style="text-align: center; font-weight: bold; width: 10%;">${i + 1}</td>
-                    <td style="width: 15%; text-align: center;">${refVal1}</td>
-                    <td style="width: 15%; text-align: center;">${instVal1}</td>
-                    <td style="width: 15%; text-align: center;">${refVal2}</td>
-                    <td style="width: 15%; text-align: center;">${instVal2}</td>
-                    <td style="width: 15%; text-align: center;">${refVal3}</td>
-                    <td style="width: 15%; text-align: center;">${instVal3}</td>
+                    <td style="width: 15%; text-align: center;">${refVal}</td>
+                    <td style="width: 15%; text-align: center;">${instVal}</td>
+                    <td style="width: 15%;"></td>
+                    <td style="width: 15%;"></td>
+                    <td style="width: 15%;"></td>
+                    <td style="width: 15%;"></td>
                 </tr>
             `;
         }
