@@ -4192,7 +4192,7 @@ function getObjetoName(instrumento, certificado) {
 // ==========================================
 const AUTH_CREDENTIALS = {
     username: 'admin01',
-    password: '1001'
+    password: 'peru1297'
 };
 
 function initLoginSystem() {
