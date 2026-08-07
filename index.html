@@ -158,9 +158,15 @@
                             <canvas id="chart-evolution"></canvas>
                         </div>
                     </div>
-                    <div class="chart-container-card">
-                        <h3><i data-lucide="trending-up"></i> Equipos Más Vendidos</h3>
-                        <div class="chart-wrapper">
+                    <div class="chart-container-card chart-sales-card">
+                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                            <h3 style="margin: 0; border-bottom: none; padding-bottom: 0;"><i data-lucide="trending-up"></i> Top 10 Equipos Más Vendidos</h3>
+                            <div style="font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 0.5rem; align-items: center;">
+                                <span><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ef4444;"></span> &lt;5u Crítico</span>
+                                <span><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#f97316;"></span> &lt;10u Reposición</span>
+                            </div>
+                        </div>
+                        <div class="chart-wrapper" style="flex: 1; position: relative;">
                             <canvas id="chart-sales"></canvas>
                         </div>
                     </div>

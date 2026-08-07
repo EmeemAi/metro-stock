@@ -1326,6 +1326,14 @@ td:nth-child(6)  /* Cert */ {
     width: 100% !important;
 }
 
+.chart-sales-card {
+    height: 420px !important;
+}
+
+.chart-sales-card canvas {
+    max-height: 350px !important;
+}
+
 
 .chart-container-card h3 {
     font-size: 0.8rem;

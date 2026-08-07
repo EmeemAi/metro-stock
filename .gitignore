@@ -1,0 +1,6 @@
+# Local temporary and scratch files
+scratch/
+*.ps1
+*.py
+*.json
+!manifest.json

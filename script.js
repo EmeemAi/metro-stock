@@ -1350,13 +1350,16 @@ function updateDashboard() {
     const elInmovilizados = document.getElementById('kpi-inmovilizados');
     if (elInmovilizados) elInmovilizados.innerText = totalInmovilizados;
 
-    // 3. Radar de Reposición (Lógica Crítica)
+    // 3. Radar de Reposición (Lógica Crítica: <10 unidades)
     const replenishmentList = document.getElementById('replenishment-list');
     
     const criticalItems = Object.entries(stats)
         .map(([name, s]) => ({ name, ...s }))
-        .filter(s => s.entregado > 0 && s.disponible < 2 && !s.discontinuado) // Menos de 2 unidades y con historial de ventas, no discontinuado
-        .sort((a,b) => b.entregado - a.entregado); // Ordenar por demanda
+        .filter(s => s.entregado > 0 && s.disponible < 10 && !s.discontinuado) // Menos de 10 unidades y con historial de ventas, no discontinuado
+        .sort((a,b) => {
+            if (a.disponible !== b.disponible) return a.disponible - b.disponible;
+            return b.entregado - a.entregado;
+        });
 
     const discontinuedModels = Object.entries(stats)
         .map(([name, s]) => ({ name, ...s }))
@@ -1408,17 +1411,24 @@ function updateDashboard() {
         const gridColor = isMatte ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
         const textColor = isMatte ? '#a1a1aa' : '#4b5563';
 
-        // 4. Gráfico de Ventas (Top Demand)
+        // 4. Gráfico de Ventas (Top 10 Demand + Alertas de Stock)
         const canvas = document.getElementById('chart-sales');
         if(canvas) {
             const ctx = canvas.getContext('2d');
             const salesData = Object.entries(stats)
-                .map(([name, s]) => ({ name, count: s.entregado }))
+                .map(([name, s]) => ({ name, count: s.entregado, stock: s.disponible }))
                 .filter(s => s.count > 0)
                 .sort((a, b) => b.count - a.count)
-                .slice(0, 5); // Top 5 para mayor estabilidad
+                .slice(0, 10); // Top 10 equipos más vendidos
             
             if(salesChart) salesChart.destroy();
+
+            // Colores por barra según alerta de stock (Roja < 5u, Naranja < 10u, Normal >= 10u)
+            const barColors = salesData.map(d => {
+                if (d.stock < 5) return '#ef4444'; // Alerta Roja (Crítico)
+                if (d.stock < 10) return '#f97316'; // Alerta Naranja (Reposición)
+                return chartColor; // Stock Normal
+            });
             
             salesChart = new Chart(ctx, {
                 type: 'bar',
@@ -1427,9 +1437,9 @@ function updateDashboard() {
                     datasets: [{
                         label: 'Unidades Vendidas',
                         data: salesData.map(d => d.count),
-                        backgroundColor: chartColor,
+                        backgroundColor: barColors,
                         borderRadius: 4,
-                        barThickness: 4
+                        barThickness: 12
                     }]
                 },
                 options: {
@@ -1440,7 +1450,22 @@ function updateDashboard() {
                         duration: 500
                     },
                     plugins: {
-                        legend: { display: false }
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    const d = salesData[context.dataIndex];
+                                    let statusStr = '🟢 Stock OK';
+                                    if (d.stock < 5) statusStr = '🔴 ALERTA ROJA (Stock Crítico)';
+                                    else if (d.stock < 10) statusStr = '🟠 ALERTA NARANJA (Stock Bajo)';
+                                    return [
+                                        ` Ventas: ${d.count} u`,
+                                        ` Stock disp: ${d.stock} u`,
+                                        ` Estado: ${statusStr}`
+                                    ];
+                                }
+                            }
+                        }
                     },
                     scales: {
                         x: { 
@@ -1608,10 +1633,21 @@ function renderRadarList(criticalItems, discontinuedModels = []) {
             replenishmentList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted); grid-column: 1 / -1;">No hay alertas críticas de reposición.</p>';
         } else {
             criticalItems.forEach(item => {
-                const priorityClass = item.disponible === 0 ? 'priority-high' : 'priority-medium';
-                const reason = item.disponible === 0 
-                    ? `SIN STOCK. Ventas: ${item.entregado}u` 
-                    : `STOCK CRÍTICO (${item.disponible}u). Ventas: ${item.entregado}u`;
+                const isRedAlert = item.disponible < 5;
+                const priorityClass = isRedAlert ? 'priority-high' : 'priority-medium';
+                
+                let reason = '';
+                let badgeBtnText = 'Reponer';
+                if (item.disponible === 0) {
+                    reason = `🚨 SIN STOCK (0u). Ventas: ${item.entregado}u`;
+                    badgeBtnText = 'Calibrar';
+                } else if (isRedAlert) {
+                    reason = `🔴 ALERTA ROJA - Stock Crítico (${item.disponible}u restantes). Ventas: ${item.entregado}u`;
+                    badgeBtnText = 'Reponer Urgente';
+                } else {
+                    reason = `🟠 ALERTA NARANJA - Reposición Sugerida (${item.disponible}u restantes). Ventas: ${item.entregado}u`;
+                    badgeBtnText = 'Reponer';
+                }
                 
                 const matchedItem = appState.data.find(x => `${x.marca} ${x.modelo}`.toUpperCase() === item.name);
                 const targetId = matchedItem ? matchedItem.id : '';
@@ -1629,7 +1665,7 @@ function renderRadarList(criticalItems, discontinuedModels = []) {
                             <i data-lucide="archive" style="width: 14px; height: 14px;"></i>
                         </button>
                         <button type="button" class="alert-action-badge btn-reponer-radar" data-id="${targetId}" style="height: 32px; border: none; cursor: pointer; display: inline-flex; align-items: center;">
-                            ${item.disponible === 0 ? 'Calibrar' : 'Reponer'}
+                            ${badgeBtnText}
                         </button>
                     </div>
                 `;
