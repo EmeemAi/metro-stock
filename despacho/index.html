@@ -81,53 +81,21 @@
         <!-- Contenido Principal -->
         <main class="main-content">
             
-            <!-- Tarjetas de Estadísticas Rápidas -->
-            <section class="stats-grid">
-                <div class="stat-card glass-panel">
-                    <div class="stat-icon bg-blue"><i data-lucide="archive"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="count-deposito">0</span>
-                        <span class="stat-label">En Depósito</span>
-                    </div>
-                </div>
-                <div class="stat-card glass-panel">
-                    <div class="stat-icon bg-emerald"><i data-lucide="check-circle-2"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="count-disponible">0</span>
-                        <span class="stat-label">Disponibles</span>
-                    </div>
-                </div>
-                <div class="stat-card glass-panel">
-                    <div class="stat-icon bg-purple"><i data-lucide="truck"></i></div>
-                    <div class="stat-info">
-                        <span class="stat-value" id="count-despachado">0</span>
-                        <span class="stat-label">Despachados</span>
-                    </div>
-                </div>
-            </section>
-
-            <!-- Barra de Búsqueda y Filtros Rápidos -->
+            <!-- Barra de Búsqueda -->
             <section class="search-section glass-panel">
                 <div class="search-box">
                     <i data-lucide="search" class="search-icon"></i>
-                    <input type="text" id="search-input" placeholder="Buscar por ID, Instrumento, Marca, N° Serie o Cliente..." autocomplete="off">
+                    <input type="text" id="search-input" placeholder="Buscar por ID, Instrumento, Marca, Modelo o N° Serie..." autocomplete="off">
                     <button class="btn-clear-search" id="btn-clear-search" style="display: none;">
                         <i data-lucide="x"></i>
                     </button>
-                </div>
-                
-                <div class="filter-pills" id="filter-pills">
-                    <button class="pill active" data-filter="ALL">Todos</button>
-                    <button class="pill" data-filter="DEP">En Depósito</button>
-                    <button class="pill" data-filter="DISP">Disponibles</button>
-                    <button class="pill" data-filter="DESP">Despachados</button>
                 </div>
             </section>
 
             <!-- Lista / Grid de Instrumentos -->
             <section class="instruments-section">
                 <div class="section-header">
-                    <h2>Instrumentos (<span id="results-count">0</span>)</h2>
+                    <h2>Equipos Disponibles (<span id="results-count">0</span>)</h2>
                     <button class="btn btn-sm btn-outline" id="btn-refresh"><i data-lucide="refresh-cw"></i> Actualizar</button>
                 </div>
 

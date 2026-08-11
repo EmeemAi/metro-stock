@@ -123,7 +123,6 @@ function listenFirestore() {
         state.items = items;
         loadingState.style.display = 'none';
         
-        updateStats();
         renderItems();
     }, (error) => {
         console.error("Error al escuchar Firestore:", error);
@@ -135,50 +134,24 @@ function listenFirestore() {
 // ==========================================
 // RENDERIZADO Y FILTRADO
 // ==========================================
-function updateStats() {
-    let deposito = 0;
-    let disponible = 0;
-    let despachado = 0;
-
-    state.items.forEach(item => {
-        const est = (item.estado || '').toUpperCase();
-        if (est.includes('DEPÓSITO') || est.includes('DEPOSITO')) deposito++;
-        else if (est.includes('DISPONIBLE')) disponible++;
-        else if (est.includes('DESPACHADO')) despachado++;
-    });
-
-    document.getElementById('count-deposito').innerText = deposito;
-    document.getElementById('count-disponible').innerText = disponible;
-    document.getElementById('count-despachado').innerText = despachado;
-}
-
 function filterItems() {
     return state.items.filter(item => {
+        const est = (item.estado || '').toUpperCase();
+        
+        // MOSTRAR ÚNICAMENTE EQUIPOS DISPONIBLES / EN DEPÓSITO (Excluir DESPACHADOS)
+        const isAvailable = (est.includes('DISPONIBLE') || est.includes('DEPÓSITO') || est.includes('DEPOSITO')) && !est.includes('DESPACHADO');
+        if (!isAvailable) return false;
+
         const query = state.search.toLowerCase();
         
-        // Coincidencia de texto
-        const matchSearch = query === '' ||
+        // Coincidencia de texto en búsqueda
+        return query === '' ||
             (item.id || '').toLowerCase().includes(query) ||
             (item.instrumento || item.nombre || '').toLowerCase().includes(query) ||
             (item.marca || '').toLowerCase().includes(query) ||
             (item.modelo || '').toLowerCase().includes(query) ||
             (item.serie || '').toLowerCase().includes(query) ||
-            (item.cliente || '').toLowerCase().includes(query) ||
             (item.certificado || '').toLowerCase().includes(query);
-
-        // Coincidencia de Filtro Pill
-        const est = (item.estado || '').toUpperCase();
-        let matchFilter = true;
-
-        if (state.filter === 'DEP') {
-            matchFilter = est.includes('DEPÓSITO') || est.includes('DEPOSITO');
-        } else if (state.filter === 'DISP') {
-            matchFilter = est.includes('DISPONIBLE');
-        } else if (state.filter === 'DESP') {
-            matchFilter = est.includes('DESPACHADO');
-        }
-
-        return matchSearch && matchFilter;
     });
 }
 
@@ -377,17 +350,6 @@ function setupEventListeners() {
     document.getElementById('btn-refresh').addEventListener('click', () => {
         showToast('Sincronizando con Firestore...', 'info');
         listenFirestore();
-    });
-
-    // Filtros Pills
-    document.getElementById('filter-pills').addEventListener('click', (e) => {
-        const pill = e.target.closest('.pill');
-        if (pill) {
-            document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-            state.filter = pill.getAttribute('data-filter');
-            renderItems();
-        }
     });
 
     // Modal Despacho
