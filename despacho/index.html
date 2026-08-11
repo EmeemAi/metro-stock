@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetroML | Módulo de Despacho</title>
+    <meta name="description" content="Portal rápido de gestión y registro de despacho de instrumentos de medición.">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="styles.css?v=1.0">
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0f172a">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+</head>
+<body>
+
+    <!-- PANTALLA DE LOGIN -->
+    <div id="login-screen" class="login-container">
+        <div class="login-card glass-panel">
+            <div class="login-header">
+                <div class="brand-badge">
+                    <i data-lucide="package-check"></i>
+                </div>
+                <h2>MetroML Despacho</h2>
+                <p>Ingresa tus credenciales para acceder al sistema de despacho</p>
+            </div>
+            
+            <form id="form-login" class="login-form">
+                <div id="login-error" class="alert alert-danger" style="display: none;">
+                    <i data-lucide="alert-circle"></i> Usuario o contraseña incorrectos.
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-user"><i data-lucide="user"></i> Usuario</label>
+                    <input type="text" id="login-user" placeholder="Ej. user1" required autocomplete="username">
+                </div>
+                
+                <div class="form-group">
+                    <label for="login-pass"><i data-lucide="key-round"></i> Contraseña / PIN</label>
+                    <input type="password" id="login-pass" placeholder="••••" required autocomplete="current-password">
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="btn-login">
+                    <span>Iniciar Sesión</span> <i data-lucide="arrow-right"></i>
+                </button>
+            </form>
+            <div class="login-footer">
+                <p>SchwyzLab & CR MEDICION &bull; v1.0</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- APLICACIÓN PRINCIPAL (POST-LOGIN) -->
+    <div id="app-screen" class="app-wrapper" style="display: none;">
+        
+        <!-- Navbar Superior -->
+        <header class="navbar glass-header">
+            <div class="navbar-brand">
+                <div class="logo-icon">
+                    <i data-lucide="package-check"></i>
+                </div>
+                <div class="brand-text">
+                    <h1>MetroML Despacho</h1>
+                    <span class="status-indicator"><span class="pulse-dot"></span> Firestore En Línea</span>
+                </div>
+            </div>
+            
+            <div class="navbar-actions">
+                <span class="user-badge" id="user-display-name"><i data-lucide="user-check"></i> user1</span>
+                <button class="btn btn-icon btn-outline" id="btn-logout" title="Cerrar Sesión">
+                    <i data-lucide="log-out"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Contenido Principal -->
+        <main class="main-content">
+            
+            <!-- Tarjetas de Estadísticas Rápidas -->
+            <section class="stats-grid">
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon bg-blue"><i data-lucide="archive"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="count-deposito">0</span>
+                        <span class="stat-label">En Depósito</span>
+                    </div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon bg-emerald"><i data-lucide="check-circle-2"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="count-disponible">0</span>
+                        <span class="stat-label">Disponibles</span>
+                    </div>
+                </div>
+                <div class="stat-card glass-panel">
+                    <div class="stat-icon bg-purple"><i data-lucide="truck"></i></div>
+                    <div class="stat-info">
+                        <span class="stat-value" id="count-despachado">0</span>
+                        <span class="stat-label">Despachados</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Barra de Búsqueda y Filtros Rápidos -->
+            <section class="search-section glass-panel">
+                <div class="search-box">
+                    <i data-lucide="search" class="search-icon"></i>
+                    <input type="text" id="search-input" placeholder="Buscar por ID, Instrumento, Marca, N° Serie o Cliente..." autocomplete="off">
+                    <button class="btn-clear-search" id="btn-clear-search" style="display: none;">
+                        <i data-lucide="x"></i>
+                    </button>
+                </div>
+                
+                <div class="filter-pills" id="filter-pills">
+                    <button class="pill active" data-filter="ALL">Todos</button>
+                    <button class="pill" data-filter="DEP">En Depósito</button>
+                    <button class="pill" data-filter="DISP">Disponibles</button>
+                    <button class="pill" data-filter="DESP">Despachados</button>
+                </div>
+            </section>
+
+            <!-- Lista / Grid de Instrumentos -->
+            <section class="instruments-section">
+                <div class="section-header">
+                    <h2>Instrumentos (<span id="results-count">0</span>)</h2>
+                    <button class="btn btn-sm btn-outline" id="btn-refresh"><i data-lucide="refresh-cw"></i> Actualizar</button>
+                </div>
+
+                <div id="instruments-container" class="instruments-grid">
+                    <!-- Tarjetas insertadas dinámicamente con JS -->
+                </div>
+
+                <!-- Estado de Carga / Sin Resultados -->
+                <div id="empty-state" class="empty-state glass-panel" style="display: none;">
+                    <i data-lucide="search-x"></i>
+                    <h3>No se encontraron instrumentos</h3>
+                    <p>Intenta ajustar el término de búsqueda o cambia los filtros seleccionados.</p>
+                </div>
+
+                <div id="loading-state" class="loading-state">
+                    <div class="spinner"></div>
+                    <p>Cargando inventario desde Firestore...</p>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- MODAL DE CONFIRMACIÓN DE DESPACHO -->
+    <div id="modal-despacho" class="modal-overlay" style="display: none;">
+        <div class="modal-card glass-panel">
+            <div class="modal-header">
+                <h3><i data-lucide="truck"></i> Registrar Despacho</h3>
+                <button class="btn-close-modal" id="btn-close-despacho"><i data-lucide="x"></i></button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="item-summary-box">
+                    <span class="badge-code" id="modal-item-id">INST-00000</span>
+                    <h4 id="modal-item-name">Nombre del Instrumento</h4>
+                    <p id="modal-item-details">Marca - Modelo | N° Serie: 12345</p>
+                </div>
+
+                <form id="form-confirm-despacho">
+                    <div class="form-group">
+                        <label for="despacho-cliente"><i data-lucide="building-2"></i> Cliente / Destinatario</label>
+                        <input type="text" id="despacho-cliente" placeholder="Nombre del cliente o empresa">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="despacho-observacion"><i data-lucide="file-text"></i> Observaciones / N° Remito</label>
+                        <input type="text" id="despacho-observacion" placeholder="Ej. Retira transporte X - Remito N° 4512">
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-outline" id="btn-cancel-despacho">Cancelar</button>
+                        <button type="submit" class="btn btn-success" id="btn-submit-despacho">
+                            <i data-lucide="check-circle-2"></i> Confirmar Despacho
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOAST DE NOTIFICACIONES -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Firebase SDK (Compat v10) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+    <!-- App Logic -->
+    <script src="app.js?v=1.0"></script>
+</body>
+</html>
