@@ -1787,6 +1787,7 @@ function renderTable() {
         const counts = {};
         filtered.forEach(item => {
             let stateName = (item.estado || 'SIN ESTADO').toUpperCase();
+            if (stateName.includes('DEP')) stateName = 'EN DEPÓSITO';
             if (stateName === 'RESERVADO') stateName = 'VENDIDO - DESPACHADO';
             if (stateName === 'ENTREGADO') stateName = 'VENDIDO - ENTREGADO';
             counts[stateName] = (counts[stateName] || 0) + 1;
@@ -1820,7 +1821,7 @@ function renderTable() {
             const count = counts[stateName];
             let displayLabel = stateName.toLowerCase();
             // Convert to nice case
-            if (displayLabel === 'en depósito') displayLabel = 'En Depósito';
+            if (displayLabel.includes('dep') || displayLabel === 'en depósito') displayLabel = 'En Depósito';
             else if (displayLabel === 'sin certificar') displayLabel = 'Sin Certificar';
             else if (displayLabel === 'certificando') displayLabel = 'Certificando';
             else if (displayLabel === 'disponible') displayLabel = 'Disponible';
