@@ -35,7 +35,7 @@ const db = firebase.firestore();
 let state = {
     user: null,
     items: [],
-    filter: 'ALL',
+    filter: 'DISP',
     search: '',
     selectedItem: null,
     unsubscribe: null
@@ -281,8 +281,11 @@ function openDespachoModal(itemId) {
     document.getElementById('modal-item-name').innerText = item.instrumento || item.nombre || 'Instrumento';
     document.getElementById('modal-item-details').innerText = `${item.marca || ''} ${item.modelo || ''} | N° Serie: ${item.serie || 'S/N'}`;
     
-    document.getElementById('despacho-cliente').value = item.cliente || '';
-    document.getElementById('despacho-observacion').value = '';
+    document.getElementById('despacho-certificado').value = item.certificado || '';
+    
+    // Asignar fecha actual por defecto si no existe fecha previa
+    const todayISO = new Date().toISOString().split('T')[0];
+    document.getElementById('despacho-fecha-calibracion').value = item.fecha_calibracion || todayISO;
 
     document.getElementById('modal-despacho').style.display = 'flex';
     lucide.createIcons();
@@ -302,16 +305,16 @@ async function handleConfirmDespacho(e) {
     btnSubmit.innerHTML = `<div class="spinner" style="width:16px;height:16px;margin:0;border-width:2px;"></div> Procesando...`;
 
     const itemId = state.selectedItem.id;
-    const cliente = document.getElementById('despacho-cliente').value.trim();
-    const observacion = document.getElementById('despacho-observacion').value.trim();
+    const certificado = document.getElementById('despacho-certificado').value.trim();
+    const fechaCalibracion = document.getElementById('despacho-fecha-calibracion').value;
     const nowStr = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
 
     const updateData = {
         estado: 'DESPACHADO',
+        certificado: certificado,
+        fecha_calibracion: fechaCalibracion,
         fecha_despacho: nowStr,
-        despachado_por: state.user,
-        cliente: cliente || state.selectedItem.cliente || '',
-        observacion_despacho: observacion
+        despachado_por: state.user
     };
 
     try {
@@ -333,7 +336,7 @@ async function handleConfirmDespacho(e) {
             }).catch(err => console.error("Error al sync con Sheets:", err));
         }
 
-        showToast(`✅ ${itemId} registrado como DESPACHADO.`, 'success');
+        showToast(`✅ ${itemId} certificado (${certificado}) registrado como DESPACHADO.`, 'success');
         closeDespachoModal();
     } catch (err) {
         console.error("Error al actualizar despacho:", err);
