@@ -820,6 +820,11 @@ async function fetchData() {
                 const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
                     credentials: 'omit'
                 });
+                const contentType = response.headers.get("content-type");
+                if (!response.ok || (contentType && contentType.indexOf("application/json") === -1)) {
+                    console.warn("⚠️ Google Apps Script retornó una respuesta no-JSON (posiblemente ocupado o limite de cuota).");
+                    return;
+                }
                 const result = await response.json();
                 
                 const sheetsSolicitudes = result.solicitudes || [];
