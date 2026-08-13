@@ -138,8 +138,8 @@ function filterItems() {
     return state.items.filter(item => {
         const est = (item.estado || '').toUpperCase();
         
-        // MOSTRAR ÚNICAMENTE EQUIPOS EN ESTADO "DISPONIBLE"
-        const isAvailable = est.includes('DISPONIBLE') && !est.includes('DESPACHADO');
+        // MOSTRAR EQUIPOS DISPONIBLES PARA DESPACHAR (EXCLUIR SOLO LOS YA DESPACHADOS)
+        const isAvailable = !est.includes('DESPACHADO');
         if (!isAvailable) return false;
 
         const query = state.search.toLowerCase();
