@@ -162,7 +162,6 @@ function renderItems() {
 
     const filtered = filterItems();
     resultsCount.innerText = filtered.length;
-    renderModelSummary(filtered);
 
     if (filtered.length === 0) {
         container.innerHTML = '';
@@ -240,59 +239,6 @@ function renderItems() {
             openDespachoModal(itemId);
         });
     });
-}
-
-function renderModelSummary(items) {
-    const container = document.getElementById('models-summary');
-    if (!container) return;
-
-    if (!items || items.length === 0) {
-        container.style.display = 'none';
-        container.innerHTML = '';
-        return;
-    }
-
-    // Agrupar coincidencias por Modelo (o Marca + Modelo / Nombre)
-    const counts = {};
-    items.forEach(item => {
-        const marca = (item.marca || '').trim();
-        const modelo = (item.modelo || '').trim();
-        const inst = (item.instrumento || item.nombre || '').trim();
-
-        let label = '';
-        if (marca && modelo) {
-            label = `${marca} ${modelo}`;
-        } else if (modelo) {
-            label = modelo;
-        } else if (inst) {
-            label = inst;
-        } else {
-            label = 'Modelo No Especificado';
-        }
-
-        counts[label] = (counts[label] || 0) + 1;
-    });
-
-    const entries = Object.entries(counts).sort((a, b) => b[1] - a[1]);
-
-    container.innerHTML = `
-        <div class="summary-card glass-panel">
-            <div class="summary-header">
-                <i data-lucide="boxes"></i>
-                <span>Disponibles por Modelo (${entries.length} modelos encontrados):</span>
-            </div>
-            <div class="model-badges-grid">
-                ${entries.map(([modelName, count]) => `
-                    <div class="model-badge-item">
-                        <span class="badge-count">${count} u.</span>
-                        <span class="badge-label">${escapeHtml(modelName)}</span>
-                    </div>
-                `).join('')}
-            </div>
-        </div>
-    `;
-    container.style.display = 'block';
-    lucide.createIcons();
 }
 
 // ==========================================

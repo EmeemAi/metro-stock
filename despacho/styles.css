@@ -447,62 +447,7 @@ body {
     color: var(--accent-blue);
     border: 1px solid rgba(59, 130, 246, 0.3);
     border-radius: 6px;
-/* Resumen por Modelo */
-.summary-card {
-    padding: 1rem 1.25rem;
-    border-radius: var(--radius-md);
-    border-left: 4px solid var(--accent-emerald);
 }
-
-.summary-header {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    font-weight: 600;
-    color: var(--accent-emerald);
-    margin-bottom: 0.75rem;
-    text-transform: uppercase;
-    letter-spacing: 0.5px;
-}
-
-.summary-header i {
-    width: 18px;
-    height: 18px;
-}
-
-.model-badges-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.6rem;
-}
-
-.model-badge-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    background: rgba(16, 185, 129, 0.1);
-    border: 1px solid rgba(16, 185, 129, 0.25);
-    border-radius: 20px;
-    padding: 0.35rem 0.75rem;
-    font-size: 0.85rem;
-}
-
-.badge-count {
-    background: var(--accent-emerald);
-    color: #000;
-    font-weight: 700;
-    font-size: 0.75rem;
-    padding: 0.15rem 0.45rem;
-    border-radius: 10px;
-    font-family: 'JetBrains Mono', monospace;
-}
-
-.badge-label {
-    color: var(--text-main);
-    font-weight: 500;
-}
-
 
 .badge-status {
     font-size: 0.725rem;
