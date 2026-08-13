@@ -136,11 +136,11 @@ function listenFirestore() {
 // ==========================================
 function filterItems() {
     return state.items.filter(item => {
-        const est = (item.estado || '').toUpperCase();
+        const estClean = (item.estado || '').trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
-        // MOSTRAR EQUIPOS DISPONIBLES PARA DESPACHAR (EXCLUIR SOLO LOS YA DESPACHADOS)
-        const isAvailable = !est.includes('DESPACHADO');
-        if (!isAvailable) return false;
+        // MOSTRAR ÚNICAMENTE EQUIPOS EN ESTADO "DISPONIBLE" (NINGÚN OTRO ESTADO)
+        const isDisponible = estClean === 'DISPONIBLE' || estClean.includes('DISPONIBLE');
+        if (!isDisponible) return false;
 
         const query = state.search.toLowerCase();
         
