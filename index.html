@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Charts (Chart.js) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=26.6">
+    <link rel="stylesheet" href="styles.css?v=28.0">
     
     <!-- PWA Support -->
     <link rel="manifest" href="manifest.json">
@@ -225,9 +225,9 @@
                             <!-- Rows will be populated by JS -->
                         </tbody>
                     </table>
-                    <div id="loading-state" class="empty-state">
+                    <div id="loading-state" class="empty-state" style="display: none;">
                         <div class="spinner"></div>
-                        <p>Sincronizando base de datos...</p>
+                        <p>Cargando datos...</p>
                     </div>
                     <div id="empty-state" class="empty-state" style="display: none;">
                         <i data-lucide="folder-open"></i>
@@ -504,6 +504,12 @@
                         <div class="form-group">
                             <label>Destino / Sector de la Empresa</label>
                             <input type="text" id="estado-destino-interno" placeholder="Ej. Laboratorio Central, Schwyz, etc.">
+                        </div>
+                    </div>
+
+                    <div id="fields-devolucion" class="dynamic-fields" style="display:none;">
+                        <div class="alert alert-warning" style="background-color: rgba(245, 158, 11, 0.15); border-color: rgba(245, 158, 11, 0.4); color: #d97706;">
+                            <i data-lucide="info"></i> Vas a registrar la <strong>devolución</strong> de este equipo despachado que no fue entregado. El equipo volverá a estar en estado <strong>DISPONIBLE</strong>.
                         </div>
                     </div>
 
@@ -892,6 +898,6 @@
     <!-- Firebase SDK (Compat v10) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="script.js?v=26.9"></script>
+    <script src="script.js?v=28.0"></script>
 </body>
 </html>

@@ -358,7 +358,9 @@ function showToast(message, type = 'info') {
     }, 4000);
 }
 
-function showLoader(message = 'Sincronizando base de datos...') {
+let globalLoaderTimer = null;
+
+function showLoader(message = 'Sincronizando base de datos...', timeoutMs = 8000) {
     let loader = document.getElementById('global-loader');
     if (!loader) {
         loader = document.createElement('div');
@@ -376,12 +378,58 @@ function showLoader(message = 'Sincronizando base de datos...') {
         if (textEl) textEl.innerText = message;
         loader.style.display = 'flex';
     }
+
+    if (globalLoaderTimer) {
+        clearTimeout(globalLoaderTimer);
+    }
+    if (timeoutMs > 0) {
+        globalLoaderTimer = setTimeout(() => {
+            hideLoader();
+            console.warn("⏱️ Watchdog: Loader cerrado preventivamente por timeout de seguridad.");
+        }, timeoutMs);
+    }
 }
 
 function hideLoader() {
+    if (globalLoaderTimer) {
+        clearTimeout(globalLoaderTimer);
+        globalLoaderTimer = null;
+    }
     const loader = document.getElementById('global-loader');
     if (loader) {
         loader.style.display = 'none';
+    }
+}
+
+// Función segura para obtener el próximo ID correlativo
+function getNextInstrumentId() {
+    let maxIdNum = 999;
+    if (appState.data && appState.data.length > 0) {
+        for (let i = 0; i < appState.data.length; i++) {
+            const item = appState.data[i];
+            const strId = String(item && item.id ? item.id : '');
+            const match = strId.match(/\d+/);
+            if (match) {
+                const num = parseInt(match[0], 10);
+                if (!isNaN(num) && num > maxIdNum) {
+                    maxIdNum = num;
+                }
+            }
+        }
+    }
+    return 'INST-' + (maxIdNum + 1);
+}
+
+// Función utilitaria para ejecutar lotes de Firestore en fragmentos de máx 300 operaciones
+async function commitBatchInChunks(items, operationFn) {
+    const CHUNK_SIZE = 300;
+    for (let i = 0; i < items.length; i += CHUNK_SIZE) {
+        const chunk = items.slice(i, i + CHUNK_SIZE);
+        const batch = db.batch();
+        chunk.forEach((item, index) => {
+            operationFn(batch, item, i + index);
+        });
+        await batch.commit();
     }
 }
 
@@ -404,9 +452,21 @@ const firebaseConfig = {
 };
 
 // Inicializar Firebase
-firebase.initializeApp(firebaseConfig);
+if (!firebase.apps.length) {
+    firebase.initializeApp(firebaseConfig);
+}
 const db = firebase.firestore();
 
+// Habilitar persistencia local (IndexedDB) para carga ultrarrápida
+db.enablePersistence({ synchronizeTabs: true }).catch(function(err) {
+    if (err.code === 'failed-precondition') {
+        console.warn("Persistencia Firestore: múltiples pestañas abiertas simultáneamente.");
+    } else if (err.code === 'unimplemented') {
+        console.warn("Persistencia Firestore: navegador no compatible con IndexedDB.");
+    } else {
+        console.warn("Persistencia Firestore info:", err.message);
+    }
+});
 
 // ==========================================
 // MOCK DATA (Para probar sin Google Sheets)
@@ -471,7 +531,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnMasivoEquipo) btnMasivoEquipo.addEventListener('click', openModalMasivo);
 
     const btnSyncSolicitudes = document.getElementById('btn-sync-solicitudes');
-    if (btnSyncSolicitudes) btnSyncSolicitudes.addEventListener('click', fetchData);
+    if (btnSyncSolicitudes) btnSyncSolicitudes.addEventListener('click', () => fetchData(true));
     
     const chkMasivoNuevo = document.getElementById('masivo-nuevo-articulo-chk');
     if (chkMasivoNuevo) chkMasivoNuevo.addEventListener('change', toggleMasivoFields);
@@ -785,259 +845,48 @@ function updateThemeToggleUI(isMatte) {
 }
 
 
-async function fetchData() {
+async function fetchData(isManualSync = false) {
     if (typeof clearBulkSelection === 'function') {
         clearBulkSelection();
     }
     appState.loading = true;
     updateUIState();
-    showLoader('Sincronizando base de datos...');
+    if (isManualSync || !appState.data || appState.data.length === 0) {
+        showLoader('Cargando base de datos...', 6000);
+    }
+
+    // Usar timeout de 7s en las consultas de Firestore para evitar que una red lenta congele la UI
+    const fetchWithTimeout = (promise, ms = 7000) => {
+        return Promise.race([
+            promise,
+            new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout en consulta Firestore")), ms))
+        ]);
+    };
 
     try {
-        // Cargar desde Firebase Firestore
-        const itemsSnapshot = await db.collection("instrumentos").get();
-        let items = itemsSnapshot.docs.map(doc => doc.data());
+        // 1. Cargar desde Firebase Firestore en paralelo (Ultrarrápido)
+        const [itemsSnapshot, solicitudesSnapshot, vencimientosSnapshot] = await fetchWithTimeout(
+            Promise.all([
+                db.collection("instrumentos").get(),
+                db.collection("solicitudes").get(),
+                db.collection("vencimientos").get()
+            ]),
+            7000
+        );
 
-        const solicitudesSnapshot = await db.collection("solicitudes").get();
+        let items = itemsSnapshot.docs.map(doc => doc.data());
         let solicitudes = solicitudesSnapshot.docs.map(doc => {
             const data = doc.data();
             data.firestoreId = doc.id;
             return data;
         });
-
-        const vencimientosSnapshot = await db.collection("vencimientos").get();
         let vencimientos = vencimientosSnapshot.docs.map(doc => {
             const data = doc.data();
             data.firestoreId = doc.id;
             return data;
         });
 
-        // SINCRONIZACIÓN AUTOMÁTICA CON GOOGLE SHEETS:
-        // Si Firestore tiene datos y hay una URL de Sheets, descargamos los datos más recientes de Sheets
-        // e importamos cualquier solicitud o vencimiento nuevo, o actualizamos su estado si cambió.
-        if (items.length > 0 && GOOGLE_SHEETS_API_URL !== '') {
-            try {
-                const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
-                    credentials: 'omit'
-                });
-                const contentType = response.headers.get("content-type");
-                if (!response.ok || (contentType && contentType.indexOf("application/json") === -1)) {
-                    console.warn("⚠️ Google Apps Script retornó una respuesta no-JSON (posiblemente ocupado o limite de cuota).");
-                    return;
-                }
-                const result = await response.json();
-                
-                const sheetsSolicitudes = result.solicitudes || [];
-                const sheetsVencimientos = result.vencimientos || [];
-                
-                let hasChanges = false;
-                const batch = db.batch();
-                
-                // 1. Sincronizar solicitudes
-                const matchedFirestoreIds = new Set();
-                const updatedSolicitudes = [];
-
-                sheetsSolicitudes.forEach((sol, idx) => {
-                    const solRowId = sol.id || sol.row_id || `sol_row_${idx + 2}`;
-                    sol.id = solRowId; // ID persistente por fila de Sheets
-
-                    // Buscar coincidencia en Firestore:
-                    // 1. Por ID directo (sol_row_X)
-                    // 2. Por índice de migración inicial (sol_idx_...)
-                    // 3. Por timestamp + email (por si se editó el número de certificado en GSheets)
-                    // 4. Por timestamp + email + certificado exacto
-                    let existing = solicitudes.find(s => 
-                        !matchedFirestoreIds.has(s.firestoreId) && (
-                            s.firestoreId === solRowId ||
-                            s.id === solRowId ||
-                            (s.firestoreId && s.firestoreId.startsWith(`sol_${idx}_`)) ||
-                            (s.timestamp === sol.timestamp && (s.email || '').toLowerCase().trim() === (sol.email || '').toLowerCase().trim()) ||
-                            (`${s.timestamp || ''}_${s.email || ''}_${s.certificado || ''}`.toLowerCase().trim() === `${sol.timestamp || ''}_${sol.email || ''}_${sol.certificado || ''}`.toLowerCase().trim())
-                        )
-                    );
-
-                    if (!existing) {
-                        // Nueva solicitud en Sheets que no está en Firestore
-                        const docId = solRowId.replace(/[^a-zA-Z0-9_-]/g, '_');
-                        const newDocRef = db.collection("solicitudes").doc(docId);
-                        batch.set(newDocRef, sol);
-                        
-                        const solWithId = Object.assign({}, sol, { firestoreId: docId });
-                        updatedSolicitudes.push(solWithId);
-                        matchedFirestoreIds.add(docId);
-                        hasChanges = true;
-                    } else {
-                        // Marcar como vinculada para evitar borrado huérfano
-                        matchedFirestoreIds.add(existing.firestoreId);
-                        let needsUpdate = false;
-                        const updates = {};
-                        
-                        const fieldsToSync = ['empresa', 'contacto', 'email', 'certificado', 'estado', 'timestamp'];
-                        fieldsToSync.forEach(field => {
-                            const valSheets = String(sol[field] || '').trim();
-                            const valFirestore = String(existing[field] || '').trim();
-                            
-                            if (field === 'estado') {
-                                if (valSheets.toLowerCase() !== valFirestore.toLowerCase()) {
-                                    updates[field] = sol[field] || '';
-                                    existing[field] = sol[field] || '';
-                                    needsUpdate = true;
-                                }
-                            } else {
-                                if (valSheets !== valFirestore) {
-                                    updates[field] = sol[field] || '';
-                                    existing[field] = sol[field] || '';
-                                    needsUpdate = true;
-                                }
-                            }
-                        });
-
-                        if (!existing.id) {
-                            updates.id = solRowId;
-                            existing.id = solRowId;
-                            needsUpdate = true;
-                        }
-
-                        if (needsUpdate) {
-                            const docRef = db.collection("solicitudes").doc(existing.firestoreId);
-                            batch.update(docRef, updates);
-                            hasChanges = true;
-                        }
-                        
-                        updatedSolicitudes.push(existing);
-                    }
-                });
-
-                // Eliminar de Firestore cualquier documento huérfano, duplicado u obsoleto
-                solicitudes.forEach(s => {
-                    if (s.firestoreId && !matchedFirestoreIds.has(s.firestoreId)) {
-                        console.log(`🧹 Eliminando registro obsoleto/duplicado de Firestore: ${s.firestoreId} (${s.certificado})`);
-                        const docRef = db.collection("solicitudes").doc(s.firestoreId);
-                        batch.delete(docRef);
-                        hasChanges = true;
-                    }
-                });
-
-                solicitudes = updatedSolicitudes;
-                
-                // 2. Sincronizar vencimientos
-                const firestoreVencsMap = new Map();
-                vencimientos.forEach(v => {
-                    if (v.id) firestoreVencsMap.set(String(v.id).trim().toLowerCase(), v);
-                });
-                
-                sheetsVencimientos.forEach((venc) => {
-                    if (venc.id) {
-                        const key = String(venc.id).trim().toLowerCase();
-                        if (!firestoreVencsMap.has(key)) {
-                            // Nuevo vencimiento en Sheets que no está en Firestore
-                            const newDocRef = db.collection("vencimientos").doc(String(venc.id).trim());
-                            batch.set(newDocRef, venc);
-                            
-                            const vencWithId = Object.assign({}, venc, { firestoreId: String(venc.id).trim() });
-                            vencimientos.push(vencWithId);
-                            hasChanges = true;
-                        } else {
-                            // Existe, verificar si algún campo relevante cambió en Sheets
-                            const existing = firestoreVencsMap.get(key);
-                            let needsUpdate = false;
-                            const updates = {};
-                            
-                            const fieldsToSync = ['instrumento', 'certificado', 'fecha_calibracion', 'fecha_vencimiento', 'cliente', 'email', 'estado_recordatorio'];
-                            fieldsToSync.forEach(field => {
-                                const valSheets = String(venc[field] || '').trim();
-                                const valFirestore = String(existing[field] || '').trim();
-                                
-                                if (valSheets !== valFirestore) {
-                                    updates[field] = venc[field] || '';
-                                    existing[field] = venc[field] || '';
-                                    needsUpdate = true;
-                                }
-                            });
-                            
-                            if (needsUpdate) {
-                                const docRef = db.collection("vencimientos").doc(existing.firestoreId);
-                                batch.update(docRef, updates);
-                                hasChanges = true;
-                            }
-                        }
-                    }
-                });
-                
-                if (hasChanges) {
-                    await batch.commit();
-                    console.log("✅ Firestore actualizado con los últimos datos de Google Sheets.");
-                }
-            } catch (syncErr) {
-                console.error("⚠️ Error durante la sincronización automática con Google Sheets:", syncErr);
-                showToast("⚠️ Falla de sincronización con Google Sheets: " + syncErr.message, "warning");
-            }
-        }
-
-        // MIGRACIÓN AUTOMÁTICA: Si Firebase está vacío, traer los datos de Google Sheets e importarlos
-        if (items.length === 0 && GOOGLE_SHEETS_API_URL !== '') {
-            console.log("⚠️ Base de datos de Firebase vacía. Iniciando migración automática desde Google Sheets en el navegador...");
-            showLoader('Migrando datos desde Google Sheets a Firebase (esto ocurrirá solo una vez)...');
-            
-            try {
-                const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
-                    credentials: 'omit'
-                });
-                const result = await response.json();
-                
-                const sheetsItems = result.items || [];
-                const sheetsSolicitudes = result.solicitudes || [];
-                const sheetsVencimientos = result.vencimientos || [];
-                
-                console.log(`Descargados de Sheets: ${sheetsItems.length} equipos, ${sheetsSolicitudes.length} solicitudes, ${sheetsVencimientos.length} vencimientos.`);
-                
-                // Agrupar todas las escrituras
-                const allWrites = [];
-                sheetsItems.forEach(item => {
-                    if (item.id) {
-                        allWrites.push({ collection: "instrumentos", docId: String(item.id).trim(), data: item });
-                    }
-                });
-                sheetsSolicitudes.forEach((sol, idx) => {
-                    const ts = sol.timestamp || '';
-                    const emp = sol.empresa || '';
-                    let docId = `sol_${idx}_${ts.replace(/\s+/g, '_').replace(/\//g, '-')}_${emp.replace(/\s+/g, '_')}`;
-                    docId = docId.replace(/[^a-zA-Z0-9_-]/g, '');
-                    if (!docId) docId = `sol_auto_${idx}`;
-                    allWrites.push({ collection: "solicitudes", docId: docId, data: sol });
-                });
-                sheetsVencimientos.forEach(venc => {
-                    if (venc.id) {
-                        allWrites.push({ collection: "vencimientos", docId: String(venc.id).trim(), data: venc });
-                    }
-                });
-
-                // Escribir en lotes de 400 (límite de Firestore es 500 por lote)
-                const batchSize = 400;
-                for (let i = 0; i < allWrites.length; i += batchSize) {
-                    const chunk = allWrites.slice(i, i + batchSize);
-                    const batch = db.batch();
-                    chunk.forEach(w => {
-                        const ref = db.collection(w.collection).doc(w.docId);
-                        batch.set(ref, w.data);
-                    });
-                    await batch.commit();
-                    console.log(`✅ Subido lote de ${chunk.length} registros a Firebase.`);
-                }
-                
-                showToast("¡Datos migrados con éxito a Firebase!", "success");
-                
-                // Asignar los datos migrados para mostrar en la app
-                items = sheetsItems;
-                solicitudes = sheetsSolicitudes;
-                vencimientos = sheetsVencimientos;
-            } catch (migErr) {
-                console.error("Error durante la migración automática:", migErr);
-                showToast("Error al migrar los datos desde Google Sheets.", "error");
-            }
-        }
-
-        // Ordenar instrumentos por ID numérico descendente para mantener orden cronológico
+        // Ordenar instrumentos por ID numérico descendente
         items.sort((a, b) => {
             const numA = parseInt(String(a.id || '').replace(/\D/g, '')) || 0;
             const numB = parseInt(String(b.id || '').replace(/\D/g, '')) || 0;
@@ -1049,17 +898,32 @@ async function fetchData() {
             return new Date(b.timestamp) - new Date(a.timestamp);
         });
 
+        // ASIGNAR Y RENDERIZAR DE INMEDIATO (Menos de 0.5 segundos)
         appState.data = items;
         appState.solicitudes = solicitudes;
         appState.vencimientos = vencimientos;
 
-        console.log(">>> DATOS RECIBIDOS DE FIREBASE:");
-        console.table(appState.data.slice(0, 5).map(i => ({ID: i.id, Modelo: i.modelo, Estado: i.estado})));
-
+        console.log(">>> DATOS RECIBIDOS DE FIREBASE FIRESTORE:", items.length, "equipos");
         renderTable();
+        renderSolicitudes();
+        renderVencimientos();
+        updateBadge();
+        updateDashboard();
+
+        // 2. MIGRACIÓN O SINCRONIZACIÓN
+        if (items.length === 0 && GOOGLE_SHEETS_API_URL !== '') {
+            // Si la base de Firestore está completamente vacía, intentar migración inicial
+            await migrateFromSheetsIfEmpty();
+        } else if (isManualSync && GOOGLE_SHEETS_API_URL !== '') {
+            // Sincronización sólo bajo demanda manual para no saturar Apps Script
+            await syncGoogleSheetsInBackground(solicitudes, vencimientos);
+            showToast("Sincronización con Google Sheets completada.", "success");
+        }
     } catch (err) {
         console.error("Error al cargar datos de Firebase:", err);
-        showToast("Hubo un error cargando los datos desde Firebase Firestore.", "error");
+        if (!appState.data || appState.data.length === 0) {
+            showToast("No se pudo conectar a la base de datos en línea. Verifica tu conexión.", "warning");
+        }
     } finally {
         appState.loading = false;
         updateUIState();
@@ -1069,6 +933,251 @@ async function fetchData() {
         renderVencimientos();
         updateBadge();
         updateDashboard(); 
+    }
+}
+
+// Sincronización asíncrona con Google Sheets (Timeout estricto de 5 segundos)
+async function syncGoogleSheetsInBackground(solicitudes, vencimientos) {
+    if (!GOOGLE_SHEETS_API_URL) return;
+    
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 5000); // Max 5s de espera
+
+    try {
+        const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
+            credentials: 'omit',
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        const contentType = response.headers.get("content-type");
+        if (!response.ok || (contentType && contentType.indexOf("application/json") === -1)) {
+            console.warn("⚠️ Google Apps Script no respondió JSON válido.");
+            return;
+        }
+        const result = await response.json();
+        
+        const sheetsSolicitudes = result.solicitudes || [];
+        const sheetsVencimientos = result.vencimientos || [];
+        
+        const matchedFirestoreIds = new Set();
+        const updatedSolicitudes = [];
+        const operations = [];
+
+        sheetsSolicitudes.forEach((sol, idx) => {
+            const solRowId = sol.id || sol.row_id || `sol_row_${idx + 2}`;
+            sol.id = solRowId;
+
+            let existing = solicitudes.find(s => 
+                !matchedFirestoreIds.has(s.firestoreId) && (
+                    s.firestoreId === solRowId ||
+                    s.id === solRowId ||
+                    (s.firestoreId && s.firestoreId.startsWith(`sol_${idx}_`)) ||
+                    (s.timestamp === sol.timestamp && (s.email || '').toLowerCase().trim() === (sol.email || '').toLowerCase().trim()) ||
+                    (`${s.timestamp || ''}_${s.email || ''}_${s.certificado || ''}`.toLowerCase().trim() === `${sol.timestamp || ''}_${sol.email || ''}_${sol.certificado || ''}`.toLowerCase().trim())
+                )
+            );
+
+            if (!existing) {
+                const docId = solRowId.replace(/[^a-zA-Z0-9_-]/g, '_');
+                operations.push({
+                    type: 'set',
+                    collection: 'solicitudes',
+                    docId: docId,
+                    data: sol
+                });
+                
+                const solWithId = Object.assign({}, sol, { firestoreId: docId });
+                updatedSolicitudes.push(solWithId);
+                matchedFirestoreIds.add(docId);
+            } else {
+                matchedFirestoreIds.add(existing.firestoreId);
+                let needsUpdate = false;
+                const updates = {};
+                
+                const fieldsToSync = ['empresa', 'contacto', 'email', 'certificado', 'estado', 'timestamp'];
+                fieldsToSync.forEach(field => {
+                    const valSheets = String(sol[field] || '').trim();
+                    const valFirestore = String(existing[field] || '').trim();
+                    
+                    if (field === 'estado') {
+                        if (valSheets.toLowerCase() !== valFirestore.toLowerCase()) {
+                            updates[field] = sol[field] || '';
+                            existing[field] = sol[field] || '';
+                            needsUpdate = true;
+                        }
+                    } else {
+                        if (valSheets !== valFirestore) {
+                            updates[field] = sol[field] || '';
+                            existing[field] = sol[field] || '';
+                            needsUpdate = true;
+                        }
+                    }
+                });
+
+                if (!existing.id) {
+                    updates.id = solRowId;
+                    existing.id = solRowId;
+                    needsUpdate = true;
+                }
+
+                if (needsUpdate) {
+                    operations.push({
+                        type: 'update',
+                        collection: 'solicitudes',
+                        docId: existing.firestoreId,
+                        data: updates
+                    });
+                }
+                
+                updatedSolicitudes.push(existing);
+            }
+        });
+
+        solicitudes.forEach(s => {
+            if (s.firestoreId && !matchedFirestoreIds.has(s.firestoreId)) {
+                operations.push({
+                    type: 'delete',
+                    collection: 'solicitudes',
+                    docId: s.firestoreId
+                });
+            }
+        });
+        
+        const firestoreVencsMap = new Map();
+        vencimientos.forEach(v => {
+            if (v.id) firestoreVencsMap.set(String(v.id).trim().toLowerCase(), v);
+        });
+        
+        sheetsVencimientos.forEach((venc) => {
+            if (venc.id) {
+                const key = String(venc.id).trim().toLowerCase();
+                if (!firestoreVencsMap.has(key)) {
+                    operations.push({
+                        type: 'set',
+                        collection: 'vencimientos',
+                        docId: String(venc.id).trim(),
+                        data: venc
+                    });
+                    
+                    const vencWithId = Object.assign({}, venc, { firestoreId: String(venc.id).trim() });
+                    vencimientos.push(vencWithId);
+                } else {
+                    const existing = firestoreVencsMap.get(key);
+                    let needsUpdate = false;
+                    const updates = {};
+                    
+                    const fieldsToSync = ['instrumento', 'certificado', 'fecha_calibracion', 'fecha_vencimiento', 'cliente', 'email', 'estado_recordatorio'];
+                    fieldsToSync.forEach(field => {
+                        const valSheets = String(venc[field] || '').trim();
+                        const valFirestore = String(existing[field] || '').trim();
+                        
+                        if (valSheets !== valFirestore) {
+                            updates[field] = venc[field] || '';
+                            existing[field] = venc[field] || '';
+                            needsUpdate = true;
+                        }
+                    });
+                    
+                    if (needsUpdate) {
+                        operations.push({
+                            type: 'update',
+                            collection: 'vencimientos',
+                            docId: existing.firestoreId,
+                            data: updates
+                        });
+                    }
+                }
+            }
+        });
+        
+        if (operations.length > 0) {
+            await commitBatchInChunks(operations, (batch, op) => {
+                const ref = db.collection(op.collection).doc(op.docId);
+                if (op.type === 'set') batch.set(ref, op.data);
+                else if (op.type === 'update') batch.update(ref, op.data);
+                else if (op.type === 'delete') batch.delete(ref);
+            });
+            console.log(`✅ Sincronización con Google Sheets completada (${operations.length} operaciones).`);
+            appState.solicitudes = updatedSolicitudes;
+            appState.vencimientos = vencimientos;
+            renderSolicitudes();
+            renderVencimientos();
+            updateBadge();
+        }
+    } catch (syncErr) {
+        clearTimeout(timeoutId);
+        if (syncErr.name === 'AbortError') {
+            console.warn("⏱️ Sincronización con Google Sheets cancelada por timeout (excedió 5s).");
+        } else {
+            console.warn("⚠️ Error en sincronización de Google Sheets:", syncErr.message);
+        }
+    }
+}
+
+async function migrateFromSheetsIfEmpty() {
+    console.log("⚠️ Base de datos de Firebase vacía. Iniciando migración de respaldo...");
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
+    try {
+        const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
+            credentials: 'omit',
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
+
+        const contentType = response.headers.get("content-type");
+        if (!response.ok || (contentType && contentType.indexOf("application/json") === -1)) {
+            throw new Error("Respuesta no-JSON de Google Apps Script.");
+        }
+        const result = await response.json();
+        
+        const sheetsItems = result.items || [];
+        const sheetsSolicitudes = result.solicitudes || [];
+        const sheetsVencimientos = result.vencimientos || [];
+        
+        const allWrites = [];
+        sheetsItems.forEach(item => {
+            if (item.id) {
+                allWrites.push({ collection: "instrumentos", docId: String(item.id).trim(), data: item });
+            }
+        });
+        sheetsSolicitudes.forEach((sol, idx) => {
+            const ts = sol.timestamp || '';
+            const emp = sol.empresa || '';
+            let docId = `sol_${idx}_${ts.replace(/\s+/g, '_').replace(/\//g, '-')}_${emp.replace(/\s+/g, '_')}`;
+            docId = docId.replace(/[^a-zA-Z0-9_-]/g, '');
+            if (!docId) docId = `sol_auto_${idx}`;
+            allWrites.push({ collection: "solicitudes", docId: docId, data: sol });
+        });
+        sheetsVencimientos.forEach(venc => {
+            if (venc.id) {
+                allWrites.push({ collection: "vencimientos", docId: String(venc.id).trim(), data: venc });
+            }
+        });
+
+        const batchSize = 400;
+        for (let i = 0; i < allWrites.length; i += batchSize) {
+            const chunk = allWrites.slice(i, i + batchSize);
+            const batch = db.batch();
+            chunk.forEach(w => {
+                const ref = db.collection(w.collection).doc(w.docId);
+                batch.set(ref, w.data);
+            });
+            await batch.commit();
+        }
+        
+        appState.data = sheetsItems;
+        appState.solicitudes = sheetsSolicitudes;
+        appState.vencimientos = sheetsVencimientos;
+        renderTable();
+        renderSolicitudes();
+        renderVencimientos();
+        showToast("¡Datos migrados con éxito a Firebase!", "success");
+    } catch (migErr) {
+        clearTimeout(timeoutId);
+        console.error("Error durante la migración automática:", migErr);
     }
 }
 
@@ -1874,7 +1983,10 @@ function renderTable() {
                         <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="VENDIDO - DESPACHADO" title="Despachar">Despachar <i data-lucide="arrow-right"></i></button>
                         <button class="btn btn-outline btn-icon-only btn-change-state" data-id="${item.id}" data-target-state="VENTA INTERNA" title="Venta Interna" style="color: #6b7280; border-color: #cbd5e1;"><i data-lucide="home"></i></button>
                     ` : ''}
-                    ${(item.estado === 'RESERVADO' || item.estado === 'VENDIDO - DESPACHADO') ? `<button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar Certificado">Entregar Certificado <i data-lucide="user-check"></i></button>` : ''}
+                    ${(item.estado === 'RESERVADO' || item.estado === 'VENDIDO - DESPACHADO') ? `
+                        <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Devolución a Disponible" style="color: #059669; border-color: #10b981;"><i data-lucide="rotate-ccw"></i> Devolución</button>
+                        <button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar Certificado">Entregar Certificado <i data-lucide="user-check"></i></button>
+                    ` : ''}
                 </div>
             `;
 
@@ -2004,20 +2116,8 @@ function openModalNuevo() {
     // Resetear visibilidad de campos de calibración según estado inicial
     toggleNuevoStateFields();
     
-    // Generar ID Correlativo
-    let lastNum = 999;
-    if(appState.data && appState.data.length > 0) {
-        const ids = appState.data.map(item => {
-            const match = String(item.id).match(/\d+/);
-            return match ? parseInt(match[0]) : 0;
-        });
-        const maxIdNum = Math.max(...ids);
-        if(maxIdNum >= 1000) lastNum = maxIdNum;
-        else if (maxIdNum > 0 && maxIdNum < 1000) {
-             lastNum = 999; 
-        }
-    }
-    const newId = 'INST-' + (lastNum + 1);
+    // Generar ID Correlativo seguro
+    const newId = getNextInstrumentId();
     document.getElementById('nuevo-id').value = newId;
 
     // Generar Tabla Puntos (Ej: 1 punto inicial por defecto)
@@ -2157,25 +2257,23 @@ async function handleFormMasivo(e) {
     }
     
     try {
-        showLoader(`Generando ${cantidad} equipos en depósito...`);
-        
-        // Obtener el correlativo ID inicial
+        // Obtener el correlativo ID inicial de forma segura
         let lastNum = 999;
-        if(appState.data && appState.data.length > 0) {
-            const ids = appState.data.map(item => {
-                const match = String(item.id).match(/\d+/);
-                return match ? parseInt(match[0]) : 0;
-            });
-            const maxIdNum = Math.max(...ids);
-            if(maxIdNum >= 1000) lastNum = maxIdNum;
+        if (appState.data && appState.data.length > 0) {
+            for (let i = 0; i < appState.data.length; i++) {
+                const strId = String(appState.data[i].id || '');
+                const m = strId.match(/\d+/);
+                if (m) {
+                    const n = parseInt(m[0], 10);
+                    if (!isNaN(n) && n > lastNum) lastNum = n;
+                }
+            }
         }
         
-        // Escribir en lotes usando Firestore batch
-        const batch = db.batch();
+        const newRecords = [];
         for (let i = 0; i < cantidad; i++) {
             const newId = 'INST-' + (lastNum + 1 + i);
-            const ref = db.collection("instrumentos").doc(newId);
-            batch.set(ref, {
+            const itemData = {
                 id: newId,
                 instrumento: nombre,
                 marca: marca,
@@ -2187,13 +2285,28 @@ async function handleFormMasivo(e) {
                 cliente: '',
                 patrones: '[]',
                 puntos: '[]'
-            });
+            };
+            newRecords.push(itemData);
         }
-        
-        await batch.commit();
+
+        // 1. ACTUALIZACIÓN OPTIMISTA INMEDIATA (0 ms)
+        for (let i = newRecords.length - 1; i >= 0; i--) {
+            appState.data.unshift(newRecords[i]);
+        }
         closeAllModals();
-        await fetchData(); // Recargar base de datos
+        renderTable();
+        updateDashboard();
         showToast(`Se registraron ${cantidad} equipos en Depósito con éxito.`, "success");
+
+        // 2. PERSISTENCIA EN SEGUNDO PLANO (en fragmentos seguros de Firestore)
+        commitBatchInChunks(newRecords, (batch, item) => {
+            const ref = db.collection("instrumentos").doc(item.id);
+            batch.set(ref, item);
+        }).catch(err => {
+            console.error("Error al persistir lote en Firestore:", err);
+            showToast("⚠️ Error al sincronizar parte del lote en la nube.", "warning");
+        });
+
     } catch(err) {
         console.error("Error en ingreso masivo:", err);
         showToast("⚠️ Falla al realizar ingreso masivo: " + err.toString(), "error");
@@ -2295,23 +2408,33 @@ function openModalEstado(id, targetState) {
         displayTargetState = 'VENDIDO - ENTREGADO';
     } else if (targetState === 'RESERVADO') {
         displayTargetState = 'VENDIDO - DESPACHADO';
+    } else if (targetState === 'DISPONIBLE' && (item.estado === 'RESERVADO' || item.estado === 'VENDIDO - DESPACHADO')) {
+        displayTargetState = 'DISPONIBLE (DEVOLUCIÓN)';
     }
-    document.getElementById('modal-estado-title').innerText = `Pasar equipo a ${displayTargetState}`;
+
+    if (targetState === 'DISPONIBLE' && (item.estado === 'RESERVADO' || item.estado === 'VENDIDO - DESPACHADO')) {
+        document.getElementById('modal-estado-title').innerText = `Registrar Devolución a DISPONIBLE`;
+    } else {
+        document.getElementById('modal-estado-title').innerText = `Pasar equipo a ${displayTargetState}`;
+    }
 
     // Context Info
     document.getElementById('estado-context').innerHTML = `
         <p>Equipo: <strong>${item.marca} ${item.modelo}</strong> (ID: ${item.id})</p>
         <p>Nº de Serie: <strong>${item.serie}</strong></p>
+        ${item.certificado ? `<p>Nº de Certificado: <strong>${item.certificado}</strong></p>` : ''}
     `;
 
     // Campos condicionales
     const fReservado = document.getElementById('fields-reservado');
     const fEntregado = document.getElementById('fields-entregado');
     const fInterno = document.getElementById('fields-interno');
+    const fDevolucion = document.getElementById('fields-devolucion');
     
-    fReservado.style.display = 'none';
-    fEntregado.style.display = 'none';
+    if (fReservado) fReservado.style.display = 'none';
+    if (fEntregado) fEntregado.style.display = 'none';
     if (fInterno) fInterno.style.display = 'none';
+    if (fDevolucion) fDevolucion.style.display = 'none';
 
     // Deshacer requerimientos previos
     document.getElementById('estado-certificado').required = false;
@@ -2335,17 +2458,20 @@ function openModalEstado(id, targetState) {
     }
 
     if (targetState === 'RESERVADO' || targetState === 'VENDIDO - DESPACHADO') {
-        fReservado.style.display = 'block';
+        if (fReservado) fReservado.style.display = 'block';
         document.getElementById('estado-certificado').required = true;
         document.getElementById('estado-fecha').required = true;
     } 
     else if (targetState === 'ENTREGADO') {
-        fEntregado.style.display = 'block';
+        if (fEntregado) fEntregado.style.display = 'block';
         document.getElementById('estado-cliente').required = true;
     }
     else if (targetState === 'VENTA INTERNA') {
         if (fInterno) fInterno.style.display = 'block';
         if (elDestino) elDestino.required = true;
+    }
+    else if (targetState === 'DISPONIBLE' && (item.estado === 'RESERVADO' || item.estado === 'VENDIDO - DESPACHADO')) {
+        if (fDevolucion) fDevolucion.style.display = 'block';
     }
 
     modal.classList.add('active');
@@ -2356,24 +2482,26 @@ function openModalEstado(id, targetState) {
 // ==========================================
 async function handleFormNuevo(e) {
     e.preventDefault();
-    console.log(">>> SISTEMA V16 UP: Iniciando alta en CERTIFICANDO");
+    console.log(">>> Iniciando alta de equipo nuevo...");
     const btn = document.getElementById('btn-save-nuevo');
     btn.disabled = true;
     btn.innerText = 'Guardando...';
 
     try {
-        showLoader('Guardando equipo nuevo...');
         const record = {
-            id: document.getElementById('nuevo-id').value,
-            instrumento: document.getElementById('nuevo-nombre').value,
-            marca: document.getElementById('nuevo-marca').value,
-            modelo: document.getElementById('nuevo-modelo').value,
-            serie: document.getElementById('nuevo-serie').value,
+            id: document.getElementById('nuevo-id').value.trim(),
+            instrumento: document.getElementById('nuevo-nombre').value.trim(),
+            marca: document.getElementById('nuevo-marca').value.trim(),
+            modelo: document.getElementById('nuevo-modelo').value.trim(),
+            serie: document.getElementById('nuevo-serie').value.trim(),
             fecha_calibracion: document.getElementById('nuevo-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('nuevo-fecha').value,
             estado: document.getElementById('nuevo-estado').value,
             certificado: '',
             cliente: ''
         };
+
+        if (record.estado === 'VENDIDO - DESPACHADO') record.estado = 'RESERVADO';
+        if (record.estado === 'VENDIDO - ENTREGADO') record.estado = 'ENTREGADO';
 
         const checkedPats = [];
         if (record.estado !== 'EN DEPÓSITO') {
@@ -2399,19 +2527,29 @@ async function handleFormNuevo(e) {
         }
         record.puntos = JSON.stringify(puntos);
 
-        const result = await saveNewRecord(record);
-        
-        if (result && result.success) {
-            closeAllModals();
-            await fetchData(); // Recargar datos para evitar duplicados en memoria
-            showToast("Equipo guardado con éxito.", "success");
-        } else {
-            const errorMsg = result && result.error ? result.error : "Respuesta de guardado vacía o inválida del servidor.";
-            showToast("⚠️ Falla crítica al guardar: " + errorMsg, "error");
-        }
+        // 1. ACTUALIZACIÓN OPTIMISTA INMEDIATA (0 ms)
+        appState.data = appState.data.filter(x => x.id !== record.id);
+        appState.data.unshift(record);
+        appState.data.sort((a, b) => {
+            const numA = parseInt(String(a.id || '').replace(/\D/g, '')) || 0;
+            const numB = parseInt(String(b.id || '').replace(/\D/g, '')) || 0;
+            return numB - numA;
+        });
+
+        closeAllModals();
+        renderTable();
+        updateDashboard();
+        showToast("Equipo guardado con éxito.", "success");
+
+        // 2. PERSISTENCIA EN SEGUNDO PLANO
+        saveNewRecord(record).catch(err => {
+            console.error("Error al persistir en segundo plano:", err);
+            showToast("⚠️ Hubo un problema al sincronizar el equipo en la nube.", "warning");
+        });
+
     } catch (error) {
         console.error("Error al guardar nuevo registro:", error);
-        showToast("⚠️ Falla crítica de red: " + error.toString(), "error");
+        showToast("⚠️ Falla al procesar el formulario: " + error.toString(), "error");
     } finally {
         btn.disabled = false;
         btn.innerText = 'Generar Entrada';
@@ -2427,33 +2565,46 @@ async function handleFormEstado(e) {
     btn.innerText = 'Procesando...';
 
     try {
-        showLoader('Actualizando estado...');
-        const id = document.getElementById('estado-id').value;
+        const id = document.getElementById('estado-id').value.trim();
         const targetState = document.getElementById('estado-target').value;
         
         let extraData = {};
         if(targetState === 'RESERVADO' || targetState === 'VENDIDO - DESPACHADO') {
-            extraData.certificado = document.getElementById('estado-certificado').value;
+            extraData.certificado = document.getElementById('estado-certificado').value.trim();
             extraData.fecha = document.getElementById('estado-fecha').value;
         } else if (targetState === 'ENTREGADO') {
-            extraData.cliente = document.getElementById('estado-cliente').value;
+            extraData.cliente = document.getElementById('estado-cliente').value.trim();
         } else if (targetState === 'VENTA INTERNA') {
             const elDestino = document.getElementById('estado-destino-interno');
-            extraData.cliente = elDestino ? elDestino.value : 'Venta Interna';
+            extraData.cliente = elDestino ? elDestino.value.trim() : 'Venta Interna';
         }
 
-        const result = await updateStateRecord(id, targetState, extraData);
-
-        if (result && result.success) {
-            closeAllModals();
-            await fetchData(); // Recargar datos frescos
-            showToast("Estado actualizado con éxito.", "success");
-        } else {
-            showToast("Error al actualizar: " + (result ? result.error : "Sin respuesta del servidor"), "error");
+        // 1. ACTUALIZACIÓN OPTIMISTA INMEDIATA
+        const itemIdx = appState.data.findIndex(x => x.id === id);
+        if (itemIdx !== -1) {
+            let apiState = targetState;
+            if (apiState === 'VENDIDO - DESPACHADO') apiState = 'RESERVADO';
+            if (apiState === 'VENDIDO - ENTREGADO') apiState = 'ENTREGADO';
+            appState.data[itemIdx].estado = apiState;
+            if (extraData.cliente !== undefined) appState.data[itemIdx].cliente = extraData.cliente;
+            if (extraData.certificado !== undefined) appState.data[itemIdx].certificado = extraData.certificado;
+            if (extraData.fecha !== undefined) appState.data[itemIdx].fecha_calibracion = extraData.fecha;
         }
+
+        closeAllModals();
+        renderTable();
+        updateDashboard();
+        showToast("Estado actualizado con éxito.", "success");
+
+        // 2. PERSISTENCIA EN SEGUNDO PLANO
+        updateStateRecord(id, targetState, extraData).catch(err => {
+            console.error("Error al persistir estado:", err);
+            showToast("⚠️ Hubo un problema al sincronizar el estado en la nube.", "warning");
+        });
+
     } catch (error) {
         console.error("Error al actualizar estado:", error);
-        showToast("Hubo un error al actualizar el estado. Por favor, inténtalo de nuevo.", "error");
+        showToast("Hubo un error al actualizar el estado.", "error");
     } finally {
         btn.disabled = false;
         btn.innerText = 'Confirmar';
@@ -2873,18 +3024,19 @@ async function handleFormEdit(e) {
     btn.innerText = 'Guardando...';
 
     try {
-        showLoader('Guardando cambios...');
         const record = {
-            id: document.getElementById('edit-id').value,
-            instrumento: document.getElementById('edit-instrumento').value,
-            marca: document.getElementById('edit-marca').value,
-            modelo: document.getElementById('edit-modelo').value,
-            serie: document.getElementById('edit-serie').value,
+            id: document.getElementById('edit-id').value.trim(),
+            instrumento: document.getElementById('edit-instrumento').value.trim(),
+            marca: document.getElementById('edit-marca').value.trim(),
+            modelo: document.getElementById('edit-modelo').value.trim(),
+            serie: document.getElementById('edit-serie').value.trim(),
             fecha_calibracion: document.getElementById('edit-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('edit-fecha').value,
             estado: (document.getElementById('edit-estado').value === 'VENDIDO - ENTREGADO') ? 'ENTREGADO' : document.getElementById('edit-estado').value,
-            certificado: document.getElementById('edit-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('edit-certificado').value,
-            cliente: document.getElementById('edit-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('edit-cliente').value
+            certificado: document.getElementById('edit-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('edit-certificado').value.trim(),
+            cliente: document.getElementById('edit-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('edit-cliente').value.trim()
         };
+
+        if (record.estado === 'VENDIDO - DESPACHADO') record.estado = 'RESERVADO';
 
         const checkedPats = [];
         if (record.estado !== 'EN DEPÓSITO') {
@@ -2909,18 +3061,27 @@ async function handleFormEdit(e) {
         }
         record.puntos = JSON.stringify(puntos);
 
-        const result = await saveFullUpdate(record);
-        if (result && result.success) {
-            await fetchData(); // Recargar datos frescos
-            closeAllModals();
-            showToast("Cambios guardados con éxito.", "success");
+        // 1. ACTUALIZACIÓN OPTIMISTA INMEDIATA (0 ms)
+        const idx = appState.data.findIndex(x => x.id === record.id);
+        if (idx !== -1) {
+            appState.data[idx] = Object.assign({}, appState.data[idx], record);
         } else {
-            const errorMsg = result && result.error ? result.error : "Respuesta de guardado vacía o inválida del servidor.";
-            showToast("⚠️ Falla al editar: " + errorMsg, "error");
+            appState.data.unshift(record);
         }
+        closeAllModals();
+        renderTable();
+        updateDashboard();
+        showToast("Cambios guardados con éxito.", "success");
+
+        // 2. PERSISTENCIA EN SEGUNDO PLANO
+        saveFullUpdate(record).catch(err => {
+            console.error("Error al persistir cambios:", err);
+            showToast("⚠️ Hubo un problema al sincronizar los cambios en la nube.", "warning");
+        });
+
     } catch (error) {
         console.error("Error al editar registro:", error);
-        showToast("Hubo un error al guardar los cambios. Por favor, inténtalo de nuevo.", "error");
+        showToast("Hubo un error al guardar los cambios: " + error.toString(), "error");
     } finally {
         btn.disabled = false;
         btn.innerText = 'Guardar Cambios';
@@ -3145,9 +3306,7 @@ async function checkFileInDrive(certificado) {
 
         const contentType = response.headers.get("content-type");
         if (contentType && contentType.indexOf("application/json") === -1) {
-            const htmlText = await response.text();
-            console.error("GAS returned HTML instead of JSON:", htmlText);
-            throw new Error("El servidor de Google retornó una página HTML en lugar de JSON. Verifique la sesión de Google.");
+            throw new Error("El servidor de Google retornó una página HTML en lugar de JSON. Verifique en Google Apps Script que la implementación esté en acceso 'Cualquiera' (Anyone) y autorizada.");
         }
 
         const result = await response.json();
@@ -4736,37 +4895,43 @@ async function bulkCertificar() {
         return;
     }
     
-    showLoader(`Actualizando estado de ${count} equipos a CERTIFICANDO...`);
     try {
-        const batch = db.batch();
-        const promises = [];
-        
-        appState.selectedIds.forEach(id => {
+        const selectedArray = Array.from(appState.selectedIds);
+
+        // 1. ACTUALIZACIÓN OPTIMISTA
+        selectedArray.forEach(id => {
+            const item = appState.data.find(x => x.id === id);
+            if (item) item.estado = 'CERTIFICANDO';
+        });
+        clearBulkSelection();
+        renderTable();
+        updateDashboard();
+        showToast(`Se pasaron ${count} equipos a "CERTIFICANDO" con éxito.`, "success");
+
+        // 2. PERSISTENCIA EN SEGUNDO PLANO
+        commitBatchInChunks(selectedArray, (batch, id) => {
             const docRef = db.collection("instrumentos").doc(id);
             batch.update(docRef, { estado: 'CERTIFICANDO' });
-            
-            // Sincronizar asíncronamente con Sheets
+        }).then(() => {
+            // Sincronizar con Sheets de forma no bloqueante
             if (GOOGLE_SHEETS_API_URL !== '') {
-                promises.push(
-                    fetch(GOOGLE_SHEETS_API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        credentials: 'omit',
-                        cache: 'no-cache',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'update_status',
-                            data: { id: id, estado: 'CERTIFICANDO' }
-                        })
-                    }).catch(err => console.error("Error al sincronizar estado masivo con Sheets:", err))
-                );
+                fetch(GOOGLE_SHEETS_API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    credentials: 'omit',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'update_status_bulk',
+                        data: { ids: selectedArray, estado: 'CERTIFICANDO' }
+                    })
+                }).catch(err => console.error("Error al sincronizar estado masivo con Sheets:", err));
             }
+        }).catch(err => {
+            console.error("Error al certificar en lote en Firestore:", err);
+            showToast("⚠️ Error al sincronizar el cambio de estado en la nube.", "warning");
         });
-        
-        await batch.commit();
-        clearBulkSelection();
-        await fetchData();
-        showToast(`Se pasaron ${count} equipos a "CERTIFICANDO" con éxito.`, "success");
+
     } catch(err) {
         console.error("Error al certificar en lote:", err);
         showToast("⚠️ Falla al cambiar estados en lote: " + err.toString(), "error");
@@ -4816,41 +4981,32 @@ async function handleFormBulkEdit(e) {
     btn.disabled = true;
     btn.innerText = 'Aplicando...';
 
-    showLoader(`Aplicando cambios en lote a ${count} equipos...`);
     try {
-        const batch = db.batch();
-        const promises = [];
+        const selectedArray = Array.from(appState.selectedIds);
 
-        appState.selectedIds.forEach(id => {
-            const docRef = db.collection("instrumentos").doc(id);
-            batch.set(docRef, updates, { merge: true });
-
-            // Sincronizar asíncronamente con Sheets
-            if (GOOGLE_SHEETS_API_URL !== '') {
-                // Obtenemos los datos actuales en memoria para enviar la actualización completa
-                const current = appState.data.find(x => x.id === id) || {};
-                const merged = Object.assign({}, current, updates);
-                promises.push(
-                    fetch(GOOGLE_SHEETS_API_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        credentials: 'omit',
-                        cache: 'no-cache',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            action: 'update_full',
-                            data: merged
-                        })
-                    }).catch(err => console.error("Error al sincronizar edición masiva con Sheets:", err))
-                );
+        // 1. ACTUALIZACIÓN OPTIMISTA
+        selectedArray.forEach(id => {
+            const idx = appState.data.findIndex(x => x.id === id);
+            if (idx !== -1) {
+                appState.data[idx] = Object.assign({}, appState.data[idx], updates);
             }
         });
 
-        await batch.commit();
         closeAllModals();
         clearBulkSelection();
-        await fetchData();
+        renderTable();
+        updateDashboard();
         showToast(`Se actualizaron los datos de ${count} equipos con éxito.`, "success");
+
+        // 2. PERSISTENCIA EN SEGUNDO PLANO
+        commitBatchInChunks(selectedArray, (batch, id) => {
+            const docRef = db.collection("instrumentos").doc(id);
+            batch.set(docRef, updates, { merge: true });
+        }).catch(err => {
+            console.error("Error al persistir edición en lote en Firestore:", err);
+            showToast("⚠️ Error al guardar los cambios en lote en la nube.", "warning");
+        });
+
     } catch(err) {
         console.error("Error al editar en lote:", err);
         showToast("⚠️ Falla al actualizar datos en lote: " + err.toString(), "error");
@@ -4869,35 +5025,41 @@ async function bulkEliminar() {
         return;
     }
 
-    showLoader(`Eliminando ${count} equipos del inventario...`);
     try {
-        const batch = db.batch();
         const idsArray = Array.from(appState.selectedIds);
-        
-        idsArray.forEach(id => {
+        const idsSet = new Set(idsArray);
+
+        // 1. ACTUALIZACIÓN OPTIMISTA
+        appState.data = appState.data.filter(x => !idsSet.has(x.id));
+        clearBulkSelection();
+        renderTable();
+        updateDashboard();
+        showToast(`Se eliminaron ${count} equipos con éxito del inventario.`, "success");
+
+        // 2. PERSISTENCIA EN SEGUNDO PLANO
+        commitBatchInChunks(idsArray, (batch, id) => {
             const docRef = db.collection("instrumentos").doc(id);
             batch.delete(docRef);
+        }).then(() => {
+            // Sincronización con Sheets
+            if (GOOGLE_SHEETS_API_URL !== '') {
+                fetch(GOOGLE_SHEETS_API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    credentials: 'omit',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'delete_bulk',
+                        ids: idsArray
+                    })
+                }).catch(err => console.error("Error al eliminar masivo de Sheets:", err));
+            }
+        }).catch(err => {
+            console.error("Error al eliminar en lote en Firestore:", err);
+            showToast("⚠️ Error al eliminar equipos en la nube.", "warning");
         });
 
-        // Sincronización con Sheets
-        if (GOOGLE_SHEETS_API_URL !== '') {
-            await fetch(GOOGLE_SHEETS_API_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                credentials: 'omit',
-                cache: 'no-cache',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'delete_bulk',
-                    ids: idsArray
-                })
-            }).catch(err => console.error("Error al eliminar masivo de Sheets:", err));
-        }
-
-        await batch.commit();
-        clearBulkSelection();
-        await fetchData();
-        showToast(`Se eliminaron ${count} equipos con éxito del inventario.`, "success");
     } catch(err) {
         console.error("Error al eliminar en lote:", err);
         showToast("⚠️ Falla al eliminar equipos en lote: " + err.toString(), "error");

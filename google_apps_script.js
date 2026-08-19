@@ -17,175 +17,181 @@ const REMINDER_SUBJECT = 'Aviso de Próximo Vencimiento - CR MEDICION';
 const REMINDER_BODY_TEMPLATE = 'Estimado/a {{contacto}},\n\nSegún nuestro sistema, el certificado de calibración de su equipo ({{instrumento}}, Certificado Nº: {{certificado}}) se encuentra próximo a vencer el día {{fecha_vencimiento}}.\n\nPara reprogramar su recalibración y mantener su equipo al día, por favor póngase en contacto con nosotros.\n\nPuede responder a este correo o escribirnos vía WhatsApp al +54 11 2863-4493.\n\nQuedamos a su entera disposición.\n\nSaludos cordiales,\n\nDarío Del Real\nCR MEDICION | SchwyzLab Laboratorio de Metrología\nPerú 1297 - CABA - Argentina\nTel.: +54 11 4361-3499 / 3680\nWeb: www.todomedicion.com';
 
 function doGet(e) {
-  var action = e.parameter.action;
-  
-  // 1. OBTENER DATOS (get)
-  if (action == 'get') {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName(SHEET_NAME);
-    if (!sheet) return responseJSON({ error: "Hoja no encontrada." });
+  try {
+    var action = (e && e.parameter) ? e.parameter.action : '';
     
-    var data = sheet.getDataRange().getValues();
-    var result = [];
-    
-    for (var i = 1; i < data.length; i++) {
-        var row = data[i];
-        if (!row[0] || row[0] == '') continue;
-
-        var puntos = [];
-        try {
-            if (row[9] && row[9] != "") puntos = JSON.parse(row[9]);
-        } catch (err) { }
-
-        var patrones = [];
-        try {
-            var patStr = row[10] ? String(row[10]).trim() : '';
-            if (patStr !== '') {
-                patrones = JSON.parse(patStr);
-            }
-        } catch (err) { 
-            if (row[10]) {
-                patrones = String(row[10]).split(',').map(function(s) { return s.trim(); });
-            }
-        }
-
-        result.push({
-            id: String(row[0]),
-            instrumento: String(row[1]),
-            marca: String(row[2]),
-            modelo: String(row[3]),
-            serie: String(row[4]),
-            certificado: String(row[5]),
-            estado: row[6] ? String(row[6]).toUpperCase() : 'DISPONIBLE',
-            fecha_calibracion: formatDateIfDate(row[7]),
-            cliente: String(row[8]),
-            puntos: JSON.stringify(puntos),
-            patrones: JSON.stringify(patrones),
-            discontinuado: row[11] ? String(row[11]) : ''
-        });
-    }
-
-    // Solicitudes Externas
-    var solicitudes = [];
-    try {
-        var extSS = SpreadsheetApp.openById(EXTERNAL_SHEET_ID);
-        var extSheet = extSS.getSheetByName(EXTERNAL_SHEET_NAME);
-        if (extSheet) {
-            var extData = extSheet.getDataRange().getValues();
-            for (var j = 1; j < extData.length; j++) {
-                var sRow = extData[j];
-                if (!sRow[1] || sRow[1] == '') continue;
-                solicitudes.push({
-                    id: "sol_row_" + (j + 1),
-                    row_index: (j + 1),
-                    timestamp: formatDateIfDate(sRow[0]),
-                    empresa: String(sRow[1]),
-                    contacto: String(sRow[2]),
-                    email: String(sRow[3]),
-                    certificado: String(sRow[4]),
-                    estado: String(sRow[5] || '').toLowerCase()
-                });
-            }
-        }
-    } catch(err) { }
-
-    // Vencimientos Consolidados (Opción A)
-    var vencimientos = [];
-    try {
-        var vencSheet = ss.getSheetByName(VENCIMIENTOS_SHEET_NAME);
-        if (vencSheet) {
-            var vencData = vencSheet.getDataRange().getValues();
-            for (var k = 1; k < vencData.length; k++) {
-                var vRow = vencData[k];
-                if (!vRow[0] || vRow[0] == '') continue;
-                vencimientos.push({
-                    id: String(vRow[0]),
-                    instrumento: String(vRow[1]),
-                    certificado: String(vRow[2]),
-                    fecha_calibracion: formatDateIfDate(vRow[3]),
-                    fecha_vencimiento: formatDateIfDate(vRow[4]),
-                    cliente: String(vRow[5]),
-                    email: String(vRow[6]),
-                    estado_recordatorio: String(vRow[7] || 'pendiente')
-                });
-            }
-        }
-    } catch(err) { }
-
-    return responseJSON({ 
-        items: result.reverse(),
-        solicitudes: solicitudes.reverse(),
-        vencimientos: vencimientos.reverse()
-    });
-  }
-
-  // 2. VERIFICAR ARCHIVO (check_file)
-  if (action == 'check_file') {
-    var certCode = e.parameter.certificado;
-    var fileName = certCode + ".pdf";
-    try {
-      var root = DriveApp.getFolderById(ROOT_FOLDER_ID);
-      var file = findFileInFolderRecursive(root, fileName);
-      if (file) {
-        return responseJSON({ success: true, found: true, fileName: file.getName() });
-      }
-    } catch(err) { }
-    return responseJSON({ success: false, found: false });
-  }
-
-  // 3. DIAGNÓSTICO DE ARCHIVOS EN DRIVE (list_files)
-  if (action == 'list_files') {
-    try {
-      var root = DriveApp.getFolderById(ROOT_FOLDER_ID);
-      var filesList = [];
-      getAllFilesRecursive(root, filesList);
-      return responseJSON({ success: true, files: filesList });
-    } catch(err) {
-      return responseJSON({ success: false, error: err.toString() });
-    }
-  }
-
-  // 4. DIAGNÓSTICO DE HOJA DE CÁLCULO (diagnose)
-  if (action == 'diagnose') {
-    try {
+    // 1. OBTENER DATOS (get)
+    if (action == 'get') {
       var ss = SpreadsheetApp.getActiveSpreadsheet();
       var sheet = ss.getSheetByName(SHEET_NAME);
-      var sheets = ss.getSheets().map(function(s) { return s.getName(); });
-      var lastRow = sheet ? sheet.getLastRow() : 0;
-      var dataRangeLastRow = sheet ? sheet.getDataRange().getLastRow() : 0;
+      if (!sheet) return responseJSON({ error: "Hoja no encontrada." });
       
-      var lastFive = [];
-      if (sheet && lastRow > 0) {
-        var startRow = Math.max(1, lastRow - 9);
-        var numRows = Math.min(lastRow, 10);
-        var rangeData = sheet.getRange(startRow, 1, numRows, 5).getValues();
-        for (var r = 0; r < rangeData.length; r++) {
-          lastFive.push({
-            rowNum: startRow + r,
-            id: rangeData[r][0],
-            instrumento: rangeData[r][1],
-            marca: rangeData[r][2],
-            modelo: rangeData[r][3],
-            serie: rangeData[r][4]
+      var data = sheet.getDataRange().getValues();
+      var result = [];
+      
+      for (var i = 1; i < data.length; i++) {
+          var row = data[i];
+          if (!row[0] || row[0] == '') continue;
+
+          var puntos = [];
+          try {
+              if (row[9] && row[9] != "") puntos = JSON.parse(row[9]);
+          } catch (err) { }
+
+          var patrones = [];
+          try {
+              var patStr = row[10] ? String(row[10]).trim() : '';
+              if (patStr !== '') {
+                  patrones = JSON.parse(patStr);
+              }
+          } catch (err) { 
+              if (row[10]) {
+                  patrones = String(row[10]).split(',').map(function(s) { return s.trim(); });
+              }
+          }
+
+          result.push({
+              id: String(row[0]),
+              instrumento: String(row[1]),
+              marca: String(row[2]),
+              modelo: String(row[3]),
+              serie: String(row[4]),
+              certificado: String(row[5]),
+              estado: row[6] ? String(row[6]).toUpperCase() : 'DISPONIBLE',
+              fecha_calibracion: formatDateIfDate(row[7]),
+              cliente: String(row[8]),
+              puntos: JSON.stringify(puntos),
+              patrones: JSON.stringify(patrones),
+              discontinuado: row[11] ? String(row[11]) : ''
           });
-        }
       }
 
-      return responseJSON({
-        success: true,
-        spreadsheetId: ss ? ss.getId() : "null",
-        spreadsheetName: ss ? ss.getName() : "null",
-        sheets: sheets,
-        lastRow: lastRow,
-        dataRangeLastRow: dataRangeLastRow,
-        lastFive: lastFive
-      });
-    } catch(err) {
-      return responseJSON({ success: false, error: err.toString() });
-    }
-  }
+      // Solicitudes Externas
+      var solicitudes = [];
+      try {
+          var extSS = SpreadsheetApp.openById(EXTERNAL_SHEET_ID);
+          var extSheet = extSS.getSheetByName(EXTERNAL_SHEET_NAME);
+          if (extSheet) {
+              var extData = extSheet.getDataRange().getValues();
+              for (var j = 1; j < extData.length; j++) {
+                  var sRow = extData[j];
+                  if (!sRow[1] || sRow[1] == '') continue;
+                  solicitudes.push({
+                      id: "sol_row_" + (j + 1),
+                      row_index: (j + 1),
+                      timestamp: formatDateIfDate(sRow[0]),
+                      empresa: String(sRow[1]),
+                      contacto: String(sRow[2]),
+                      email: String(sRow[3]),
+                      certificado: String(sRow[4]),
+                      estado: String(sRow[5] || '').toLowerCase()
+                  });
+              }
+          }
+      } catch(err) { }
 
-  return responseJSON({ error: "Acción GET no válida." });
+      // Vencimientos Consolidados (Opción A)
+      var vencimientos = [];
+      try {
+          var vencSheet = ss.getSheetByName(VENCIMIENTOS_SHEET_NAME);
+          if (vencSheet) {
+              var vencData = vencSheet.getDataRange().getValues();
+              for (var k = 1; k < vencData.length; k++) {
+                  var vRow = vencData[k];
+                  if (!vRow[0] || vRow[0] == '') continue;
+                  vencimientos.push({
+                      id: String(vRow[0]),
+                      instrumento: String(vRow[1]),
+                      certificado: String(vRow[2]),
+                      fecha_calibracion: formatDateIfDate(vRow[3]),
+                      fecha_vencimiento: formatDateIfDate(vRow[4]),
+                      cliente: String(vRow[5]),
+                      email: String(vRow[6]),
+                      estado_recordatorio: String(vRow[7] || 'pendiente')
+                  });
+              }
+          }
+      } catch(err) { }
+
+      return responseJSON({ 
+          items: result.reverse(),
+          solicitudes: solicitudes.reverse(),
+          vencimientos: vencimientos.reverse()
+      });
+    }
+
+    // 2. VERIFICAR ARCHIVO (check_file)
+    if (action == 'check_file') {
+      var certCode = (e.parameter && e.parameter.certificado) ? e.parameter.certificado : '';
+      var fileName = certCode + ".pdf";
+      try {
+        var root = DriveApp.getFolderById(ROOT_FOLDER_ID);
+        var file = findFileInFolderRecursive(root, fileName);
+        if (file) {
+          return responseJSON({ success: true, found: true, fileName: file.getName() });
+        }
+      } catch(err) {
+        return responseJSON({ success: false, found: false, error: err.toString() });
+      }
+      return responseJSON({ success: false, found: false });
+    }
+
+    // 3. DIAGNÓSTICO DE ARCHIVOS EN DRIVE (list_files)
+    if (action == 'list_files') {
+      try {
+        var root = DriveApp.getFolderById(ROOT_FOLDER_ID);
+        var filesList = [];
+        getAllFilesRecursive(root, filesList);
+        return responseJSON({ success: true, files: filesList });
+      } catch(err) {
+        return responseJSON({ success: false, error: err.toString() });
+      }
+    }
+
+    // 4. DIAGNÓSTICO DE HOJA DE CÁLCULO (diagnose)
+    if (action == 'diagnose') {
+      try {
+        var ss = SpreadsheetApp.getActiveSpreadsheet();
+        var sheet = ss.getSheetByName(SHEET_NAME);
+        var sheets = ss.getSheets().map(function(s) { return s.getName(); });
+        var lastRow = sheet ? sheet.getLastRow() : 0;
+        var dataRangeLastRow = sheet ? sheet.getDataRange().getLastRow() : 0;
+        
+        var lastFive = [];
+        if (sheet && lastRow > 0) {
+          var startRow = Math.max(1, lastRow - 9);
+          var numRows = Math.min(lastRow, 10);
+          var rangeData = sheet.getRange(startRow, 1, numRows, 5).getValues();
+          for (var r = 0; r < rangeData.length; r++) {
+            lastFive.push({
+              rowNum: startRow + r,
+              id: rangeData[r][0],
+              instrumento: rangeData[r][1],
+              marca: rangeData[r][2],
+              modelo: rangeData[r][3],
+              serie: rangeData[r][4]
+            });
+          }
+        }
+
+        return responseJSON({
+          success: true,
+          spreadsheetId: ss ? ss.getId() : "null",
+          spreadsheetName: ss ? ss.getName() : "null",
+          sheets: sheets,
+          lastRow: lastRow,
+          dataRangeLastRow: dataRangeLastRow,
+          lastFive: lastFive
+        });
+      } catch(err) {
+        return responseJSON({ success: false, error: err.toString() });
+      }
+    }
+
+    return responseJSON({ error: "Acción GET no válida: " + action });
+  } catch(topErr) {
+    return responseJSON({ success: false, error: "Error interno en Google Apps Script: " + topErr.toString() });
+  }
 }
 
 function doPost(e) {

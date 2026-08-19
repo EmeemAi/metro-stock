@@ -138,20 +138,24 @@ function filterItems() {
     return state.items.filter(item => {
         const estClean = (item.estado || '').trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
-        // MOSTRAR ÚNICAMENTE EQUIPOS EN ESTADO "DISPONIBLE" (NINGÚN OTRO ESTADO)
         const isDisponible = estClean === 'DISPONIBLE' || estClean.includes('DISPONIBLE');
-        if (!isDisponible) return false;
+        const isDespachado = estClean.includes('DESPACHADO') || estClean === 'RESERVADO';
 
-        const query = state.search.toLowerCase();
+        if (state.filter === 'DISP' && !isDisponible) return false;
+        if (state.filter === 'DESP' && !isDespachado) return false;
+        if (state.filter === 'ALL' && !isDisponible && !isDespachado) return false;
+
+        const query = state.search.toLowerCase().trim();
+        if (query === '') return true;
         
         // Coincidencia de texto en búsqueda
-        return query === '' ||
-            (item.id || '').toLowerCase().includes(query) ||
+        return (item.id || '').toLowerCase().includes(query) ||
             (item.instrumento || item.nombre || '').toLowerCase().includes(query) ||
             (item.marca || '').toLowerCase().includes(query) ||
             (item.modelo || '').toLowerCase().includes(query) ||
             (item.serie || '').toLowerCase().includes(query) ||
-            (item.certificado || '').toLowerCase().includes(query);
+            (item.certificado || '').toLowerCase().includes(query) ||
+            (item.cliente || '').toLowerCase().includes(query);
     });
 }
 
@@ -159,9 +163,17 @@ function renderItems() {
     const container = document.getElementById('instruments-container');
     const emptyState = document.getElementById('empty-state');
     const resultsCount = document.getElementById('results-count');
+    const sectionTitle = document.getElementById('section-title');
 
     const filtered = filterItems();
-    resultsCount.innerText = filtered.length;
+    if (resultsCount) resultsCount.innerText = filtered.length;
+
+    if (sectionTitle) {
+        let label = 'Equipos Disponibles';
+        if (state.filter === 'DESP') label = 'Equipos Despachados';
+        else if (state.filter === 'ALL') label = 'Todos los Equipos';
+        sectionTitle.innerHTML = `${label} (<span id="results-count">${filtered.length}</span>)`;
+    }
 
     if (filtered.length === 0) {
         container.innerHTML = '';
@@ -176,16 +188,40 @@ function renderItems() {
         const est = (item.estado || 'EN DEPÓSITO').toUpperCase();
         let badgeClass = 'status-deposito';
         if (est.includes('DISPONIBLE')) badgeClass = 'status-disponible';
-        else if (est.includes('DESPACHADO')) badgeClass = 'status-despachado';
+        else if (est.includes('DESPACHADO') || est === 'RESERVADO') badgeClass = 'status-despachado';
         else if (est.includes('CERTIFICANDO')) badgeClass = 'status-certificando';
 
-        const isDespachado = est.includes('DESPACHADO');
+        const isDespachado = est.includes('DESPACHADO') || est === 'RESERVADO';
+        const isDisponible = est.includes('DISPONIBLE');
+
+        let actionsHtml = '';
+        if (isDespachado) {
+            actionsHtml = `
+                <button class="btn btn-warning btn-block btn-devolucion" data-id="${item.id}">
+                    <i data-lucide="rotate-ccw"></i>
+                    <span>Registrar Devolución</span>
+                </button>
+            `;
+        } else if (isDisponible) {
+            actionsHtml = `
+                <button class="btn btn-primary btn-block btn-despachar" data-id="${item.id}">
+                    <i data-lucide="truck"></i>
+                    <span>Registrar Despacho</span>
+                </button>
+            `;
+        } else {
+            actionsHtml = `
+                <button class="btn btn-outline btn-block" disabled>
+                    <span>${est}</span>
+                </button>
+            `;
+        }
 
         return `
             <div class="card-instrument glass-panel">
                 <div class="card-top">
                     <span class="badge-id">${item.id || 'N/A'}</span>
-                    <span class="badge-status ${badgeClass}">${est}</span>
+                    <span class="badge-status ${badgeClass}">${est === 'RESERVADO' ? 'DESPACHADO' : est}</span>
                 </div>
                 
                 <div>
@@ -219,12 +255,7 @@ function renderItems() {
                 </div>
 
                 <div class="card-actions">
-                    <button class="btn ${isDespachado ? 'btn-outline' : 'btn-primary'} btn-block btn-despachar" 
-                            data-id="${item.id}" 
-                            ${isDespachado ? 'disabled' : ''}>
-                        <i data-lucide="${isDespachado ? 'check-check' : 'truck'}"></i>
-                        <span>${isDespachado ? 'Ya Despachado' : 'Registrar Despacho'}</span>
-                    </button>
+                    ${actionsHtml}
                 </div>
             </div>
         `;
@@ -237,6 +268,14 @@ function renderItems() {
         btn.addEventListener('click', () => {
             const itemId = btn.getAttribute('data-id');
             openDespachoModal(itemId);
+        });
+    });
+
+    // Event listeners para los botones de devolución
+    document.querySelectorAll('.btn-devolucion').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const itemId = btn.getAttribute('data-id');
+            openDevolucionModal(itemId);
         });
     });
 }
@@ -322,12 +361,95 @@ async function handleConfirmDespacho(e) {
 }
 
 // ==========================================
+// MODAL DE REGISTRO DE DEVOLUCIÓN
+// ==========================================
+function openDevolucionModal(itemId) {
+    const item = state.items.find(x => x.id === itemId);
+    if (!item) return;
+
+    state.selectedItem = item;
+
+    document.getElementById('modal-dev-id').innerText = item.id;
+    document.getElementById('modal-dev-name').innerText = item.instrumento || item.nombre || 'Instrumento';
+    document.getElementById('modal-dev-details').innerText = `${item.marca || ''} ${item.modelo || ''} | N° Serie: ${item.serie || 'S/N'}${item.certificado ? ' | Cert: ' + item.certificado : ''}`;
+    
+    document.getElementById('devolucion-motivo').value = '';
+    document.getElementById('modal-devolucion').style.display = 'flex';
+    lucide.createIcons();
+}
+
+function closeDevolucionModal() {
+    document.getElementById('modal-devolucion').style.display = 'none';
+    state.selectedItem = null;
+}
+
+async function handleConfirmDevolucion(e) {
+    e.preventDefault();
+    if (!state.selectedItem) return;
+
+    const btnSubmit = document.getElementById('btn-submit-devolucion');
+    btnSubmit.disabled = true;
+    btnSubmit.innerHTML = `<div class="spinner" style="width:16px;height:16px;margin:0;border-width:2px;"></div> Procesando...`;
+
+    const itemId = state.selectedItem.id;
+    const motivo = document.getElementById('devolucion-motivo').value.trim();
+    const nowStr = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
+
+    const updateData = {
+        estado: 'DISPONIBLE',
+        fecha_devolucion: nowStr,
+        devuelto_por: state.user,
+        motivo_devolucion: motivo || 'Devolución de equipo despachado no entregado'
+    };
+
+    try {
+        // 1. Actualizar en Firestore
+        await db.collection("instrumentos").doc(itemId).update(updateData);
+
+        // 2. Sincronizar asíncronamente con Google Sheets si la API está configurada
+        if (GOOGLE_SHEETS_API_URL) {
+            const mergedItem = Object.assign({}, state.selectedItem, updateData);
+            fetch(GOOGLE_SHEETS_API_URL, {
+                method: 'POST',
+                mode: 'no-cors',
+                credentials: 'omit',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'update_full',
+                    data: mergedItem
+                })
+            }).catch(err => console.error("Error al sync con Sheets:", err));
+        }
+
+        showToast(`✅ ${itemId} registrado como DEVUELTO (Disponible nuevamente en stock).`, 'success');
+        closeDevolucionModal();
+    } catch (err) {
+        console.error("Error al registrar devolución:", err);
+        showToast("⚠️ Falla al registrar devolución: " + err.toString(), 'error');
+    } finally {
+        btnSubmit.disabled = false;
+        btnSubmit.innerHTML = `<i data-lucide="rotate-ccw"></i> Confirmar Devolución`;
+        lucide.createIcons();
+    }
+}
+
+// ==========================================
 // EVENT LISTENERS
 // ==========================================
 function setupEventListeners() {
     // Form Login
     document.getElementById('form-login').addEventListener('submit', handleLogin);
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
+
+    // Filtros de estado (Pills)
+    document.querySelectorAll('.filter-pills .pill').forEach(pill => {
+        pill.addEventListener('click', () => {
+            document.querySelectorAll('.filter-pills .pill').forEach(p => p.classList.remove('active'));
+            pill.classList.add('active');
+            state.filter = pill.getAttribute('data-filter');
+            renderItems();
+        });
+    });
 
     // Búsqueda
     const searchInput = document.getElementById('search-input');
@@ -356,6 +478,11 @@ function setupEventListeners() {
     document.getElementById('btn-close-despacho').addEventListener('click', closeDespachoModal);
     document.getElementById('btn-cancel-despacho').addEventListener('click', closeDespachoModal);
     document.getElementById('form-confirm-despacho').addEventListener('submit', handleConfirmDespacho);
+
+    // Modal Devolución
+    document.getElementById('btn-close-devolucion').addEventListener('click', closeDevolucionModal);
+    document.getElementById('btn-cancel-devolucion').addEventListener('click', closeDevolucionModal);
+    document.getElementById('form-confirm-devolucion').addEventListener('submit', handleConfirmDevolucion);
 }
 
 // Helper para prevenir XSS
@@ -365,8 +492,8 @@ function escapeHtml(str) {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+        .replace(new RegExp('"', 'g'), '&quot;')
+        .replace(new RegExp("'", 'g'), '&#039;');
 }
 
 // Toast helper
