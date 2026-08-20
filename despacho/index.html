@@ -8,12 +8,12 @@
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="styles.css?v=4.0">
+    <link rel="stylesheet" href="styles.css?v=5.0">
     <!-- PWA Meta Tags -->
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#090d16">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 </head>
@@ -27,7 +27,7 @@
                     <i data-lucide="package-check"></i>
                 </div>
                 <h2>MetroML Despacho</h2>
-                <p>Ingresa tus credenciales para acceder al sistema de despacho</p>
+                <p>Ingresa tus credenciales para acceder al sistema</p>
             </div>
             
             <form id="form-login" class="login-form">
@@ -58,15 +58,15 @@
     <!-- APLICACIÓN PRINCIPAL (POST-LOGIN) -->
     <div id="app-screen" class="app-wrapper" style="display: none;">
         
-        <!-- Navbar Superior -->
-        <header class="navbar glass-header">
+        <!-- Navbar Superior Minimalista -->
+        <header class="navbar">
             <div class="navbar-brand">
                 <div class="logo-icon">
                     <i data-lucide="package-check"></i>
                 </div>
                 <div class="brand-text">
                     <h1>MetroML Despacho</h1>
-                    <span class="status-indicator"><span class="pulse-dot"></span> Firestore En Línea</span>
+                    <span class="status-indicator"><span class="pulse-dot"></span> En Línea</span>
                 </div>
             </div>
             
@@ -81,23 +81,18 @@
         <!-- Contenido Principal -->
         <main class="main-content">
             
-            <!-- Barra de Búsqueda y Filtros -->
+            <!-- Barra de Búsqueda Minimalista -->
             <section class="search-section glass-panel">
                 <div class="search-box">
                     <i data-lucide="search" class="search-icon"></i>
-                    <input type="text" id="search-input" placeholder="Buscar por ID, Instrumento, Marca, Modelo o N° Serie..." autocomplete="off">
+                    <input type="text" id="search-input" placeholder="Buscar por ID de inventario, instrumento, marca o serie..." autocomplete="off">
                     <button class="btn-clear-search" id="btn-clear-search" style="display: none;">
                         <i data-lucide="x"></i>
                     </button>
                 </div>
-                <div class="filter-pills">
-                    <button class="pill active" data-filter="DISP"><i data-lucide="check-circle-2"></i> Disponibles</button>
-                    <button class="pill" data-filter="DESP"><i data-lucide="truck"></i> Despachados</button>
-                    <button class="pill" data-filter="ALL"><i data-lucide="layers"></i> Todos</button>
-                </div>
             </section>
 
-            <!-- Lista / Grid de Instrumentos -->
+            <!-- Lista / Grid de Instrumentos Disponibles -->
             <section class="instruments-section">
                 <div class="section-header">
                     <h2 id="section-title">Equipos Disponibles (<span id="results-count">0</span>)</h2>
@@ -111,91 +106,103 @@
                 <!-- Estado de Carga / Sin Resultados -->
                 <div id="empty-state" class="empty-state glass-panel" style="display: none;">
                     <i data-lucide="search-x"></i>
-                    <h3>No se encontraron instrumentos</h3>
-                    <p>Intenta ajustar el término de búsqueda o cambia los filtros seleccionados.</p>
+                    <h3>No se encontraron equipos disponibles</h3>
+                    <p>Verifica el término de búsqueda o asegúrate de que haya equipos en estado disponible.</p>
                 </div>
 
                 <div id="loading-state" class="loading-state">
                     <div class="spinner"></div>
-                    <p>Cargando inventario desde Firestore...</p>
+                    <p>Cargando inventario disponible...</p>
                 </div>
             </section>
 
         </main>
     </div>
 
-    <!-- MODAL DE CONFIRMACIÓN DE DESPACHO -->
+    <!-- MODAL DE REGISTRO Y CONFIRMACIÓN DE DESPACHO -->
     <div id="modal-despacho" class="modal-overlay" style="display: none;">
         <div class="modal-card glass-panel">
             <div class="modal-header">
-                <h3><i data-lucide="truck"></i> Registrar Despacho</h3>
+                <h3><i data-lucide="truck"></i> <span id="modal-title-text">Registrar Despacho</span></h3>
                 <button class="btn-close-modal" id="btn-close-despacho"><i data-lucide="x"></i></button>
             </div>
             
             <div class="modal-body">
-                <div class="item-summary-box">
-                    <div class="modal-inv-tag">N° INVENTARIO</div>
-                    <span class="badge-code" id="modal-item-id">INST-00000</span>
-                    <h4 id="modal-item-name">Nombre del Instrumento</h4>
-                    <p id="modal-item-details">Marca - Modelo | N° Serie: 12345</p>
+                
+                <!-- PASO 1: Formulario de Ingreso de Datos -->
+                <div id="despacho-step-1">
+                    <div class="item-summary-box">
+                        <div class="modal-inv-tag">N° INVENTARIO</div>
+                        <span class="badge-code" id="modal-item-id">INST-00000</span>
+                        <h4 id="modal-item-name">Nombre del Instrumento</h4>
+                        <p id="modal-item-details">Marca - Modelo | N° Serie: 12345</p>
+                    </div>
+
+                    <form id="form-confirm-despacho">
+                        <div class="form-group">
+                            <label for="despacho-certificado"><i data-lucide="award"></i> Número de Certificado</label>
+                            <input type="text" id="despacho-certificado" placeholder="Ej. 202608-DE-15681" required autocomplete="off">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="despacho-fecha-calibracion"><i data-lucide="calendar"></i> Fecha de Calibración</label>
+                            <input type="date" id="despacho-fecha-calibracion" required>
+                        </div>
+
+                        <div class="modal-actions">
+                            <button type="button" class="btn btn-outline" id="btn-cancel-despacho">Cancelar</button>
+                            <button type="submit" class="btn btn-primary" id="btn-to-step-2">
+                                <span>Revisar y Continuar</span> <i data-lucide="arrow-right"></i>
+                            </button>
+                        </div>
+                    </form>
                 </div>
 
-                <form id="form-confirm-despacho">
-                    <div class="form-group">
-                        <label for="despacho-certificado"><i data-lucide="award"></i> Número de Certificado</label>
-                        <input type="text" id="despacho-certificado" placeholder="Ej. 202608-DE-15681" required>
+                <!-- PASO 2: Confirmación de Datos antes de Guardar -->
+                <div id="despacho-step-2" style="display: none;">
+                    <div class="alert alert-info" style="background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); color: #93c5fd; margin-bottom: 1.25rem;">
+                        <i data-lucide="help-circle"></i>
+                        <span>Revisa y confirma los datos del despacho antes de guardar:</span>
                     </div>
 
-                    <div class="form-group">
-                        <label for="despacho-fecha-calibracion"><i data-lucide="calendar"></i> Fecha de Calibración</label>
-                        <input type="date" id="despacho-fecha-calibracion" required>
+                    <div class="confirmation-summary-card">
+                        <div class="conf-row">
+                            <span class="conf-label">N° Inventario:</span>
+                            <span class="conf-value badge-mono" id="conf-id">INST-00000</span>
+                        </div>
+                        <div class="conf-row">
+                            <span class="conf-label">Instrumento:</span>
+                            <span class="conf-value" id="conf-name">Nombre</span>
+                        </div>
+                        <div class="conf-row">
+                            <span class="conf-label">Marca / Modelo:</span>
+                            <span class="conf-value" id="conf-model">Marca Modelo</span>
+                        </div>
+                        <div class="conf-row">
+                            <span class="conf-label">N° de Serie:</span>
+                            <span class="conf-value" id="conf-serie">12345</span>
+                        </div>
+                        <div class="conf-divider"></div>
+                        <div class="conf-row highlight-row">
+                            <span class="conf-label">N° Certificado:</span>
+                            <span class="conf-value highlight-value" id="conf-cert">202608-DE-15681</span>
+                        </div>
+                        <div class="conf-row highlight-row">
+                            <span class="conf-label">Fecha Calibración:</span>
+                            <span class="conf-value highlight-value" id="conf-date">20/08/2026</span>
+                        </div>
                     </div>
 
-                    <div class="modal-actions">
-                        <button type="button" class="btn btn-outline" id="btn-cancel-despacho">Cancelar</button>
-                        <button type="submit" class="btn btn-success" id="btn-submit-despacho">
-                            <i data-lucide="check-circle-2"></i> Confirmar Despacho
+                    <div class="modal-actions" style="margin-top: 1.5rem;">
+                        <button type="button" class="btn btn-outline" id="btn-back-to-step-1">
+                            <i data-lucide="arrow-left"></i> <span>Modificar</span>
+                        </button>
+                        <button type="button" class="btn btn-success" id="btn-final-confirm-despacho">
+                            <i data-lucide="check-circle-2"></i> <span>Confirmar Despacho</span>
                         </button>
                     </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- MODAL DE CONFIRMACIÓN DE DEVOLUCIÓN -->
-    <div id="modal-devolucion" class="modal-overlay" style="display: none;">
-        <div class="modal-card glass-panel">
-            <div class="modal-header">
-                <h3><i data-lucide="rotate-ccw" style="color: var(--accent-amber);"></i> Registrar Devolución</h3>
-                <button class="btn-close-modal" id="btn-close-devolucion"><i data-lucide="x"></i></button>
-            </div>
-            
-            <div class="modal-body">
-                <div class="item-summary-box">
-                    <div class="modal-inv-tag">N° INVENTARIO</div>
-                    <span class="badge-code" id="modal-dev-id">INST-00000</span>
-                    <h4 id="modal-dev-name">Nombre del Instrumento</h4>
-                    <p id="modal-dev-details">Marca - Modelo | N° Serie: 12345</p>
                 </div>
 
-                <div class="alert alert-warning" style="margin-bottom: 1.25rem;">
-                    <i data-lucide="info"></i>
-                    <span>El equipo no fue entregado y volverá al stock como <strong>DISPONIBLE</strong>.</span>
-                </div>
-
-                <form id="form-confirm-devolucion">
-                    <div class="form-group">
-                        <label for="devolucion-motivo"><i data-lucide="file-text"></i> Motivo de Devolución (Opcional)</label>
-                        <input type="text" id="devolucion-motivo" placeholder="Ej. No entregado / Cliente ausente / Rechazado">
-                    </div>
-
-                    <div class="modal-actions">
-                        <button type="button" class="btn btn-outline" id="btn-cancel-devolucion">Cancelar</button>
-                        <button type="submit" class="btn btn-warning" id="btn-submit-devolucion">
-                            <i data-lucide="rotate-ccw"></i> Confirmar Devolución
-                        </button>
-                    </div>
-                </form>
             </div>
         </div>
     </div>
@@ -207,6 +214,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <!-- App Logic -->
-    <script src="app.js?v=4.0"></script>
+    <script src="app.js?v=5.0"></script>
 </body>
 </html>

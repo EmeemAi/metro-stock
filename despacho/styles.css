@@ -900,6 +900,67 @@ body {
 .toast-error { border-left: 3px solid var(--red); }
 .toast-info { border-left: 3px solid var(--blue); }
 
+/* Confirmation Summary Card (Paso 2 de Despacho) */
+.confirmation-summary-card {
+    background: var(--bg-input);
+    border: 1px solid var(--border-subtle);
+    border-radius: var(--radius-sm);
+    padding: 1rem 1.15rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+}
+
+.conf-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+}
+
+.conf-label {
+    color: var(--text-muted);
+    font-weight: 500;
+}
+
+.conf-value {
+    color: var(--text-primary);
+    font-weight: 600;
+    text-align: right;
+}
+
+.conf-divider {
+    height: 1px;
+    background: rgba(255, 255, 255, 0.08);
+    margin: 0.35rem 0;
+}
+
+.highlight-row {
+    background: rgba(16, 185, 129, 0.08);
+    padding: 0.5rem 0.65rem;
+    border-radius: 6px;
+    border: 1px solid rgba(16, 185, 129, 0.25);
+}
+
+.highlight-row .conf-label {
+    color: #6ee7b7;
+    font-weight: 600;
+}
+
+.highlight-value {
+    color: #ffffff;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.badge-mono {
+    font-family: 'JetBrains Mono', monospace;
+    color: #60a5fa;
+    font-weight: 700;
+    font-size: 0.95rem;
+}
+
 /* Animations */
 @keyframes fadeIn {
     from { opacity: 0; transform: scale(0.98); }

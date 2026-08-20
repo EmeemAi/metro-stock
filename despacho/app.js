@@ -1,6 +1,6 @@
 /**
- * METROML DESPACHO - LÓGICA PRINCIPAL
- * Versión 1.0
+ * METROML DESPACHO - LÓGICA PRINCIPAL (MINIMALIST & CONFIRMATION FLOW)
+ * Versión 5.0
  */
 
 // ==========================================
@@ -35,9 +35,9 @@ const db = firebase.firestore();
 let state = {
     user: null,
     items: [],
-    filter: 'DISP',
     search: '',
     selectedItem: null,
+    pendingDespachoData: null,
     unsubscribe: null
 };
 
@@ -109,7 +109,7 @@ function showAppScreen() {
 // ==========================================
 function listenFirestore() {
     const loadingState = document.getElementById('loading-state');
-    loadingState.style.display = 'block';
+    if (loadingState) loadingState.style.display = 'block';
 
     // Cancelar escucha anterior si existe
     if (state.unsubscribe) state.unsubscribe();
@@ -121,29 +121,26 @@ function listenFirestore() {
         });
 
         state.items = items;
-        loadingState.style.display = 'none';
+        if (loadingState) loadingState.style.display = 'none';
         
         renderItems();
     }, (error) => {
         console.error("Error al escuchar Firestore:", error);
-        loadingState.style.display = 'none';
+        if (loadingState) loadingState.style.display = 'none';
         showToast("⚠️ Error al sincronizar con la base de datos", "error");
     });
 }
 
 // ==========================================
-// RENDERIZADO Y FILTRADO
+// FILTRADO ESTRICTO (SOLO DISPONIBLES)
 // ==========================================
 function filterItems() {
     return state.items.filter(item => {
         const estClean = (item.estado || '').trim().toUpperCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         
+        // REGLA ESTRICTA: Mostrar ÚNICAMENTE equipos en estado "DISPONIBLE"
         const isDisponible = estClean === 'DISPONIBLE' || estClean.includes('DISPONIBLE');
-        const isDespachado = estClean.includes('DESPACHADO') || estClean === 'RESERVADO';
-
-        if (state.filter === 'DISP' && !isDisponible) return false;
-        if (state.filter === 'DESP' && !isDespachado) return false;
-        if (state.filter === 'ALL' && !isDisponible && !isDespachado) return false;
+        if (!isDisponible) return false;
 
         const query = state.search.toLowerCase().trim();
         if (query === '') return true;
@@ -154,26 +151,20 @@ function filterItems() {
             (item.marca || '').toLowerCase().includes(query) ||
             (item.modelo || '').toLowerCase().includes(query) ||
             (item.serie || '').toLowerCase().includes(query) ||
-            (item.certificado || '').toLowerCase().includes(query) ||
-            (item.cliente || '').toLowerCase().includes(query);
+            (item.certificado || '').toLowerCase().includes(query);
     });
 }
 
+// ==========================================
+// RENDERIZADO DE EQUIPOS DISPONIBLES
+// ==========================================
 function renderItems() {
     const container = document.getElementById('instruments-container');
     const emptyState = document.getElementById('empty-state');
     const resultsCount = document.getElementById('results-count');
-    const sectionTitle = document.getElementById('section-title');
 
     const filtered = filterItems();
     if (resultsCount) resultsCount.innerText = filtered.length;
-
-    if (sectionTitle) {
-        let label = 'Equipos Disponibles';
-        if (state.filter === 'DESP') label = 'Equipos Despachados';
-        else if (state.filter === 'ALL') label = 'Todos los Equipos';
-        sectionTitle.innerHTML = `${label} (<span id="results-count">${filtered.length}</span>)`;
-    }
 
     if (filtered.length === 0) {
         container.innerHTML = '';
@@ -185,38 +176,6 @@ function renderItems() {
     emptyState.style.display = 'none';
 
     container.innerHTML = filtered.map(item => {
-        const est = (item.estado || 'EN DEPÓSITO').toUpperCase();
-        let badgeClass = 'status-deposito';
-        if (est.includes('DISPONIBLE')) badgeClass = 'status-disponible';
-        else if (est.includes('DESPACHADO') || est === 'RESERVADO') badgeClass = 'status-despachado';
-        else if (est.includes('CERTIFICANDO')) badgeClass = 'status-certificando';
-
-        const isDespachado = est.includes('DESPACHADO') || est === 'RESERVADO';
-        const isDisponible = est.includes('DISPONIBLE');
-
-        let actionsHtml = '';
-        if (isDespachado) {
-            actionsHtml = `
-                <button class="btn btn-warning btn-block btn-devolucion" data-id="${item.id}">
-                    <i data-lucide="rotate-ccw"></i>
-                    <span>Registrar Devolución</span>
-                </button>
-            `;
-        } else if (isDisponible) {
-            actionsHtml = `
-                <button class="btn btn-primary btn-block btn-despachar" data-id="${item.id}">
-                    <i data-lucide="truck"></i>
-                    <span>Registrar Despacho</span>
-                </button>
-            `;
-        } else {
-            actionsHtml = `
-                <button class="btn btn-outline btn-block" disabled>
-                    <span>${est}</span>
-                </button>
-            `;
-        }
-
         return `
             <div class="card-instrument glass-panel">
                 <div class="card-top">
@@ -224,9 +183,9 @@ function renderItems() {
                         <span class="id-label">N° INV</span>
                         <span class="id-code">${item.id || 'N/A'}</span>
                     </div>
-                    <span class="badge-status ${badgeClass}">
+                    <span class="badge-status status-disponible">
                         <span class="status-dot"></span>
-                        ${est === 'RESERVADO' ? 'DESPACHADO' : est}
+                        DISPONIBLE
                     </span>
                 </div>
                 
@@ -239,11 +198,13 @@ function renderItems() {
                     <span class="meta-item"><strong>Serie:</strong> <span>${escapeHtml(item.serie || 'S/N')}</span></span>
                     ${item.certificado ? `<span class="meta-item"><strong>Cert:</strong> <span>${escapeHtml(item.certificado)}</span></span>` : ''}
                     ${item.cliente ? `<span class="meta-item"><strong>Cliente:</strong> <span>${escapeHtml(item.cliente)}</span></span>` : ''}
-                    ${item.fecha_despacho ? `<span class="meta-item"><strong>Despachado:</strong> <span>${escapeHtml(item.fecha_despacho)}</span></span>` : ''}
                 </div>
 
                 <div class="card-actions">
-                    ${actionsHtml}
+                    <button class="btn btn-primary btn-block btn-despachar" data-id="${item.id}">
+                        <i data-lucide="truck"></i>
+                        <span>Registrar Despacho</span>
+                    </button>
                 </div>
             </div>
         `;
@@ -252,76 +213,132 @@ function renderItems() {
     lucide.createIcons();
 
     // Event listeners para los botones de despacho
-    document.querySelectorAll('.btn-despachar:not([disabled])').forEach(btn => {
+    document.querySelectorAll('.btn-despachar').forEach(btn => {
         btn.addEventListener('click', () => {
             const itemId = btn.getAttribute('data-id');
             openDespachoModal(itemId);
         });
     });
-
-    // Event listeners para los botones de devolución
-    document.querySelectorAll('.btn-devolucion').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const itemId = btn.getAttribute('data-id');
-            openDevolucionModal(itemId);
-        });
-    });
 }
 
 // ==========================================
-// MODAL DE REGISTRO DE DESPACHO
+// MODAL DE DESPACHO CON PASO DE CONFIRMACIÓN
 // ==========================================
 function openDespachoModal(itemId) {
     const item = state.items.find(x => x.id === itemId);
     if (!item) return;
 
     state.selectedItem = item;
+    state.pendingDespachoData = null;
 
+    // Resetear a Paso 1
+    document.getElementById('despacho-step-1').style.display = 'block';
+    document.getElementById('despacho-step-2').style.display = 'none';
+    document.getElementById('modal-title-text').innerText = 'Registrar Despacho';
+
+    // Rellenar datos del equipo en Paso 1
     document.getElementById('modal-item-id').innerText = item.id;
     document.getElementById('modal-item-name').innerText = item.instrumento || item.nombre || 'Instrumento';
     document.getElementById('modal-item-details').innerText = `${item.marca || ''} ${item.modelo || ''} | N° Serie: ${item.serie || 'S/N'}`;
     
     document.getElementById('despacho-certificado').value = item.certificado || '';
     
-    // Asignar fecha actual por defecto si no existe fecha previa
+    // Asignar fecha actual por defecto
     const todayISO = new Date().toISOString().split('T')[0];
     document.getElementById('despacho-fecha-calibracion').value = item.fecha_calibracion || todayISO;
 
     document.getElementById('modal-despacho').style.display = 'flex';
     lucide.createIcons();
+    
+    // Foco automático en el campo de certificado
+    setTimeout(() => {
+        const certInput = document.getElementById('despacho-certificado');
+        if (certInput) certInput.focus();
+    }, 100);
 }
 
 function closeDespachoModal() {
     document.getElementById('modal-despacho').style.display = 'none';
     state.selectedItem = null;
+    state.pendingDespachoData = null;
 }
 
-async function handleConfirmDespacho(e) {
+// Paso 1 -> Paso 2: Revisar y mostrar resumen de confirmación
+function handleToStep2(e) {
     e.preventDefault();
     if (!state.selectedItem) return;
 
-    const btnSubmit = document.getElementById('btn-submit-despacho');
+    const certificado = document.getElementById('despacho-certificado').value.trim();
+    const fechaCalibracion = document.getElementById('despacho-fecha-calibracion').value;
+
+    if (!certificado) {
+        showToast('Por favor, ingresa el número de certificado.', 'error');
+        return;
+    }
+
+    if (!fechaCalibracion) {
+        showToast('Por favor, ingresa la fecha de calibración.', 'error');
+        return;
+    }
+
+    // Guardar datos temporales para confirmación
+    state.pendingDespachoData = {
+        certificado: certificado,
+        fecha_calibracion: fechaCalibracion
+    };
+
+    // Rellenar tarjeta de confirmación del Paso 2
+    document.getElementById('conf-id').innerText = state.selectedItem.id || 'N/A';
+    document.getElementById('conf-name').innerText = state.selectedItem.instrumento || state.selectedItem.nombre || 'Instrumento';
+    document.getElementById('conf-model').innerText = `${state.selectedItem.marca || '-'} ${state.selectedItem.modelo || ''}`;
+    document.getElementById('conf-serie').innerText = state.selectedItem.serie || 'S/N';
+    document.getElementById('conf-cert').innerText = certificado;
+    
+    // Formato legible de fecha para el resumen (DD/MM/YYYY)
+    const [year, month, day] = fechaCalibracion.split('-');
+    const formattedDate = (year && month && day) ? `${day}/${month}/${year}` : fechaCalibracion;
+    document.getElementById('conf-date').innerText = formattedDate;
+
+    // Cambiar de paso
+    document.getElementById('despacho-step-1').style.display = 'none';
+    document.getElementById('despacho-step-2').style.display = 'block';
+    document.getElementById('modal-title-text').innerText = 'Confirmar Salida de Equipo';
+    lucide.createIcons();
+}
+
+// Paso 2 -> Paso 1: Volver a modificar datos
+function handleBackToStep1() {
+    document.getElementById('despacho-step-2').style.display = 'none';
+    document.getElementById('despacho-step-1').style.display = 'block';
+    document.getElementById('modal-title-text').innerText = 'Registrar Despacho';
+    lucide.createIcons();
+}
+
+// Paso 2: Confirmación Final y Guardado
+async function handleFinalConfirmDespacho() {
+    if (!state.selectedItem || !state.pendingDespachoData) return;
+
+    const btnSubmit = document.getElementById('btn-final-confirm-despacho');
     btnSubmit.disabled = true;
     btnSubmit.innerHTML = `<div class="spinner" style="width:16px;height:16px;margin:0;border-width:2px;"></div> Procesando...`;
 
     const itemId = state.selectedItem.id;
-    const certificado = document.getElementById('despacho-certificado').value.trim();
-    const fechaCalibracion = document.getElementById('despacho-fecha-calibracion').value;
+    const { certificado, fecha_calibracion } = state.pendingDespachoData;
     const nowStr = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
 
     const updateData = {
         estado: 'DESPACHADO',
         certificado: certificado,
-        fecha_calibracion: fechaCalibracion,
+        fecha_calibracion: fecha_calibracion,
         fecha_despacho: nowStr,
         despachado_por: state.user
     };
 
     try {
-        // 1. Actualizar en Firestore
+        // 1. Actualizar inmediatamente en Firestore
         await db.collection("instrumentos").doc(itemId).update(updateData);
 
-        // 2. Sincronizar asíncronamente con Google Sheets si la API está configurada
+        // 2. Sincronizar asíncronamente con Google Sheets si está disponible
         if (GOOGLE_SHEETS_API_URL) {
             const mergedItem = Object.assign({}, state.selectedItem, updateData);
             fetch(GOOGLE_SHEETS_API_URL, {
@@ -333,90 +350,17 @@ async function handleConfirmDespacho(e) {
                     action: 'update_full',
                     data: mergedItem
                 })
-            }).catch(err => console.error("Error al sync con Sheets:", err));
+            }).catch(err => console.error("Error al sincronizar con Sheets:", err));
         }
 
-        showToast(`✅ ${itemId} certificado (${certificado}) registrado como DESPACHADO.`, 'success');
+        showToast(`✅ ${itemId} (${certificado}) despachado con éxito.`, 'success');
         closeDespachoModal();
     } catch (err) {
-        console.error("Error al actualizar despacho:", err);
-        showToast("⚠️ Falla al registrar el despacho: " + err.toString(), 'error');
+        console.error("Error al registrar despacho:", err);
+        showToast("⚠️ Falla al registrar despacho: " + err.toString(), 'error');
     } finally {
         btnSubmit.disabled = false;
-        btnSubmit.innerHTML = `<i data-lucide="check-circle-2"></i> Confirmar Despacho`;
-        lucide.createIcons();
-    }
-}
-
-// ==========================================
-// MODAL DE REGISTRO DE DEVOLUCIÓN
-// ==========================================
-function openDevolucionModal(itemId) {
-    const item = state.items.find(x => x.id === itemId);
-    if (!item) return;
-
-    state.selectedItem = item;
-
-    document.getElementById('modal-dev-id').innerText = item.id;
-    document.getElementById('modal-dev-name').innerText = item.instrumento || item.nombre || 'Instrumento';
-    document.getElementById('modal-dev-details').innerText = `${item.marca || ''} ${item.modelo || ''} | N° Serie: ${item.serie || 'S/N'}${item.certificado ? ' | Cert: ' + item.certificado : ''}`;
-    
-    document.getElementById('devolucion-motivo').value = '';
-    document.getElementById('modal-devolucion').style.display = 'flex';
-    lucide.createIcons();
-}
-
-function closeDevolucionModal() {
-    document.getElementById('modal-devolucion').style.display = 'none';
-    state.selectedItem = null;
-}
-
-async function handleConfirmDevolucion(e) {
-    e.preventDefault();
-    if (!state.selectedItem) return;
-
-    const btnSubmit = document.getElementById('btn-submit-devolucion');
-    btnSubmit.disabled = true;
-    btnSubmit.innerHTML = `<div class="spinner" style="width:16px;height:16px;margin:0;border-width:2px;"></div> Procesando...`;
-
-    const itemId = state.selectedItem.id;
-    const motivo = document.getElementById('devolucion-motivo').value.trim();
-    const nowStr = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Buenos_Aires' });
-
-    const updateData = {
-        estado: 'DISPONIBLE',
-        fecha_devolucion: nowStr,
-        devuelto_por: state.user,
-        motivo_devolucion: motivo || 'Devolución de equipo despachado no entregado'
-    };
-
-    try {
-        // 1. Actualizar en Firestore
-        await db.collection("instrumentos").doc(itemId).update(updateData);
-
-        // 2. Sincronizar asíncronamente con Google Sheets si la API está configurada
-        if (GOOGLE_SHEETS_API_URL) {
-            const mergedItem = Object.assign({}, state.selectedItem, updateData);
-            fetch(GOOGLE_SHEETS_API_URL, {
-                method: 'POST',
-                mode: 'no-cors',
-                credentials: 'omit',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    action: 'update_full',
-                    data: mergedItem
-                })
-            }).catch(err => console.error("Error al sync con Sheets:", err));
-        }
-
-        showToast(`✅ ${itemId} registrado como DEVUELTO (Disponible nuevamente en stock).`, 'success');
-        closeDevolucionModal();
-    } catch (err) {
-        console.error("Error al registrar devolución:", err);
-        showToast("⚠️ Falla al registrar devolución: " + err.toString(), 'error');
-    } finally {
-        btnSubmit.disabled = false;
-        btnSubmit.innerHTML = `<i data-lucide="rotate-ccw"></i> Confirmar Devolución`;
+        btnSubmit.innerHTML = `<i data-lucide="check-circle-2"></i> <span>Confirmar Despacho</span>`;
         lucide.createIcons();
     }
 }
@@ -429,23 +373,13 @@ function setupEventListeners() {
     document.getElementById('form-login').addEventListener('submit', handleLogin);
     document.getElementById('btn-logout').addEventListener('click', handleLogout);
 
-    // Filtros de estado (Pills)
-    document.querySelectorAll('.filter-pills .pill').forEach(pill => {
-        pill.addEventListener('click', () => {
-            document.querySelectorAll('.filter-pills .pill').forEach(p => p.classList.remove('active'));
-            pill.classList.add('active');
-            state.filter = pill.getAttribute('data-filter');
-            renderItems();
-        });
-    });
-
-    // Búsqueda
+    // Búsqueda en Vivo
     const searchInput = document.getElementById('search-input');
     const btnClearSearch = document.getElementById('btn-clear-search');
 
     searchInput.addEventListener('input', (e) => {
         state.search = e.target.value;
-        btnClearSearch.style.display = state.search ? 'block' : 'none';
+        btnClearSearch.style.display = state.search ? 'flex' : 'none';
         renderItems();
     });
 
@@ -454,23 +388,25 @@ function setupEventListeners() {
         state.search = '';
         btnClearSearch.style.display = 'none';
         renderItems();
+        searchInput.focus();
     });
 
-    // Refresh Manual
+    // Botón Refresh Manual
     document.getElementById('btn-refresh').addEventListener('click', () => {
-        showToast('Sincronizando con Firestore...', 'info');
+        showToast('Sincronizando inventario...', 'info');
         listenFirestore();
     });
 
-    // Modal Despacho
+    // Control de Modales y Pasos
     document.getElementById('btn-close-despacho').addEventListener('click', closeDespachoModal);
     document.getElementById('btn-cancel-despacho').addEventListener('click', closeDespachoModal);
-    document.getElementById('form-confirm-despacho').addEventListener('submit', handleConfirmDespacho);
-
-    // Modal Devolución
-    document.getElementById('btn-close-devolucion').addEventListener('click', closeDevolucionModal);
-    document.getElementById('btn-cancel-devolucion').addEventListener('click', closeDevolucionModal);
-    document.getElementById('form-confirm-devolucion').addEventListener('submit', handleConfirmDevolucion);
+    
+    // Paso 1: Revisar
+    document.getElementById('form-confirm-despacho').addEventListener('submit', handleToStep2);
+    
+    // Paso 2: Volver o Confirmar
+    document.getElementById('btn-back-to-step-1').addEventListener('click', handleBackToStep1);
+    document.getElementById('btn-final-confirm-despacho').addEventListener('click', handleFinalConfirmDespacho);
 }
 
 // Helper para prevenir XSS
@@ -480,11 +416,11 @@ function escapeHtml(str) {
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
-        .replace(new RegExp('"', 'g'), '&quot;')
-        .replace(new RegExp("'", 'g'), '&#039;');
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
-// Toast helper
+// Helper de Toast Notifications
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
     const toast = document.createElement('div');
@@ -501,7 +437,7 @@ function showToast(message, type = 'info') {
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateX(100%)';
-        toast.style.transition = 'all 0.3s';
-        setTimeout(() => toast.remove(), 300);
+        toast.style.transition = 'all 0.25s ease-out';
+        setTimeout(() => toast.remove(), 250);
     }, 3500);
 }
