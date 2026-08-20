@@ -220,38 +220,26 @@ function renderItems() {
         return `
             <div class="card-instrument glass-panel">
                 <div class="card-top">
-                    <span class="badge-id">${item.id || 'N/A'}</span>
-                    <span class="badge-status ${badgeClass}">${est === 'RESERVADO' ? 'DESPACHADO' : est}</span>
+                    <div class="inventory-id-pill">
+                        <span class="id-label">N° INV</span>
+                        <span class="id-code">${item.id || 'N/A'}</span>
+                    </div>
+                    <span class="badge-status ${badgeClass}">
+                        <span class="status-dot"></span>
+                        ${est === 'RESERVADO' ? 'DESPACHADO' : est}
+                    </span>
                 </div>
                 
-                <div>
+                <div class="card-body">
                     <h3 class="card-title">${escapeHtml(item.instrumento || item.nombre || 'Instrumento')}</h3>
-                    <p class="card-subtitle">${escapeHtml(item.marca || '-')} ${escapeHtml(item.modelo || '-')}</p>
+                    <p class="card-subtitle">${escapeHtml(item.marca || '-')} ${escapeHtml(item.modelo || '')}</p>
                 </div>
 
-                <div class="card-details">
-                    <div class="detail-row">
-                        <i data-lucide="hash"></i>
-                        <span>Serie: <strong class="detail-value">${escapeHtml(item.serie || 'S/N')}</strong></span>
-                    </div>
-                    ${item.cliente ? `
-                        <div class="detail-row">
-                            <i data-lucide="building-2"></i>
-                            <span>Cliente: <strong class="detail-value">${escapeHtml(item.cliente)}</strong></span>
-                        </div>
-                    ` : ''}
-                    ${item.certificado ? `
-                        <div class="detail-row">
-                            <i data-lucide="award"></i>
-                            <span>Certificado: <strong class="detail-value">${escapeHtml(item.certificado)}</strong></span>
-                        </div>
-                    ` : ''}
-                    ${item.fecha_despacho ? `
-                        <div class="detail-row">
-                            <i data-lucide="clock"></i>
-                            <span>Despachado: <strong class="detail-value">${escapeHtml(item.fecha_despacho)}</strong></span>
-                        </div>
-                    ` : ''}
+                <div class="card-meta">
+                    <span class="meta-item"><strong>Serie:</strong> <span>${escapeHtml(item.serie || 'S/N')}</span></span>
+                    ${item.certificado ? `<span class="meta-item"><strong>Cert:</strong> <span>${escapeHtml(item.certificado)}</span></span>` : ''}
+                    ${item.cliente ? `<span class="meta-item"><strong>Cliente:</strong> <span>${escapeHtml(item.cliente)}</span></span>` : ''}
+                    ${item.fecha_despacho ? `<span class="meta-item"><strong>Despachado:</strong> <span>${escapeHtml(item.fecha_despacho)}</span></span>` : ''}
                 </div>
 
                 <div class="card-actions">
