@@ -19,25 +19,29 @@ Puedes ingresar al sistema de despacho desde tu celular, tablet o computadora de
 
 ---
 
-## 🔍 Paso 2: Buscar el Equipo a Despachar
+## 🔍 Paso 2: Buscar en el Sistema por Modelo o Descripción
 
-1. En la barra superior de búsqueda, escribe cualquiera de los siguientes datos del equipo:
-   * **Número de Inventario** (ej. `INST-15586`)
+1. En la barra superior de búsqueda, escribe la característica del equipo que necesitas despachar:
    * **Nombre del Instrumento** (ej. `Calibre`, `Decibelímetro`, `Luxómetro`)
    * **Marca o Modelo** (ej. `SCHWYZ`, `EXTECH`, `ND9`)
-   * **Número de Serie** (ej. `17113143`)
-2. La lista filtrará automáticamente y mostrará únicamente los equipos que están **DISPONIBLES** para entrega.
-3. Verifica que el **N° de Inventario** de la tarjeta coincida con la etiqueta física del equipo.
+2. La lista filtrará automáticamente y mostrará los equipos **DISPONIBLES** junto a su **N° de Inventario** (`N° INV: INST-XXXXX`).
 
 ---
 
-## ✍️ Paso 3: Ingresar los Datos del Despacho
+## 🏷️ Paso 3: Localizar el Equipo Físico por su Etiqueta
 
-1. En la tarjeta del equipo que vas a entregar, presiona el botón azul **"Registrar Despacho"**.
-2. Se abrirá una ventana emergente donde debes completar:
-   * **Número de Certificado**: Escribe el código del certificado de calibración emitido (ej. `202608-DE-15681`).
-   * **Fecha de Calibración / Salida**: Selecciona la fecha correspondiente (por defecto viene seleccionada la fecha de hoy).
-3. Presiona el botón **"Revisar y Continuar"**.
+1. En la estantería o mesa de depósito, busca el instrumento físico.
+2. Identifícalo comprobando que la **etiqueta pegada a la vista en el equipo** coincida exactamente con el **N° de Inventario** (`INST-XXXXX`) que seleccionaste en la pantalla.
+
+---
+
+## ✍️ Paso 4: Cargar Certificado y Confirmar Despacho
+
+1. En la tarjeta del equipo en pantalla, presiona el botón azul **"Registrar Despacho"**.
+2. Completa los dos campos:
+   * **Número de Certificado**: Código del certificado emitido (ej. `202608-DE-15681`).
+   * **Fecha de Calibración**: Fecha correspondiente.
+3. Presiona **"Revisar y Continuar"**, verifica los datos en el resumen y pulsa el botón verde **"Confirmar Despacho"**.
 
 ---
 
