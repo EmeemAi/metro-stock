@@ -1,6 +1,6 @@
 /**
- * METROML DESPACHO - LÓGICA PRINCIPAL (MINIMALIST & CONFIRMATION FLOW)
- * Versión 5.0
+ * METROML DESPACHO - LÓGICA PRINCIPAL (DIRECT ACCESS & CONFIRMATION FLOW)
+ * Versión 6.0
  */
 
 // ==========================================
@@ -18,11 +18,6 @@ const firebaseConfig = {
 
 const GOOGLE_SHEETS_API_URL = 'https://script.google.com/macros/s/AKfycbwgmgHF3DHNpOjnmTGsVBwYPEd0tLiwZDXhRsZaTknXEkhBbpOZEqtDlXhH5pyhSWE/exec';
 
-// Credenciales válidas
-const VALID_USERS = {
-    "user1": "1297"
-};
-
 // Inicializar Firebase
 if (!firebase.apps.length) {
     firebase.initializeApp(firebaseConfig);
@@ -33,7 +28,6 @@ const db = firebase.firestore();
 // ESTADO DE LA APLICACIÓN
 // ==========================================
 let state = {
-    user: null,
     items: [],
     search: '',
     selectedItem: null,
@@ -42,67 +36,13 @@ let state = {
 };
 
 // ==========================================
-// INICIALIZACIÓN
+// INICIALIZACIÓN DIRECTA (SIN LOGIN)
 // ==========================================
 document.addEventListener('DOMContentLoaded', () => {
     lucide.createIcons();
-    checkSession();
     setupEventListeners();
-});
-
-// ==========================================
-// AUTENTICACIÓN
-// ==========================================
-function checkSession() {
-    const savedUser = sessionStorage.getItem('despacho_user');
-    if (savedUser && VALID_USERS[savedUser]) {
-        state.user = savedUser;
-        showAppScreen();
-    } else {
-        showLoginScreen();
-    }
-}
-
-function handleLogin(e) {
-    e.preventDefault();
-    const userInput = document.getElementById('login-user').value.trim();
-    const passInput = document.getElementById('login-pass').value.trim();
-    const errorDiv = document.getElementById('login-error');
-
-    if (VALID_USERS[userInput] && VALID_USERS[userInput] === passInput) {
-        state.user = userInput;
-        sessionStorage.setItem('despacho_user', userInput);
-        errorDiv.style.display = 'none';
-        showAppScreen();
-        showToast(`Bienvenido ${userInput}`, 'success');
-    } else {
-        errorDiv.style.display = 'flex';
-        lucide.createIcons();
-    }
-}
-
-function handleLogout() {
-    if (state.unsubscribe) state.unsubscribe();
-    state.user = null;
-    sessionStorage.removeItem('despacho_user');
-    showLoginScreen();
-    showToast('Sesión cerrada correctamente.', 'info');
-}
-
-function showLoginScreen() {
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('app-screen').style.display = 'none';
-}
-
-function showAppScreen() {
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display = 'flex';
-    document.getElementById('user-display-name').innerHTML = `<i data-lucide="user-check"></i> ${state.user}`;
-    lucide.createIcons();
-    
-    // Iniciar escucha en tiempo real de Firestore
     listenFirestore();
-}
+});
 
 // ==========================================
 // FIRESTORE EN TIEMPO REAL
@@ -331,7 +271,7 @@ async function handleFinalConfirmDespacho() {
         certificado: certificado,
         fecha_calibracion: fecha_calibracion,
         fecha_despacho: nowStr,
-        despachado_por: state.user
+        despachado_por: 'Despacho'
     };
 
     try {
@@ -369,44 +309,56 @@ async function handleFinalConfirmDespacho() {
 // EVENT LISTENERS
 // ==========================================
 function setupEventListeners() {
-    // Form Login
-    document.getElementById('form-login').addEventListener('submit', handleLogin);
-    document.getElementById('btn-logout').addEventListener('click', handleLogout);
-
     // Búsqueda en Vivo
     const searchInput = document.getElementById('search-input');
     const btnClearSearch = document.getElementById('btn-clear-search');
 
-    searchInput.addEventListener('input', (e) => {
-        state.search = e.target.value;
-        btnClearSearch.style.display = state.search ? 'flex' : 'none';
-        renderItems();
-    });
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            state.search = e.target.value;
+            if (btnClearSearch) btnClearSearch.style.display = state.search ? 'flex' : 'none';
+            renderItems();
+        });
+    }
 
-    btnClearSearch.addEventListener('click', () => {
-        searchInput.value = '';
-        state.search = '';
-        btnClearSearch.style.display = 'none';
-        renderItems();
-        searchInput.focus();
-    });
+    if (btnClearSearch) {
+        btnClearSearch.addEventListener('click', () => {
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.focus();
+            }
+            state.search = '';
+            btnClearSearch.style.display = 'none';
+            renderItems();
+        });
+    }
 
     // Botón Refresh Manual
-    document.getElementById('btn-refresh').addEventListener('click', () => {
-        showToast('Sincronizando inventario...', 'info');
-        listenFirestore();
-    });
+    const btnRefresh = document.getElementById('btn-refresh');
+    if (btnRefresh) {
+        btnRefresh.addEventListener('click', () => {
+            showToast('Sincronizando inventario...', 'info');
+            listenFirestore();
+        });
+    }
 
     // Control de Modales y Pasos
-    document.getElementById('btn-close-despacho').addEventListener('click', closeDespachoModal);
-    document.getElementById('btn-cancel-despacho').addEventListener('click', closeDespachoModal);
+    const btnClose = document.getElementById('btn-close-despacho');
+    if (btnClose) btnClose.addEventListener('click', closeDespachoModal);
+
+    const btnCancel = document.getElementById('btn-cancel-despacho');
+    if (btnCancel) btnCancel.addEventListener('click', closeDespachoModal);
     
     // Paso 1: Revisar
-    document.getElementById('form-confirm-despacho').addEventListener('submit', handleToStep2);
+    const formDespacho = document.getElementById('form-confirm-despacho');
+    if (formDespacho) formDespacho.addEventListener('submit', handleToStep2);
     
     // Paso 2: Volver o Confirmar
-    document.getElementById('btn-back-to-step-1').addEventListener('click', handleBackToStep1);
-    document.getElementById('btn-final-confirm-despacho').addEventListener('click', handleFinalConfirmDespacho);
+    const btnBack = document.getElementById('btn-back-to-step-1');
+    if (btnBack) btnBack.addEventListener('click', handleBackToStep1);
+
+    const btnFinalConfirm = document.getElementById('btn-final-confirm-despacho');
+    if (btnFinalConfirm) btnFinalConfirm.addEventListener('click', handleFinalConfirmDespacho);
 }
 
 // Helper para prevenir XSS
@@ -423,6 +375,8 @@ function escapeHtml(str) {
 // Helper de Toast Notifications
 function showToast(message, type = 'info') {
     const container = document.getElementById('toast-container');
+    if (!container) return;
+
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     

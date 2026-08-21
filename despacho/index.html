@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="styles.css?v=5.0">
+    <link rel="stylesheet" href="styles.css?v=6.0">
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#090d16">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,44 +19,8 @@
 </head>
 <body>
 
-    <!-- PANTALLA DE LOGIN -->
-    <div id="login-screen" class="login-container">
-        <div class="login-card glass-panel">
-            <div class="login-header">
-                <div class="brand-badge">
-                    <i data-lucide="package-check"></i>
-                </div>
-                <h2>MetroML Despacho</h2>
-                <p>Ingresa tus credenciales para acceder al sistema</p>
-            </div>
-            
-            <form id="form-login" class="login-form">
-                <div id="login-error" class="alert alert-danger" style="display: none;">
-                    <i data-lucide="alert-circle"></i> Usuario o contraseña incorrectos.
-                </div>
-                
-                <div class="form-group">
-                    <label for="login-user"><i data-lucide="user"></i> Usuario</label>
-                    <input type="text" id="login-user" placeholder="Ej. user1" required autocomplete="username">
-                </div>
-                
-                <div class="form-group">
-                    <label for="login-pass"><i data-lucide="key-round"></i> Contraseña / PIN</label>
-                    <input type="password" id="login-pass" placeholder="••••" required autocomplete="current-password">
-                </div>
-                
-                <button type="submit" class="btn btn-primary btn-block btn-lg" id="btn-login">
-                    <span>Iniciar Sesión</span> <i data-lucide="arrow-right"></i>
-                </button>
-            </form>
-            <div class="login-footer">
-                <p>SchwyzLab & CR MEDICION &bull; v1.0</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- APLICACIÓN PRINCIPAL (POST-LOGIN) -->
-    <div id="app-screen" class="app-wrapper" style="display: none;">
+    <!-- APLICACIÓN PRINCIPAL (ACCESO DIRECTO) -->
+    <div id="app-screen" class="app-wrapper">
         
         <!-- Navbar Superior Minimalista -->
         <header class="navbar">
@@ -71,10 +35,7 @@
             </div>
             
             <div class="navbar-actions">
-                <span class="user-badge" id="user-display-name"><i data-lucide="user-check"></i> user1</span>
-                <button class="btn btn-icon btn-outline" id="btn-logout" title="Cerrar Sesión">
-                    <i data-lucide="log-out"></i>
-                </button>
+                <button class="btn btn-sm btn-outline" id="btn-refresh"><i data-lucide="refresh-cw"></i> Actualizar</button>
             </div>
         </header>
 
@@ -96,7 +57,6 @@
             <section class="instruments-section">
                 <div class="section-header">
                     <h2 id="section-title">Equipos Disponibles (<span id="results-count">0</span>)</h2>
-                    <button class="btn btn-sm btn-outline" id="btn-refresh"><i data-lucide="refresh-cw"></i> Actualizar</button>
                 </div>
 
                 <div id="instruments-container" class="instruments-grid">
@@ -214,6 +174,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <!-- App Logic -->
-    <script src="app.js?v=5.0"></script>
+    <script src="app.js?v=6.0"></script>
 </body>
 </html>
