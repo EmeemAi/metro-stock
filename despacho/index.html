@@ -11,7 +11,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="styles.css?v=6.0">
+    <link rel="stylesheet" href="styles.css?v=7.0">
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#090d16">
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -42,12 +42,16 @@
         <!-- Contenido Principal -->
         <main class="main-content">
             
-            <!-- Barra de Búsqueda Minimalista -->
-            <section class="search-section glass-panel">
+            <!-- Barra de Búsqueda Destacada (Hero Search) -->
+            <section class="search-section search-hero-card">
+                <label class="search-hero-label" for="search-input">
+                    <i data-lucide="search"></i>
+                    <span>Buscar Instrumento para Despachar:</span>
+                </label>
                 <div class="search-box">
                     <i data-lucide="search" class="search-icon"></i>
-                    <input type="text" id="search-input" placeholder="Buscar por ID de inventario, instrumento, marca o serie..." autocomplete="off">
-                    <button class="btn-clear-search" id="btn-clear-search" style="display: none;">
+                    <input type="text" id="search-input" placeholder="Escribe el nombre (ej. Calibre), modelo (ej. ND9) o N° INV..." autocomplete="off" autofocus>
+                    <button class="btn-clear-search" id="btn-clear-search" style="display: none;" title="Limpiar búsqueda">
                         <i data-lucide="x"></i>
                     </button>
                 </div>
@@ -174,6 +178,6 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
     <!-- App Logic -->
-    <script src="app.js?v=6.0"></script>
+    <script src="app.js?v=7.0"></script>
 </body>
 </html>
