@@ -397,7 +397,10 @@ function sendCertificateEmail(payload) {
       cc: 'dario.delreal@todomedicion.com'
     });
 
-    markExternalRequestAsSent(payload.certificado);
+    var marked = markRequestAsSentByDetails(payload.timestamp, payload.originalEmail || payload.email, payload.certificado, 'enviado');
+    if (!marked) {
+      markExternalRequestAsSent(payload.certificado);
+    }
     return responseJSON({ success: true, attached: attached, missing: missing });
   } catch (err) {
     return responseJSON({ success: false, error: err.toString() });
@@ -444,13 +447,32 @@ function markExternalRequestAsSent(certCode) {
     var extSheet = extSS.getSheetByName(EXTERNAL_SHEET_NAME);
     if (!extSheet) return;
     var data = extSheet.getDataRange().getValues();
+    
+    var updated = false;
+    // 1. Priorizar marcar todas las filas pendientes/sin enviar que coincidan
     for (var i = 1; i < data.length; i++) {
-      if (String(data[i][4]) == String(certCode)) {
-        extSheet.getRange(i + 1, 6).setValue('enviado');
-        break;
+      var rowCert = String(data[i][4]);
+      var rowEstado = String(data[i][5] || '').trim().toLowerCase();
+      if (certificadosCoinciden(rowCert, certCode)) {
+        if (rowEstado === '' || rowEstado === 'pendiente') {
+          extSheet.getRange(i + 1, 6).setValue('enviado');
+          updated = true;
+        }
       }
     }
-  } catch(err) {}
+    
+    // 2. Si no había ninguna fila pendiente, marcar la última coincidente
+    if (!updated) {
+      for (var i = data.length - 1; i >= 1; i--) {
+        if (certificadosCoinciden(data[i][4], certCode)) {
+          extSheet.getRange(i + 1, 6).setValue('enviado');
+          break;
+        }
+      }
+    }
+  } catch(err) {
+    Logger.log("Error en markExternalRequestAsSent: " + err);
+  }
 }
 
 function markRequestAsSentByDetails(timestamp, email, certificado, status) {
@@ -465,28 +487,59 @@ function markRequestAsSentByDetails(timestamp, email, certificado, status) {
     var searchCert = String(certificado || '').trim().toUpperCase();
     var targetStatus = status || 'enviado';
     
-    // Buscar coincidencia exacta por timestamp, email y certificado
+    // 1. Buscar por timestamp (coincidencia exacta o por fecha YYYY-MM-DD), email y certificado compatible
     for (var i = 1; i < data.length; i++) {
       var rowTime = formatDateIfDate(data[i][0]);
       var rowEmail = String(data[i][3]).trim().toLowerCase();
       var rowCert = String(data[i][4]).trim().toUpperCase();
       
-      if (rowTime === searchTime && rowEmail === searchEmail && rowCert === searchCert) {
+      var timeMatches = (rowTime === searchTime) || (searchTime !== '' && rowTime.indexOf(searchTime.substring(0, 10)) > -1);
+      var emailMatches = (rowEmail === searchEmail);
+      var certMatches = certificadosCoinciden(rowCert, searchCert);
+      
+      if (timeMatches && emailMatches && certMatches) {
         extSheet.getRange(i + 1, 6).setValue(targetStatus);
         return true;
       }
     }
     
-    // Fallback: buscar solo por certificado
+    // 2. Buscar por email + certificado compatible en filas que estén pendientes
+    for (var i = 1; i < data.length; i++) {
+      var rowEmail = String(data[i][3]).trim().toLowerCase();
+      var rowCert = String(data[i][4]).trim().toUpperCase();
+      var rowEstado = String(data[i][5] || '').trim().toLowerCase();
+      
+      if (rowEmail === searchEmail && certificadosCoinciden(rowCert, searchCert)) {
+        if (rowEstado === '' || rowEstado === 'pendiente') {
+          extSheet.getRange(i + 1, 6).setValue(targetStatus);
+          return true;
+        }
+      }
+    }
+    
+    // 3. Fallback: buscar fila pendiente solo por certificado
     for (var i = 1; i < data.length; i++) {
       var rowCert = String(data[i][4]).trim().toUpperCase();
-      if (rowCert === searchCert) {
+      var rowEstado = String(data[i][5] || '').trim().toLowerCase();
+      if (certificadosCoinciden(rowCert, searchCert)) {
+        if (rowEstado === '' || rowEstado === 'pendiente') {
+          extSheet.getRange(i + 1, 6).setValue(targetStatus);
+          return true;
+        }
+      }
+    }
+    
+    // 4. Último fallback: marcar última fila coincidente por certificado
+    for (var i = data.length - 1; i >= 1; i--) {
+      var rowCert = String(data[i][4]).trim().toUpperCase();
+      if (certificadosCoinciden(rowCert, searchCert)) {
         extSheet.getRange(i + 1, 6).setValue(targetStatus);
         return true;
       }
     }
     return false;
   } catch(err) {
+    Logger.log("Error en markRequestAsSentByDetails: " + err);
     return false;
   }
 }

@@ -1068,16 +1068,21 @@ async function syncGoogleSheetsInBackground(solicitudes, vencimientos, isManual 
                 const sTs = String(s.timestamp || '').trim();
                 const sEmp = String(s.empresa || '').trim().toLowerCase();
 
-                // 1. Match exacto de certificado y email
-                if (solCert && sCert && solCert === sCert && solEmail && sEmail && solEmail === sEmail) {
+                // 1. Match prioritario: timestamp exacto/parcial + certificado compatible + email
+                const timeMatches = (solTs === sTs) || (solTs !== '' && sTs !== '' && (solTs.startsWith(sTs.substring(0, 10)) || sTs.startsWith(solTs.substring(0, 10))));
+                if (timeMatches && certificadosCoinciden(sol.certificado, s.certificado) && solEmail && sEmail && solEmail === sEmail) {
                     return true;
                 }
-                // 2. Match de timestamp + certificado
-                if (solCert && sCert && solCert === sCert && solTs && sTs && solTs === sTs) {
+                // 2. Match de timestamp + certificado compatible
+                if (timeMatches && certificadosCoinciden(sol.certificado, s.certificado)) {
                     return true;
                 }
                 // 3. Match de timestamp + email + empresa
-                if (solTs && sTs && solTs === sTs && solEmail && sEmail && solEmail === sEmail && solEmp && sEmp && solEmp === sEmp) {
+                if (timeMatches && solEmail && sEmail && solEmail === sEmail && solEmp && sEmp && solEmp === sEmp) {
+                    return true;
+                }
+                // 4. Fallback: match exacto de certificado y email solo si no hay conflicto de timestamp
+                if (solCert && sCert && solCert === sCert && solEmail && sEmail && solEmail === sEmail && (!solTs || !sTs || solTs === sTs)) {
                     return true;
                 }
                 return false;
@@ -1107,10 +1112,16 @@ async function syncGoogleSheetsInBackground(solicitudes, vencimientos, isManual 
                     const valFirestore = String(existing[field] || '').trim();
                     
                     if (field === 'estado') {
-                        if (valSheets.toLowerCase() !== valFirestore.toLowerCase()) {
-                            updates[field] = sol[field] || '';
-                            existing[field] = sol[field] || '';
-                            needsUpdate = true;
+                        const sState = valSheets.toLowerCase();
+                        const fState = valFirestore.toLowerCase();
+                        if (sState !== fState) {
+                            // Si Sheets tiene estado no vacío, actualizamos. Si Sheets viene vacío pero Firestore ya está confirmado como enviado/duplicado, NO lo pisamos con vacío.
+                            const isFirestoreConfirmed = (fState === 'enviado' || fState === 'enviado anteriormente' || fState === 'duplicada' || fState === 'duplicado');
+                            if (sState !== '' || !isFirestoreConfirmed) {
+                                updates[field] = sol[field] || '';
+                                existing[field] = sol[field] || '';
+                                needsUpdate = true;
+                            }
                         }
                     } else {
                         if (valSheets !== valFirestore) {
@@ -3409,17 +3420,36 @@ function renderSolicitudes() {
         } else if (isEnviado) {
             badgeClass = 'entregado';
         }
+
+        // Comprobar si existe un envío previo o si el equipo ya está entregado
+        const certSol = String(s.certificado || '').trim().toUpperCase();
+        const hasPrevSent = appState.solicitudes.some(other => {
+            if (other === s || (s.firestoreId && other.firestoreId === s.firestoreId)) return false;
+            const oEst = (other.estado || '').trim().toLowerCase();
+            return certificadosCoinciden(other.certificado, certSol) && oEst !== '' && oEst !== 'pendiente';
+        });
+        const matchedEq = appState.data.find(e => certificadosCoinciden(e.certificado, certSol));
+        const isEqDelivered = matchedEq && matchedEq.estado === 'ENTREGADO';
+        
+        let priorWarningHtml = '';
+        if (!isEnviado && (hasPrevSent || isEqDelivered)) {
+            priorWarningHtml = `<br><span class="badge" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; font-size:0.6rem; margin-top:2px; display:inline-block;" title="Ya fue enviado o entregado en el historial">⚠️ Ya enviado/entregado</span>`;
+        }
+
+        // Obtener el índice real en appState.solicitudes
+        const realIndex = appState.solicitudes.findIndex(orig => (orig.firestoreId && s.firestoreId) ? orig.firestoreId === s.firestoreId : (orig.id && s.id ? orig.id === s.id : orig === s));
+        const targetIndex = realIndex > -1 ? realIndex : index;
         
         tr.innerHTML = `
             <td>${s.timestamp}</td>
             <td><strong>${s.empresa}</strong><br><small>${s.contacto}</small></td>
             <td><code>${s.certificado}</code></td>
             <td>${s.email}</td>
-            <td><span class="badge ${badgeClass}">${s.estado || 'pendiente'}</span></td>
+            <td><span class="badge ${badgeClass}">${s.estado || 'pendiente'}</span>${priorWarningHtml}</td>
             <td>
                 <div style="display: flex; gap: 0.25rem;">
-                    ${isEnviado ? '' : `<button class="btn btn-primary btn-sm btn-atender-solicitud" data-index="${index}"><i data-lucide="external-link" style="width:14px; height:14px;"></i> Atender</button>`}
-                    <button class="btn btn-outline btn-sm btn-ver-ficha-solicitud" data-index="${index}" title="Ver Ficha del Instrumento"><i data-lucide="eye" style="width:14px; height:14px;"></i> Info</button>
+                    ${isEnviado ? '' : `<button class="btn btn-primary btn-sm btn-atender-solicitud" data-index="${targetIndex}"><i data-lucide="external-link" style="width:14px; height:14px;"></i> Atender</button>`}
+                    <button class="btn btn-outline btn-sm btn-ver-ficha-solicitud" data-index="${targetIndex}" title="Ver Ficha del Instrumento"><i data-lucide="eye" style="width:14px; height:14px;"></i> Info</button>
                 </div>
             </td>
         `;
@@ -3533,6 +3563,54 @@ function handleAtenderSolicitud(index) {
     emailTo.value = s.email;
     emailBody.value = `Estimado/a ${s.contacto || s.empresa || 'Cliente'},\n\nAdjunto al presente correo encontrará el certificado de calibración solicitado, correspondiente al código ${s.certificado}. Agradecemos confirmar la correcta recepción de este mensaje.\n\nLe informamos que somos proveedores de instrumentos de medición y certificamos. Puede consultarnos de manera directa si:\n* Tiene otros instrumentos para certificar: Realizamos la calibración y emisión de certificados para todo su equipamiento.\n* Quiere consultar por equipo nuevo: Lo asesoramos y proveemos en la adquisición de nuevo instrumental.\n\nPara cualquier consulta técnica o cotización, puede responder a este correo o escribirnos vía WhatsApp al +54 11 2863-4493.\n\nQuedamos a su entera disposición.\n\nSaludos cordiales,\n\nDarío Del Real\nCR MEDICION | SchwyzLab Laboratorio de Metrología\nPerú 1297 - CABA - Argentina\nTel.: +54 11 4361-3499 / 3680\nWeb: www.todomedicion.com`;
     
+    // Comprobar envíos previos o equipo ya entregado para alerta visible en pestaña de envío
+    const prevSol = appState.solicitudes.find(other => {
+        if (other === s || (s.firestoreId && other.firestoreId === s.firestoreId)) return false;
+        const oEst = (other.estado || '').trim().toLowerCase();
+        return certificadosCoinciden(other.certificado, certSolicitud) && oEst !== '' && oEst !== 'pendiente';
+    });
+    const isEqDelivered = (equipo.estado === 'ENTREGADO');
+
+    const warningBox = document.getElementById('email-duplicate-warning');
+    const btnSend = document.getElementById('btn-confirm-send');
+    if (warningBox) {
+        if (prevSol || isEqDelivered) {
+            let warnDetails = '';
+            if (prevSol) {
+                warnDetails += `<div>• <strong>Solicitud anterior:</strong> ${prevSol.timestamp || 'Fecha previa'} - ${prevSol.empresa} (${prevSol.email}) - Estado: <span class="badge entregado" style="font-size:0.6rem; padding:1px 4px;">${prevSol.estado}</span></div>`;
+            }
+            if (isEqDelivered) {
+                warnDetails += `<div>• <strong>Inventario:</strong> El equipo <em>${equipo.marca} ${equipo.modelo}</em> (S/N: ${equipo.serie || 'N/A'}) ya figura como <strong>ENTREGADO</strong> a <strong>${equipo.cliente || 'Cliente'}</strong>.</div>`;
+            }
+
+            warningBox.innerHTML = `
+                <div class="alert alert-warning" style="margin:0; padding:0.75rem; border:1px solid #ffeeba; background-color:#fff3cd; color:#856404; border-radius:var(--radius-sm);">
+                    <div style="font-weight:700; font-size:0.85rem; margin-bottom:0.35rem; display:flex; align-items:center; gap:6px;">
+                        <i data-lucide="alert-triangle" style="width:16px; height:16px; color:#856404;"></i> ¡Atención! Certificado ya enviado / entregado previamente
+                    </div>
+                    <div style="font-size:0.75rem; line-height:1.4; margin-bottom:0.6rem; color:#664d03;">
+                        ${warnDetails}
+                    </div>
+                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap; align-items:center;">
+                        <button type="button" class="btn btn-warning btn-sm" onclick="markRequestAsAlreadySent()" style="font-size:0.75rem; padding:0.35rem 0.6rem; font-weight:600; display:flex; align-items:center; gap:4px;">
+                            <i data-lucide="check-circle" style="width:14px; height:14px;"></i> Marcar como 'Enviado Anteriormente' (Sin reenviar mail)
+                        </button>
+                    </div>
+                </div>
+            `;
+            warningBox.style.display = 'block';
+            if (btnSend) {
+                btnSend.innerHTML = '<i data-lucide="send"></i> Re-enviar Mail de todos modos';
+            }
+        } else {
+            warningBox.innerHTML = '';
+            warningBox.style.display = 'none';
+            if (btnSend) {
+                btnSend.innerHTML = '<i data-lucide="send"></i> Confirmar y Enviar Mail';
+            }
+        }
+    }
+
     // Configurar pestaña inicial (Email) y buscador de historial
     switchAtenderTab('email');
     const searchVerifyCert = document.getElementById('search-verify-cert');
@@ -3650,12 +3728,15 @@ async function confirmSendEmail() {
     const requestData = {
         action: 'send_email',
         data: {
+            timestamp: appState.pendingEmail ? appState.pendingEmail.timestamp : '',
             email: document.getElementById('email-to').value,
+            originalEmail: appState.pendingEmail ? appState.pendingEmail.email : '',
             certificado: certificado,
             body: document.getElementById('email-body').value,
             empresa: appState.pendingEmail ? appState.pendingEmail.empresa : '',
-            originalEmail: appState.pendingEmail ? appState.pendingEmail.email : '',
-            patrones: patternsData
+            contacto: appState.pendingEmail ? appState.pendingEmail.contacto : '',
+            patrones: patternsData,
+            status: 'enviado'
         }
     };
 
@@ -3675,7 +3756,8 @@ async function confirmSendEmail() {
                 appState.pendingEmail.timestamp,
                 appState.pendingEmail.email,
                 certificado,
-                'enviado'
+                'enviado',
+                appState.pendingEmail.firestoreId || appState.pendingEmail.id
             );
         }
 
@@ -3708,15 +3790,17 @@ async function confirmSendEmail() {
             updateBadge();
         }
 
-        // Refrescar datos reales en 3 segundos
+        // Refrescar datos reales en 2 segundos
         setTimeout(async () => {
             await fetchData();
             closeModal('modal-email-confirm');
+            hideLoader();
             showToast("¡Envío de certificado y actualización de equipo procesados con éxito!", "success");
-        }, 3000);
+        }, 2000);
 
     } catch (e) {
         console.error("Fetch error:", e);
+        hideLoader();
         
         // Intentar actualizar el equipo incluso si el fetch de mail reportó error (por ejemplo, por CORS)
         if (appState.pendingEmail && appState.pendingEmail.equipoId) {
@@ -4954,23 +5038,51 @@ function performVerifyCertSearch() {
 
 async function updateSolicitudStatusInFirestore(timestamp, email, certificado, newStatus, firestoreId) {
     try {
+        let updatedDirectly = false;
         if (firestoreId) {
-            await db.collection("solicitudes").doc(firestoreId).update({ estado: newStatus });
-            console.log("✅ Solicitud actualizada por firestoreId en Firebase.");
-            return;
+            try {
+                await db.collection("solicitudes").doc(firestoreId).update({ estado: newStatus });
+                console.log("✅ Solicitud actualizada por firestoreId en Firebase:", firestoreId);
+                updatedDirectly = true;
+            } catch (eId) {
+                console.warn("No se pudo actualizar directamente por doc ID:", eId);
+            }
         }
-        const querySnapshot = await db.collection("solicitudes")
-            .where("timestamp", "==", String(timestamp || ''))
-            .where("email", "==", String(email || ''))
-            .where("certificado", "==", String(certificado || ''))
-            .get();
-            
-        const batch = db.batch();
-        querySnapshot.forEach(doc => {
-            batch.update(doc.ref, { estado: newStatus });
-        });
-        await batch.commit();
-        console.log("✅ Solicitud actualizada en Firebase.");
+        
+        // También buscar y actualizar en batch cualquier solicitud pendiente coincidente
+        try {
+            const querySnapshot = await db.collection("solicitudes").get();
+            const batch = db.batch();
+            let batchCount = 0;
+            const searchCert = String(certificado || '').trim();
+            const searchEmail = String(email || '').trim().toLowerCase();
+            const searchTs = String(timestamp || '').trim();
+
+            querySnapshot.forEach(doc => {
+                if (updatedDirectly && doc.id === firestoreId) return;
+                const data = doc.data();
+                const dCert = String(data.certificado || '').trim();
+                const dEmail = String(data.email || '').trim().toLowerCase();
+                const dTs = String(data.timestamp || '').trim();
+                const dEst = String(data.estado || '').trim().toLowerCase();
+
+                const timeMatches = (dTs === searchTs) || (searchTs !== '' && dTs !== '' && (dTs.startsWith(searchTs.substring(0, 10)) || searchTs.startsWith(dTs.substring(0, 10))));
+                const certMatches = certificadosCoinciden(dCert, searchCert);
+                const emailMatches = (dEmail === searchEmail);
+
+                if (certMatches && (emailMatches || timeMatches) && (dEst === '' || dEst === 'pendiente')) {
+                    batch.update(doc.ref, { estado: newStatus });
+                    batchCount++;
+                }
+            });
+
+            if (batchCount > 0) {
+                await batch.commit();
+                console.log(`✅ ${batchCount} solicitud(es) coincidente(s) actualizada(s) en Firebase.`);
+            }
+        } catch (eBatch) {
+            console.warn("Aviso en actualización batch Firebase:", eBatch);
+        }
     } catch(e) {
         console.error("❌ Error al actualizar solicitud en Firebase:", e);
     }
