@@ -234,6 +234,31 @@
                         <p>No se encontraron registros.</p>
                     </div>
                 </section>
+
+                <!-- Controles de Paginación -->
+                <div id="table-pagination" class="pagination-container" style="display: none;">
+                    <div class="pagination-info">
+                        <span id="pagination-range">Mostrando 1-50 de 600 equipos</span>
+                        <div class="pagination-size-selector">
+                            <label for="page-size-select">Mostrar:</label>
+                            <select id="page-size-select" class="pagination-select">
+                                <option value="25">25</option>
+                                <option value="50" selected>50</option>
+                                <option value="100">100</option>
+                                <option value="0">Todos</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="pagination-buttons">
+                        <button id="btn-page-prev" class="btn btn-outline btn-pagination" disabled>
+                            <i data-lucide="chevron-left"></i> Anterior
+                        </button>
+                        <span id="pagination-current-page" class="pagination-page-indicator">Pág. 1 de 12</span>
+                        <button id="btn-page-next" class="btn btn-outline btn-pagination">
+                            Siguiente <i data-lucide="chevron-right"></i>
+                        </button>
+                    </div>
+                </div>
             </section>
 
             <!-- Vista: Solicitudes Externas -->
@@ -898,6 +923,6 @@
     <!-- Firebase SDK (Compat v10) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="script.js?v=28.0"></script>
+    <script src="script.js?v=29.0"></script>
 </body>
 </html>

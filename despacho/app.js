@@ -54,21 +54,24 @@ function listenFirestore() {
     // Cancelar escucha anterior si existe
     if (state.unsubscribe) state.unsubscribe();
 
-    state.unsubscribe = db.collection("instrumentos").onSnapshot((snapshot) => {
-        let items = [];
-        snapshot.forEach((doc) => {
-            items.push({ id: doc.id, ...doc.data() });
-        });
+    // Optimización de rendimiento: Escuchar únicamente instrumentos con estado DISPONIBLE
+    state.unsubscribe = db.collection("instrumentos")
+        .where("estado", "==", "DISPONIBLE")
+        .onSnapshot((snapshot) => {
+            let items = [];
+            snapshot.forEach((doc) => {
+                items.push({ id: doc.id, ...doc.data() });
+            });
 
-        state.items = items;
-        if (loadingState) loadingState.style.display = 'none';
-        
-        renderItems();
-    }, (error) => {
-        console.error("Error al escuchar Firestore:", error);
-        if (loadingState) loadingState.style.display = 'none';
-        showToast("⚠️ Error al sincronizar con la base de datos", "error");
-    });
+            state.items = items;
+            if (loadingState) loadingState.style.display = 'none';
+            
+            renderItems();
+        }, (error) => {
+            console.error("Error al escuchar Firestore:", error);
+            if (loadingState) loadingState.style.display = 'none';
+            showToast("⚠️ Error al sincronizar con la base de datos", "error");
+        });
 }
 
 // ==========================================

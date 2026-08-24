@@ -123,12 +123,11 @@ function doGet(e) {
     // 2. VERIFICAR ARCHIVO (check_file)
     if (action == 'check_file') {
       var certCode = (e.parameter && e.parameter.certificado) ? e.parameter.certificado : '';
-      var fileName = certCode + ".pdf";
       try {
         var root = DriveApp.getFolderById(ROOT_FOLDER_ID);
-        var file = findFileInFolderRecursive(root, fileName);
+        var file = findCertificateFile(root, certCode);
         if (file) {
-          return responseJSON({ success: true, found: true, fileName: file.getName() });
+          return responseJSON({ success: true, found: true, fileName: file.getName(), folderName: root.getName() });
         }
       } catch(err) {
         return responseJSON({ success: false, found: false, error: err.toString() });
@@ -309,6 +308,44 @@ function doPost(e) {
 
 // ========== FUNCIONES AUXILIARES ==========
 
+function findCertificateFile(root, certCode) {
+  if (!certCode) return null;
+  var cleanCert = String(certCode).trim();
+  
+  // 1. Búsqueda nativa indexada ultrarrápida (<300ms)
+  try {
+    var query = "title contains '" + cleanCert.replace(/'/g, "\\'") + "' and mimeType = 'application/pdf' and trashed = false";
+    var files = DriveApp.searchFiles(query);
+    while (files.hasNext()) {
+      var file = files.next();
+      var fName = file.getName().toLowerCase();
+      var cName = cleanCert.toLowerCase();
+      if (fName.includes(cName) || cName.includes(fName.replace('.pdf', ''))) {
+        return file;
+      }
+    }
+
+    // 2. Búsqueda por sufijo o número
+    var parts = cleanCert.split('-');
+    if (parts.length >= 2) {
+      var suffix = parts[parts.length - 2] + '-' + parts[parts.length - 1];
+      var filesSuffix = DriveApp.searchFiles("title contains '" + suffix.replace(/'/g, "\\'") + "' and mimeType = 'application/pdf' and trashed = false");
+      if (filesSuffix.hasNext()) return filesSuffix.next();
+    }
+    
+    var numOnly = cleanCert.replace(/\D/g, '');
+    if (numOnly.length >= 4) {
+      var filesNum = DriveApp.searchFiles("title contains '" + numOnly + "' and mimeType = 'application/pdf' and trashed = false");
+      if (filesNum.hasNext()) return filesNum.next();
+    }
+  } catch (err) {
+    Logger.log("Error en searchFiles indexado: " + err);
+  }
+
+  // Respaldo recursivo si no se localizó en el índice
+  return findFileInFolderRecursive(root, cleanCert + ".pdf");
+}
+
 function findFileInFolderRecursive(folder, fileName) {
   var files = folder.getFilesByName(fileName);
   if (files.hasNext()) return files.next();
@@ -324,10 +361,9 @@ function findFileInFolderRecursive(folder, fileName) {
 function sendCertificateEmail(payload) {
   try {
     var root = DriveApp.getFolderById(ROOT_FOLDER_ID);
-    var fileName = payload.certificado + ".pdf";
-    var file = findFileInFolderRecursive(root, fileName);
+    var file = findCertificateFile(root, payload.certificado);
     
-    if (!file) return responseJSON({ success: false, error: "Archivo de certificado no localizado: " + fileName });
+    if (!file) return responseJSON({ success: false, error: "Archivo de certificado no localizado para: " + payload.certificado });
 
     var finalBody = payload.body || EMAIL_BODY_TEMPLATE
       .replace('{{contacto}}', payload.contacto || payload.empresa)
@@ -585,8 +621,12 @@ function upsertVencimiento(equipoId, itemData) {
 }
 
 function formatDateIfDate(val) {
+  if (!val) return '';
   if (val instanceof Date) {
-    return Utilities.formatDate(val, Session.getScriptTimeZone(), "yyyy-MM-dd");
+    var y = val.getFullYear();
+    var m = val.getMonth() + 1;
+    var d = val.getDate();
+    return y + '-' + (m < 10 ? '0' : '') + m + '-' + (d < 10 ? '0' : '') + d;
   }
   return String(val);
 }
@@ -765,10 +805,22 @@ function crearTriggerAutomatico() {
 }
 
 function findPatternFile(root, patId, certNo) {
+  var term = (certNo && certNo !== '' && certNo !== '---') ? certNo : patId;
+  if (!term) return null;
+  
+  var clean = String(term).trim();
+  try {
+    var query = "title contains '" + clean.replace(/'/g, "\\'") + "' and mimeType = 'application/pdf' and trashed = false";
+    var files = DriveApp.searchFiles(query);
+    if (files.hasNext()) return files.next();
+  } catch(e) {
+    Logger.log("Error en searchFiles de patrón: " + e);
+  }
+
+  // Fallback recursivo si no se localizó en el índice
   if (certNo && certNo !== '' && certNo !== '---') {
     var fileCert = findFileInFolderRecursive(root, certNo + ".pdf");
     if (fileCert) return fileCert;
-    
     var fileCertCont = findFileContainingNameRecursive(root, certNo);
     if (fileCertCont) return fileCertCont;
   }
@@ -776,7 +828,6 @@ function findPatternFile(root, patId, certNo) {
   if (patId && patId !== '') {
     var fileId = findFileInFolderRecursive(root, patId + ".pdf");
     if (fileId) return fileId;
-    
     var fileIdCont = findFileContainingNameRecursive(root, patId);
     if (fileIdCont) return fileIdCont;
   }
@@ -817,3 +868,119 @@ function getAllFilesRecursive(folder, filesList) {
     getAllFilesRecursive(subfolders.next(), filesList);
   }
 }
+
+/**
+ * =========================================================================
+ * SINCRONIZACIÓN AUTOMÁTICA DIRECTA A FIREBASE FIRESTORE (SERVER-TO-SERVER)
+ * =========================================================================
+ * Esta función envía todas las solicitudes de Google Sheets directamente a Firebase Firestore.
+ * Puede configurarse como activador (Trigger) en Google Apps Script:
+ * - Activador por tiempo (Time-driven): cada 1 a 5 minutos.
+ * - Activador de formulario (On form submit): inmediato al ingresar una nueva fila.
+ */
+function syncAllSolicitudesToFirestore() {
+  try {
+    var extSS = SpreadsheetApp.openById(EXTERNAL_SHEET_ID);
+    var extSheet = extSS.getSheetByName(EXTERNAL_SHEET_NAME);
+    if (!extSheet) {
+      Logger.log("Hoja de solicitudes no encontrada.");
+      return;
+    }
+    
+    var data = extSheet.getDataRange().getValues();
+    var firestoreBaseUrl = "https://firestore.googleapis.com/v1/projects/metromlstock/databases/(default)/documents/solicitudes/";
+    var count = 0;
+    
+    for (var j = 1; j < data.length; j++) {
+      var row = data[j];
+      if (!row[1] || row[1] == '') continue;
+      
+      var rowIndex = j + 1;
+      var timestamp = formatDateIfDate(row[0]);
+      var empresa = String(row[1] || '').trim();
+      var contacto = String(row[2] || '').trim();
+      var email = String(row[3] || '').trim();
+      var certificado = String(row[4] || '').trim();
+      var estado = String(row[5] || '').trim().toLowerCase();
+      
+      var clean = function(s) { return String(s || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '_'); };
+      var docId = 'sol_' + clean(timestamp) + '_' + clean(certificado) + '_' + clean(email).substring(0, 30) + '_' + clean(empresa).substring(0, 20);
+      
+      var payload = {
+        fields: {
+          id: { stringValue: docId },
+          row_index: { integerValue: rowIndex },
+          timestamp: { stringValue: timestamp },
+          empresa: { stringValue: empresa },
+          contacto: { stringValue: contacto },
+          email: { stringValue: email },
+          certificado: { stringValue: certificado },
+          estado: { stringValue: estado }
+        }
+      };
+      
+      try {
+        UrlFetchApp.fetch(firestoreBaseUrl + encodeURIComponent(docId), {
+          method: 'patch',
+          contentType: 'application/json',
+          payload: JSON.stringify(payload),
+          muteHttpExceptions: true
+        });
+        count++;
+      } catch(fetchErr) {
+        Logger.log("Error al sincronizar fila " + rowIndex + ": " + fetchErr);
+      }
+    }
+    Logger.log("Sincronización completada exitosamente. Filas procesadas: " + count);
+  } catch (err) {
+    Logger.log("Error en syncAllSolicitudesToFirestore: " + err);
+  }
+}
+
+/**
+ * Activador para Google Forms (On Form Submit)
+ * Si recibe el evento de formulario, envía la solicitud directamente a Firestore en <200ms.
+ */
+function onFormSubmitTrigger(e) {
+  try {
+    if (e && e.values && e.values.length >= 2) {
+      var timestamp = formatDateIfDate(e.values[0] || new Date());
+      var empresa = String(e.values[1] || '').trim();
+      var contacto = String(e.values[2] || '').trim();
+      var email = String(e.values[3] || '').trim();
+      var certificado = String(e.values[4] || '').trim();
+      var estado = String(e.values[5] || 'pendiente').trim().toLowerCase();
+
+      var clean = function(s) { return String(s || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '_'); };
+      var docId = 'sol_' + clean(timestamp) + '_' + clean(certificado) + '_' + clean(email).substring(0, 30) + '_' + clean(empresa).substring(0, 20);
+
+      var payload = {
+        fields: {
+          id: { stringValue: docId },
+          timestamp: { stringValue: timestamp },
+          empresa: { stringValue: empresa },
+          contacto: { stringValue: contacto },
+          email: { stringValue: email },
+          certificado: { stringValue: certificado },
+          estado: { stringValue: estado }
+        }
+      };
+
+      var firestoreUrl = "https://firestore.googleapis.com/v1/projects/metromlstock/databases/(default)/documents/solicitudes/" + encodeURIComponent(docId);
+      UrlFetchApp.fetch(firestoreUrl, {
+        method: 'patch',
+        contentType: 'application/json',
+        payload: JSON.stringify(payload),
+        muteHttpExceptions: true
+      });
+      Logger.log("Nueva solicitud enviada a Firestore en tiempo récord: " + docId);
+      return;
+    }
+  } catch(err) {
+    Logger.log("Aviso en onFormSubmitTrigger unitario: " + err);
+  }
+  
+  // Respaldo de sincronización completa
+  syncAllSolicitudesToFirestore();
+}
+

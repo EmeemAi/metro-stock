@@ -474,6 +474,28 @@ db.enablePersistence({ synchronizeTabs: true }).catch(function(err) {
 let mockDatabase = [];
 
 // ==========================================
+// UTILIDADES DE RENDIMIENTO (Debounce e Indexación)
+// ==========================================
+function debounce(func, wait = 250) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function getItemSearchKey(item) {
+    if (!item._searchKey) {
+        item._searchKey = `${item.id || ''} ${item.instrumento || ''} ${item.modelo || ''} ${item.marca || ''} ${item.serie || ''} ${item.cliente || ''} ${item.certificado || ''}`.toLowerCase();
+    }
+    return item._searchKey;
+}
+
+// ==========================================
 // ESTADO DE LA APLICACIÓN
 // ==========================================
 let appState = {
@@ -483,8 +505,13 @@ let appState = {
     loading: false,
     filter: 'ALL',
     search: '',
-    radarItems: []
+    radarItems: [],
+    currentPage: 1,
+    pageSize: 50,
+    selectedIds: new Set()
 };
+
+let syncIntervalId = null;
 
 // ==========================================
 // INICIALIZACIÓN
@@ -531,7 +558,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (btnMasivoEquipo) btnMasivoEquipo.addEventListener('click', openModalMasivo);
 
     const btnSyncSolicitudes = document.getElementById('btn-sync-solicitudes');
-    if (btnSyncSolicitudes) btnSyncSolicitudes.addEventListener('click', () => fetchData(true));
+    if (btnSyncSolicitudes) btnSyncSolicitudes.addEventListener('click', () => syncGoogleSheetsInBackground(appState.solicitudes, appState.vencimientos, true));
     
     const chkMasivoNuevo = document.getElementById('masivo-nuevo-articulo-chk');
     if (chkMasivoNuevo) chkMasivoNuevo.addEventListener('change', toggleMasivoFields);
@@ -541,22 +568,29 @@ document.addEventListener('DOMContentLoaded', () => {
         btn.addEventListener('click', closeAllModals);
     });
 
-    // Búsqueda y Filtros
+    // Búsqueda fluida con Debounce de 200ms
     const searchInput = document.getElementById('search-input');
     if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-            appState.search = e.target.value.toLowerCase();
+        const debouncedSearch = debounce((val) => {
+            appState.search = val.trim().toLowerCase();
+            appState.currentPage = 1;
             renderTable();
+        }, 200);
+
+        searchInput.addEventListener('input', (e) => {
+            debouncedSearch(e.target.value);
         });
     }
 
-
+    // Configurar Listeners de Paginación
+    setupPaginationListeners();
 
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
             document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
             e.target.classList.add('active');
             appState.filter = e.target.getAttribute('data-filter');
+            appState.currentPage = 1;
             renderTable();
         });
     });
@@ -851,7 +885,7 @@ async function fetchData(isManualSync = false) {
     }
     appState.loading = true;
     updateUIState();
-    if (isManualSync || !appState.data || appState.data.length === 0) {
+    if (!appState.data || appState.data.length === 0) {
         showLoader('Cargando base de datos...', 6000);
     }
 
@@ -903,21 +937,22 @@ async function fetchData(isManualSync = false) {
         appState.solicitudes = solicitudes;
         appState.vencimientos = vencimientos;
 
-        console.log(">>> DATOS RECIBIDOS DE FIREBASE FIRESTORE:", items.length, "equipos");
+        console.log(">>> DATOS RECIBIDOS DE FIREBASE FIRESTORE:", items.length, "equipos,", solicitudes.length, "solicitudes");
         renderTable();
         renderSolicitudes();
         renderVencimientos();
         updateBadge();
         updateDashboard();
 
-        // 2. MIGRACIÓN O SINCRONIZACIÓN
+        // Conectar listener en tiempo real para solicitudes
+        initSolicitudesRealtimeListener();
+
+        // 2. MIGRACIÓN O SINCRONIZACIÓN ASÍNCRONA EN SEGUNDO PLANO
         if (items.length === 0 && GOOGLE_SHEETS_API_URL !== '') {
-            // Si la base de Firestore está completamente vacía, intentar migración inicial
             await migrateFromSheetsIfEmpty();
-        } else if (isManualSync && GOOGLE_SHEETS_API_URL !== '') {
-            // Sincronización sólo bajo demanda manual para no saturar Apps Script
-            await syncGoogleSheetsInBackground(solicitudes, vencimientos);
-            showToast("Sincronización con Google Sheets completada.", "success");
+        } else if (GOOGLE_SHEETS_API_URL !== '') {
+            // Sincronización en segundo plano no bloqueante
+            syncGoogleSheetsInBackground(solicitudes, vencimientos, isManualSync);
         }
     } catch (err) {
         console.error("Error al cargar datos de Firebase:", err);
@@ -928,20 +963,64 @@ async function fetchData(isManualSync = false) {
         appState.loading = false;
         updateUIState();
         hideLoader();
-        renderTable();
-        renderSolicitudes();
-        renderVencimientos();
-        updateBadge();
-        updateDashboard(); 
     }
 }
 
-// Sincronización asíncrona con Google Sheets (Timeout estricto de 5 segundos)
-async function syncGoogleSheetsInBackground(solicitudes, vencimientos) {
+let solicitudesUnsubscribe = null;
+
+function initSolicitudesRealtimeListener() {
+    if (solicitudesUnsubscribe) return;
+    try {
+        solicitudesUnsubscribe = db.collection("solicitudes").onSnapshot((snapshot) => {
+            if (!snapshot) return;
+            const liveSolicitudes = snapshot.docs.map(doc => {
+                const data = doc.data();
+                data.firestoreId = doc.id;
+                return data;
+            });
+
+            liveSolicitudes.sort((a, b) => {
+                const dateA = new Date(a.timestamp || 0).getTime();
+                const dateB = new Date(b.timestamp || 0).getTime();
+                if (dateB !== dateA) return dateB - dateA;
+                return String(b.firestoreId || '').localeCompare(String(a.firestoreId || ''));
+            });
+
+            appState.solicitudes = liveSolicitudes;
+            renderSolicitudes();
+            updateBadge();
+        }, (err) => {
+            console.warn("Realtime listener error:", err);
+        });
+    } catch (e) {
+        console.warn("Could not attach realtime listener:", e);
+    }
+}
+
+function getSolicitudStableKey(sol, occurrenceIndex = 1) {
+    const clean = str => String(str || '').toLowerCase().trim().replace(/[^a-z0-9]/g, '_');
+    const ts = clean(sol.timestamp);
+    const cert = clean(sol.certificado);
+    const email = clean(sol.email).substring(0, 30);
+    const emp = clean(sol.empresa).substring(0, 20);
+    const base = `sol_${ts}_${cert}_${email}_${emp}`;
+    return occurrenceIndex > 1 ? `${base}_${occurrenceIndex}` : base;
+}
+
+let isSyncingSheets = false;
+
+// Sincronización asíncrona no bloqueante con Google Sheets (Timeout generoso de 18 segundos)
+async function syncGoogleSheetsInBackground(solicitudes, vencimientos, isManual = false) {
     if (!GOOGLE_SHEETS_API_URL) return;
+    if (isSyncingSheets && !isManual) return;
+    
+    isSyncingSheets = true;
+    if (isManual) {
+        showLoader('Sincronizando con Google Sheets...', 18000);
+    }
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // Max 5s de espera
+    const timeoutId = setTimeout(() => controller.abort(), 18000); // Max 18s de espera para Apps Script
 
     try {
         const response = await fetch(GOOGLE_SHEETS_API_URL + '?action=get&_t=' + new Date().getTime(), {
@@ -953,6 +1032,7 @@ async function syncGoogleSheetsInBackground(solicitudes, vencimientos) {
         const contentType = response.headers.get("content-type");
         if (!response.ok || (contentType && contentType.indexOf("application/json") === -1)) {
             console.warn("⚠️ Google Apps Script no respondió JSON válido.");
+            if (isManual) showToast("Google Apps Script no respondió correctamente.", "error");
             return;
         }
         const result = await response.json();
@@ -964,22 +1044,48 @@ async function syncGoogleSheetsInBackground(solicitudes, vencimientos) {
         const updatedSolicitudes = [];
         const operations = [];
 
-        sheetsSolicitudes.forEach((sol, idx) => {
-            const solRowId = sol.id || sol.row_id || `sol_row_${idx + 2}`;
-            sol.id = solRowId;
+        const currentSolList = (appState.solicitudes && appState.solicitudes.length > 0) ? appState.solicitudes : (solicitudes || []);
+        const currentVencList = (appState.vencimientos && appState.vencimientos.length > 0) ? appState.vencimientos : (vencimientos || []);
 
-            let existing = solicitudes.find(s => 
-                !matchedFirestoreIds.has(s.firestoreId) && (
-                    s.firestoreId === solRowId ||
-                    s.id === solRowId ||
-                    (s.firestoreId && s.firestoreId.startsWith(`sol_${idx}_`)) ||
-                    (s.timestamp === sol.timestamp && (s.email || '').toLowerCase().trim() === (sol.email || '').toLowerCase().trim()) ||
-                    (`${s.timestamp || ''}_${s.email || ''}_${s.certificado || ''}`.toLowerCase().trim() === `${sol.timestamp || ''}_${sol.email || ''}_${sol.certificado || ''}`.toLowerCase().trim())
-                )
-            );
+        const seenKeysCount = new Map();
+        sheetsSolicitudes.forEach((sol) => {
+            const rawKey = getSolicitudStableKey(sol, 1);
+            const count = (seenKeysCount.get(rawKey) || 0) + 1;
+            seenKeysCount.set(rawKey, count);
+            const solKey = getSolicitudStableKey(sol, count);
+
+            const solCert = String(sol.certificado || '').trim().toLowerCase();
+            const solEmail = String(sol.email || '').trim().toLowerCase();
+            const solTs = String(sol.timestamp || '').trim();
+            const solEmp = String(sol.empresa || '').trim().toLowerCase();
+
+            let existing = currentSolList.find(s => {
+                if (matchedFirestoreIds.has(s.firestoreId)) return false;
+                if (s.firestoreId === solKey || s.id === solKey) return true;
+                
+                const sCert = String(s.certificado || '').trim().toLowerCase();
+                const sEmail = String(s.email || '').trim().toLowerCase();
+                const sTs = String(s.timestamp || '').trim();
+                const sEmp = String(s.empresa || '').trim().toLowerCase();
+
+                // 1. Match exacto de certificado y email
+                if (solCert && sCert && solCert === sCert && solEmail && sEmail && solEmail === sEmail) {
+                    return true;
+                }
+                // 2. Match de timestamp + certificado
+                if (solCert && sCert && solCert === sCert && solTs && sTs && solTs === sTs) {
+                    return true;
+                }
+                // 3. Match de timestamp + email + empresa
+                if (solTs && sTs && solTs === sTs && solEmail && sEmail && solEmail === sEmail && solEmp && sEmp && solEmp === sEmp) {
+                    return true;
+                }
+                return false;
+            });
 
             if (!existing) {
-                const docId = solRowId.replace(/[^a-zA-Z0-9_-]/g, '_');
+                const docId = solKey;
+                sol.id = docId;
                 operations.push({
                     type: 'set',
                     collection: 'solicitudes',
@@ -1016,8 +1122,8 @@ async function syncGoogleSheetsInBackground(solicitudes, vencimientos) {
                 });
 
                 if (!existing.id) {
-                    updates.id = solRowId;
-                    existing.id = solRowId;
+                    updates.id = existing.firestoreId;
+                    existing.id = existing.firestoreId;
                     needsUpdate = true;
                 }
 
@@ -1034,34 +1140,78 @@ async function syncGoogleSheetsInBackground(solicitudes, vencimientos) {
             }
         });
 
-        solicitudes.forEach(s => {
+        // Mantener también solicitudes existentes no modificadas
+        currentSolList.forEach(s => {
             if (s.firestoreId && !matchedFirestoreIds.has(s.firestoreId)) {
-                operations.push({
-                    type: 'delete',
-                    collection: 'solicitudes',
-                    docId: s.firestoreId
-                });
+                updatedSolicitudes.push(s);
             }
         });
         
+        // 1. Persistir Solicitudes en Firestore
+        if (operations.length > 0) {
+            try {
+                await commitBatchInChunks(operations, (batch, op) => {
+                    const ref = db.collection(op.collection).doc(op.docId);
+                    if (op.type === 'set') {
+                        const cleanData = {
+                            id: op.docId,
+                            timestamp: String(op.data.timestamp || '').trim(),
+                            empresa: String(op.data.empresa || '').trim(),
+                            contacto: String(op.data.contacto || '').trim(),
+                            email: String(op.data.email || '').trim(),
+                            certificado: String(op.data.certificado || '').trim(),
+                            estado: String(op.data.estado || '').trim()
+                        };
+                        batch.set(ref, cleanData, { merge: true });
+                    } else if (op.type === 'update') {
+                        batch.set(ref, op.data, { merge: true });
+                    } else if (op.type === 'delete') {
+                        batch.delete(ref);
+                    }
+                });
+                console.log(`✅ Sincronización de Solicitudes completada (${operations.length} operaciones).`);
+            } catch (opErr) {
+                console.error("Error al persistir lote de solicitudes en Firestore:", opErr);
+            }
+        }
+
+        // Ordenar solicitudes actualizadas por timestamp descendente
+        updatedSolicitudes.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        appState.solicitudes = updatedSolicitudes;
+        renderSolicitudes();
+        updateBadge();
+
+        // 2. Persistir Vencimientos en Firestore de forma independiente
+        const vencOperations = [];
         const firestoreVencsMap = new Map();
-        vencimientos.forEach(v => {
+        currentVencList.forEach(v => {
             if (v.id) firestoreVencsMap.set(String(v.id).trim().toLowerCase(), v);
         });
         
+        const updatedVencimientos = [...currentVencList];
         sheetsVencimientos.forEach((venc) => {
             if (venc.id) {
                 const key = String(venc.id).trim().toLowerCase();
                 if (!firestoreVencsMap.has(key)) {
-                    operations.push({
+                    const cleanVenc = {
+                        id: String(venc.id || '').trim(),
+                        instrumento: String(venc.instrumento || '').trim(),
+                        certificado: String(venc.certificado || '').trim(),
+                        fecha_calibracion: String(venc.fecha_calibracion || '').trim(),
+                        fecha_vencimiento: String(venc.fecha_vencimiento || '').trim(),
+                        cliente: String(venc.cliente || '').trim(),
+                        email: String(venc.email || '').trim(),
+                        estado_recordatorio: String(venc.estado_recordatorio || 'pendiente').trim()
+                    };
+                    vencOperations.push({
                         type: 'set',
                         collection: 'vencimientos',
-                        docId: String(venc.id).trim(),
-                        data: venc
+                        docId: cleanVenc.id,
+                        data: cleanVenc
                     });
                     
-                    const vencWithId = Object.assign({}, venc, { firestoreId: String(venc.id).trim() });
-                    vencimientos.push(vencWithId);
+                    const vencWithId = Object.assign({}, cleanVenc, { firestoreId: cleanVenc.id });
+                    updatedVencimientos.push(vencWithId);
                 } else {
                     const existing = firestoreVencsMap.get(key);
                     let needsUpdate = false;
@@ -1073,47 +1223,72 @@ async function syncGoogleSheetsInBackground(solicitudes, vencimientos) {
                         const valFirestore = String(existing[field] || '').trim();
                         
                         if (valSheets !== valFirestore) {
-                            updates[field] = venc[field] || '';
-                            existing[field] = venc[field] || '';
+                            updates[field] = valSheets;
+                            existing[field] = valSheets;
                             needsUpdate = true;
                         }
                     });
                     
                     if (needsUpdate) {
-                        operations.push({
+                        vencOperations.push({
                             type: 'update',
                             collection: 'vencimientos',
-                            docId: existing.firestoreId,
+                            docId: existing.firestoreId || key,
                             data: updates
                         });
                     }
                 }
             }
         });
-        
-        if (operations.length > 0) {
-            await commitBatchInChunks(operations, (batch, op) => {
-                const ref = db.collection(op.collection).doc(op.docId);
-                if (op.type === 'set') batch.set(ref, op.data);
-                else if (op.type === 'update') batch.update(ref, op.data);
-                else if (op.type === 'delete') batch.delete(ref);
-            });
-            console.log(`✅ Sincronización con Google Sheets completada (${operations.length} operaciones).`);
-            appState.solicitudes = updatedSolicitudes;
-            appState.vencimientos = vencimientos;
-            renderSolicitudes();
-            renderVencimientos();
-            updateBadge();
+
+        if (vencOperations.length > 0) {
+            try {
+                await commitBatchInChunks(vencOperations, (batch, op) => {
+                    const ref = db.collection(op.collection).doc(op.docId);
+                    if (op.type === 'set') batch.set(ref, op.data, { merge: true });
+                    else if (op.type === 'update') batch.set(ref, op.data, { merge: true });
+                });
+            } catch (vencErr) {
+                console.warn("Advertencia en sincronización de vencimientos:", vencErr);
+            }
+        }
+
+        appState.vencimientos = updatedVencimientos;
+        renderVencimientos();
+
+        if (isManual) {
+            showToast(`Sincronización completada. ${operations.length > 0 ? operations.length + ' solicitudes actualizadas.' : 'Todo al día.'}`, 'success');
         }
     } catch (syncErr) {
         clearTimeout(timeoutId);
         if (syncErr.name === 'AbortError') {
-            console.warn("⏱️ Sincronización con Google Sheets cancelada por timeout (excedió 5s).");
+            console.warn("⏱️ Sincronización con Google Sheets cancelada por timeout (excedió 18s).");
+            if (isManual) showToast("La sincronización demoró más de 18s en responder.", "warning");
         } else {
             console.warn("⚠️ Error en sincronización de Google Sheets:", syncErr.message);
+            if (isManual) showToast("Error al sincronizar con Google Sheets.", "error");
+        }
+    } finally {
+        isSyncingSheets = false;
+        if (isManual) {
+            hideLoader();
         }
     }
 }
+
+// Sincronización periódica automática en segundo plano cada 45s
+syncIntervalId = setInterval(() => {
+    if (GOOGLE_SHEETS_API_URL !== '' && !document.hidden && !isSyncingSheets) {
+        syncGoogleSheetsInBackground(appState.solicitudes, appState.vencimientos, false);
+    }
+}, 45000);
+
+// Sincronización al regresar a la pestaña
+window.addEventListener('focus', () => {
+    if (GOOGLE_SHEETS_API_URL !== '' && !isSyncingSheets) {
+        syncGoogleSheetsInBackground(appState.solicitudes, appState.vencimientos, false);
+    }
+});
 
 async function migrateFromSheetsIfEmpty() {
     console.log("⚠️ Base de datos de Firebase vacía. Iniciando migración de respaldo...");
@@ -1354,6 +1529,10 @@ function switchView(view) {
         if(pageTitle) pageTitle.innerText = "Solicitudes Externas";
         if(pageSubtitle) pageSubtitle.innerText = "Pedidos de certificados recibidos vía Google Form";
         renderSolicitudes();
+        // Sincronizar en segundo plano de forma no bloqueante para traer nuevas solicitudes de Google Forms
+        if (GOOGLE_SHEETS_API_URL !== '') {
+            syncGoogleSheetsInBackground(appState.solicitudes, appState.vencimientos, false);
+        }
     } else if (view === 'vencimientos') {
         const elNav = document.getElementById('nav-vencimientos');
         if (elNav) elNav.classList.add('active');
@@ -1839,17 +2018,87 @@ function updateUIState() {
 
 
 
+// ==========================================
+// PAGINACIÓN Y CONTROLADORES DE TABLA
+// ==========================================
+function setupPaginationListeners() {
+    const btnPrev = document.getElementById('btn-page-prev');
+    if (btnPrev) {
+        btnPrev.addEventListener('click', () => {
+            if (appState.currentPage > 1) {
+                appState.currentPage--;
+                renderTable();
+                const tableContainer = document.querySelector('.table-container');
+                if (tableContainer) tableContainer.scrollTop = 0;
+            }
+        });
+    }
+
+    const btnNext = document.getElementById('btn-page-next');
+    if (btnNext) {
+        btnNext.addEventListener('click', () => {
+            const pageSize = appState.pageSize || 50;
+            const totalPages = pageSize > 0 ? Math.ceil((appState._filteredCount || appState.data.length) / pageSize) : 1;
+            if (appState.currentPage < totalPages) {
+                appState.currentPage++;
+                renderTable();
+                const tableContainer = document.querySelector('.table-container');
+                if (tableContainer) tableContainer.scrollTop = 0;
+            }
+        });
+    }
+
+    const sizeSelect = document.getElementById('page-size-select');
+    if (sizeSelect) {
+        sizeSelect.addEventListener('change', (e) => {
+            appState.pageSize = parseInt(e.target.value, 10);
+            appState.currentPage = 1;
+            renderTable();
+        });
+    }
+}
+
+function renderPaginationControls(totalItems, totalPages, startIndex, endIndex) {
+    const container = document.getElementById('table-pagination');
+    const rangeSpan = document.getElementById('pagination-range');
+    const pageIndicator = document.getElementById('pagination-current-page');
+    const btnPrev = document.getElementById('btn-page-prev');
+    const btnNext = document.getElementById('btn-page-next');
+    const sizeSelect = document.getElementById('page-size-select');
+
+    if (!container) return;
+
+    if (totalItems === 0) {
+        container.style.display = 'none';
+        return;
+    }
+
+    container.style.display = 'flex';
+
+    const from = totalItems > 0 ? (startIndex + 1) : 0;
+    const to = endIndex;
+    if (rangeSpan) rangeSpan.textContent = `Mostrando ${from}-${to} de ${totalItems} equipos`;
+    if (pageIndicator) pageIndicator.textContent = `Pág. ${appState.currentPage} de ${totalPages}`;
+
+    if (btnPrev) btnPrev.disabled = (appState.currentPage <= 1);
+    if (btnNext) btnNext.disabled = (appState.currentPage >= totalPages);
+
+    if (sizeSelect && String(sizeSelect.value) !== String(appState.pageSize)) {
+        sizeSelect.value = String(appState.pageSize);
+    }
+}
+
 function renderTable() {
     const tbody = document.getElementById('table-body');
     const emptyState = document.getElementById('empty-state');
     const summaryContainer = document.getElementById('available-summary');
     if (!tbody) return;
-    tbody.innerHTML = '';
 
-    // Filtrar
+    // 1. Filtrado ultra rápido con claves pre-indexadas
+    const searchFilter = appState.search;
     let filtered = appState.data.filter(item => {
         // Filtro por Tab
-        if(appState.filter !== 'ALL') {
+        if (appState.filter !== 'ALL') {
             const fState = appState.filter;
             const iState = item.estado;
             if (fState === 'VENDIDO - DESPACHADO') {
@@ -1861,16 +2110,19 @@ function renderTable() {
             }
         }
         
-        // Filtro por Buscador
-        if(appState.search) {
-            const searchStr = `${item.id} ${item.instrumento || ''} ${item.modelo} ${item.marca} ${item.serie} ${item.cliente} ${item.certificado}`.toLowerCase();
-            if(!searchStr.includes(appState.search)) return false;
+        // Filtro por Buscador indexado
+        if (searchFilter) {
+            const sKey = getItemSearchKey(item);
+            if (!sKey.includes(searchFilter)) return false;
         }
         return true;
     });
 
-    // Gestión del Resumen de Disponibles y Todos
-    if (appState.filter === 'DISPONIBLE' && filtered.length > 0) {
+    const totalItems = filtered.length;
+    appState._filteredCount = totalItems;
+
+    // 2. Gestión del Resumen de Disponibles y Todos
+    if (appState.filter === 'DISPONIBLE' && totalItems > 0) {
         const counts = {};
         filtered.forEach(item => {
             const key = `${item.marca} ${item.modelo}`.toUpperCase();
@@ -1882,7 +2134,6 @@ function renderTable() {
             <div class="summary-grid">
         `;
         
-        // Ordenar por cantidad descendente
         Object.entries(counts)
             .sort((a, b) => b[1] - a[1])
             .forEach(([key, count]) => {
@@ -1897,7 +2148,7 @@ function renderTable() {
         summaryHTML += `</div>`;
         summaryContainer.innerHTML = summaryHTML;
         summaryContainer.style.display = 'flex';
-    } else if (appState.filter === 'ALL' && filtered.length > 0) {
+    } else if (appState.filter === 'ALL' && totalItems > 0) {
         const counts = {};
         filtered.forEach(item => {
             let stateName = (item.estado || 'SIN ESTADO').toUpperCase();
@@ -1934,7 +2185,6 @@ function renderTable() {
         sortedStates.forEach(stateName => {
             const count = counts[stateName];
             let displayLabel = stateName.toLowerCase();
-            // Convert to nice case
             if (displayLabel.includes('dep') || displayLabel === 'en depósito') displayLabel = 'En Depósito';
             else if (displayLabel === 'sin certificar') displayLabel = 'Sin Certificar';
             else if (displayLabel === 'certificando') displayLabel = 'Certificando';
@@ -1960,61 +2210,78 @@ function renderTable() {
         summaryContainer.innerHTML = '';
     }
 
-    if (filtered.length === 0 && !appState.loading) {
+    // 3. Manejo de Estado Vacío
+    if (totalItems === 0 && !appState.loading) {
+        tbody.innerHTML = '';
         emptyState.style.display = 'flex';
-    } else {
-        emptyState.style.display = 'none';
-        
-        filtered.forEach(item => {
-            const tr = document.createElement('tr');
-            
-            // Textos vacíos
-            const certText = item.certificado ? item.certificado : '<span class="null-text">N/A</span>';
-            const clienteText = item.cliente ? item.cliente : '<span class="null-text">Sin Asignar</span>';
-            
-            const actionsHTML = `
-                <div style="display: flex; gap: 0.25rem;">
-                    <button class="btn btn-outline btn-icon-only btn-view-ficha" data-id="${item.id}" title="Ver Ficha"><i data-lucide="eye"></i></button>
-                    <button class="btn btn-outline btn-icon-only btn-edit-equipo" data-id="${item.id}" title="Editar Equipo" style="color: var(--warning); border-color: var(--warning);"><i data-lucide="edit-2"></i></button>
-                    <button class="btn btn-outline btn-icon-only btn-duplicate-equipo" data-id="${item.id}" data-index="${appState.data.indexOf(item)}" title="Duplicar Equipo"><i data-lucide="copy"></i></button>
-                    ${item.estado === 'EN DEPÓSITO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="CERTIFICANDO" title="Certificar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Certificar <i data-lucide="activity"></i></button>` : ''}
-                    ${item.estado === 'CERTIFICANDO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Finalizar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Finalizar <i data-lucide="check"></i></button>` : ''}
-                    ${item.estado === 'DISPONIBLE' ? `
-                        <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="VENDIDO - DESPACHADO" title="Despachar">Despachar <i data-lucide="arrow-right"></i></button>
-                        <button class="btn btn-outline btn-icon-only btn-change-state" data-id="${item.id}" data-target-state="VENTA INTERNA" title="Venta Interna" style="color: #6b7280; border-color: #cbd5e1;"><i data-lucide="home"></i></button>
-                    ` : ''}
-                    ${(item.estado === 'RESERVADO' || item.estado === 'VENDIDO - DESPACHADO') ? `
-                        <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Devolución a Disponible" style="color: #059669; border-color: #10b981;"><i data-lucide="rotate-ccw"></i> Devolución</button>
-                        <button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar Certificado">Entregar Certificado <i data-lucide="user-check"></i></button>
-                    ` : ''}
-                </div>
-            `;
-
-            let displayEstado = item.estado;
-            if (item.estado === 'RESERVADO') {
-                displayEstado = 'VENDIDO - DESPACHADO';
-            } else if (item.estado === 'ENTREGADO') {
-                displayEstado = 'VENDIDO - ENTREGADO';
-            }
-            const stateClass = displayEstado.toLowerCase().replace(/\s+/g, '-');
-
-            const isChecked = (appState.selectedIds && appState.selectedIds.has(item.id)) ? 'checked' : '';
-            tr.innerHTML = `
-                <td style="text-align: center;"><input type="checkbox" class="bulk-item-select" data-id="${item.id}" ${isChecked} style="width: 16px; height: 16px; cursor: pointer;"></td>
-                <td><strong>${item.id}</strong></td>
-                <td><strong>${item.instrumento || '---'}</strong><br><small style="color: var(--text-secondary);">${item.marca} ${item.modelo}</small></td>
-                <td>${item.serie}</td>
-                <td><span class="badge ${stateClass}">${displayEstado}</span></td>
-                <td>${item.fecha_calibracion}</td>
-                <td><strong>${certText}</strong></td>
-                <td>${clienteText}</td>
-                <td>${actionsHTML}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-        // Reinicializar iconos para los nuevos botones inyectados
-        lucide.createIcons();
+        renderPaginationControls(0, 1, 0, 0);
+        return;
     }
+
+    emptyState.style.display = 'none';
+
+    // 4. Cálculo de Segmento de Paginación
+    const pageSize = appState.pageSize || 50;
+    const totalPages = pageSize > 0 ? Math.max(1, Math.ceil(totalItems / pageSize)) : 1;
+    if (appState.currentPage > totalPages) appState.currentPage = totalPages;
+    const startIndex = pageSize > 0 ? (appState.currentPage - 1) * pageSize : 0;
+    const endIndex = pageSize > 0 ? Math.min(startIndex + pageSize, totalItems) : totalItems;
+    const pageItems = pageSize > 0 ? filtered.slice(startIndex, endIndex) : filtered;
+
+    // 5. Inserción Atómica en un Solo Paso (Single-pass Commit)
+    const rowsHTML = pageItems.map(item => {
+        const certText = item.certificado ? item.certificado : '<span class="null-text">N/A</span>';
+        const clienteText = item.cliente ? item.cliente : '<span class="null-text">Sin Asignar</span>';
+
+        let displayEstado = item.estado || 'DISPONIBLE';
+        if (item.estado === 'RESERVADO') {
+            displayEstado = 'VENDIDO - DESPACHADO';
+        } else if (item.estado === 'ENTREGADO') {
+            displayEstado = 'VENDIDO - ENTREGADO';
+        }
+        const stateClass = displayEstado.toLowerCase().replace(/\s+/g, '-');
+        const isChecked = (appState.selectedIds && appState.selectedIds.has(item.id)) ? 'checked' : '';
+
+        const actionsHTML = `
+            <div style="display: flex; gap: 0.25rem;">
+                <button class="btn btn-outline btn-icon-only btn-view-ficha" data-id="${item.id}" title="Ver Ficha"><i data-lucide="eye"></i></button>
+                <button class="btn btn-outline btn-icon-only btn-edit-equipo" data-id="${item.id}" title="Editar Equipo" style="color: var(--warning); border-color: var(--warning);"><i data-lucide="edit-2"></i></button>
+                <button class="btn btn-outline btn-icon-only btn-duplicate-equipo" data-id="${item.id}" title="Duplicar Equipo"><i data-lucide="copy"></i></button>
+                ${item.estado === 'EN DEPÓSITO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="CERTIFICANDO" title="Certificar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Certificar <i data-lucide="activity"></i></button>` : ''}
+                ${item.estado === 'CERTIFICANDO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Finalizar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Finalizar <i data-lucide="check"></i></button>` : ''}
+                ${item.estado === 'DISPONIBLE' ? `
+                    <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="VENDIDO - DESPACHADO" title="Despachar">Despachar <i data-lucide="arrow-right"></i></button>
+                    <button class="btn btn-outline btn-icon-only btn-change-state" data-id="${item.id}" data-target-state="VENTA INTERNA" title="Venta Interna" style="color: #6b7280; border-color: #cbd5e1;"><i data-lucide="home"></i></button>
+                ` : ''}
+                ${(item.estado === 'RESERVADO' || item.estado === 'VENDIDO - DESPACHADO') ? `
+                    <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Devolución a Disponible" style="color: #059669; border-color: #10b981;"><i data-lucide="rotate-ccw"></i> Devolución</button>
+                    <button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar Certificado">Entregar Certificado <i data-lucide="user-check"></i></button>
+                ` : ''}
+            </div>
+        `;
+
+        return `<tr>
+            <td style="text-align: center;"><input type="checkbox" class="bulk-item-select" data-id="${item.id}" ${isChecked} style="width: 16px; height: 16px; cursor: pointer;"></td>
+            <td><strong>${item.id}</strong></td>
+            <td><strong>${item.instrumento || '---'}</strong><br><small style="color: var(--text-secondary);">${item.marca || ''} ${item.modelo || ''}</small></td>
+            <td>${item.serie || ''}</td>
+            <td><span class="badge ${stateClass}">${displayEstado}</span></td>
+            <td>${item.fecha_calibracion || ''}</td>
+            <td><strong>${certText}</strong></td>
+            <td>${clienteText}</td>
+            <td>${actionsHTML}</td>
+        </tr>`;
+    }).join('');
+
+    tbody.innerHTML = rowsHTML;
+
+    // 6. Optimización de Iconos: Acotado únicamente a las filas activas
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons({ root: tbody });
+    }
+
+    // 7. Renderizar Controles de Paginación
+    renderPaginationControls(totalItems, totalPages, startIndex, endIndex);
 }
 
 // ==========================================
@@ -4502,6 +4769,24 @@ function handleLogout() {
     localStorage.removeItem('auth_session');
     sessionStorage.removeItem('auth_session');
     
+    // Desuscribir listener en tiempo real de Firestore si está activo
+    if (solicitudesUnsubscribe) {
+        solicitudesUnsubscribe();
+        solicitudesUnsubscribe = null;
+    }
+
+    // Cancelar timer de sincronización de fondo
+    if (syncIntervalId) {
+        clearInterval(syncIntervalId);
+        syncIntervalId = null;
+    }
+
+    // Limpiar estado en memoria
+    appState.data = [];
+    appState.solicitudes = [];
+    appState.vencimientos = [];
+    if (appState.selectedIds) appState.selectedIds.clear();
+
     showToast("Sesión cerrada.", "info");
     
     // Ocultar la app y mostrar el login
