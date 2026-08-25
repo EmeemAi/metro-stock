@@ -60,7 +60,11 @@ function listenFirestore() {
         .onSnapshot((snapshot) => {
             let items = [];
             snapshot.forEach((doc) => {
-                items.push({ id: doc.id, ...doc.data() });
+                const d = doc.data() || {};
+                if (d.marca) d.marca = String(d.marca).trim().replace(/\s+/g, ' ');
+                if (d.modelo) d.modelo = String(d.modelo).trim().replace(/\s+/g, ' ');
+                if (d.instrumento) d.instrumento = String(d.instrumento).trim().replace(/\s+/g, ' ');
+                items.push({ id: doc.id, ...d });
             });
 
             state.items = items;

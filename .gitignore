@@ -4,3 +4,5 @@ scratch/
 *.py
 *.json
 !manifest.json
+*.xlsx
+~$*

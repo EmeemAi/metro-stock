@@ -495,6 +495,12 @@ function getItemSearchKey(item) {
     return item._searchKey;
 }
 
+function getModelKey(marca, modelo) {
+    const m = String(marca || '').trim().replace(/\s+/g, ' ');
+    const mod = String(modelo || '').trim().replace(/\s+/g, ' ');
+    return `${m} ${mod}`.trim().toUpperCase();
+}
+
 // ==========================================
 // ESTADO DE LA APLICACIÓN
 // ==========================================
@@ -641,12 +647,13 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (confirm(`¿Estás seguro de que deseas marcar el modelo "${modelName}" como discontinuado? Ya no aparecerá en las sugerencias de reposición.`)) {
                         showLoader('Marcando modelo como discontinuado...');
                         try {
-                            const matchedItem = appState.data.find(x => `${x.marca} ${x.modelo}`.toUpperCase() === modelName.toUpperCase());
+                            const targetKey = modelName.trim().toUpperCase();
+                            const matchedItem = appState.data.find(x => getModelKey(x.marca, x.modelo) === targetKey);
                             if (matchedItem) {
                                 const res = await updateStateRecord(matchedItem.id, matchedItem.estado, { discontinuado: 'SI' });
                                 if (res && res.success) {
                                     appState.data.forEach(x => {
-                                        if (`${x.marca} ${x.modelo}`.toUpperCase() === modelName.toUpperCase()) {
+                                        if (getModelKey(x.marca, x.modelo) === targetKey) {
                                             x.discontinuado = 'SI';
                                         }
                                     });
@@ -680,7 +687,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (confirm(`¿Deseas reactivar el modelo "${modelName}"? Volverá a aparecer en el Radar de Reposición si tiene stock crítico.`)) {
                         showLoader('Reactivando modelo...');
                         try {
-                            const matchedItems = appState.data.filter(x => `${x.marca} ${x.modelo}`.toUpperCase() === modelName.toUpperCase() && (x.discontinuado === 'SI' || x.discontinuado === 'si' || x.discontinuado === true));
+                            const targetKey = modelName.trim().toUpperCase();
+                            const matchedItems = appState.data.filter(x => getModelKey(x.marca, x.modelo) === targetKey && (x.discontinuado === 'SI' || x.discontinuado === 'si' || x.discontinuado === true));
                             let success = true;
                             for (const item of matchedItems) {
                                 const res = await updateStateRecord(item.id, item.estado, { discontinuado: '' });
@@ -690,7 +698,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             }
                             if (success) {
                                 appState.data.forEach(x => {
-                                    if (`${x.marca} ${x.modelo}`.toUpperCase() === modelName.toUpperCase()) {
+                                    if (getModelKey(x.marca, x.modelo) === targetKey) {
                                         x.discontinuado = '';
                                     }
                                 });
@@ -698,7 +706,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             } else {
                                 showToast('Hubo un inconveniente al reactivar algunas unidades.', 'warning');
                                 appState.data.forEach(x => {
-                                    if (`${x.marca} ${x.modelo}`.toUpperCase() === modelName.toUpperCase()) {
+                                    if (getModelKey(x.marca, x.modelo) === targetKey) {
                                         x.discontinuado = '';
                                     }
                                 });
@@ -908,7 +916,14 @@ async function fetchData(isManualSync = false) {
             7000
         );
 
-        let items = itemsSnapshot.docs.map(doc => doc.data());
+        let items = itemsSnapshot.docs.map(doc => {
+            const data = doc.data() || {};
+            if (data.marca) data.marca = String(data.marca).trim().replace(/\s+/g, ' ');
+            if (data.modelo) data.modelo = String(data.modelo).trim().replace(/\s+/g, ' ');
+            if (data.instrumento) data.instrumento = String(data.instrumento).trim().replace(/\s+/g, ' ');
+            if (data.estado) data.estado = String(data.estado).trim().toUpperCase();
+            return data;
+        });
         let solicitudes = solicitudesSnapshot.docs.map(doc => {
             const data = doc.data();
             data.firestoreId = doc.id;
@@ -1612,7 +1627,7 @@ function updateDashboard() {
     let totalCertificando = 0;
     let totalDeposito = 0;
     appState.data.forEach(item => {
-        const key = `${item.marca} ${item.modelo}`.toUpperCase();
+        const key = getModelKey(item.marca, item.modelo);
         if(!stats[key]) stats[key] = { disponible: 0, entregado: 0, discontinuado: false, items: [] };
         
         stats[key].items.push(item);
@@ -1953,7 +1968,7 @@ function renderRadarList(criticalItems, discontinuedModels = []) {
                     badgeBtnText = 'Reponer';
                 }
                 
-                const matchedItem = appState.data.find(x => `${x.marca} ${x.modelo}`.toUpperCase() === item.name);
+                const matchedItem = appState.data.find(x => getModelKey(x.marca, x.modelo) === item.name);
                 const targetId = matchedItem ? matchedItem.id : '';
                 
                 const div = document.createElement('div');
@@ -2136,7 +2151,7 @@ function renderTable() {
     if (appState.filter === 'DISPONIBLE' && totalItems > 0) {
         const counts = {};
         filtered.forEach(item => {
-            const key = `${item.marca} ${item.modelo}`.toUpperCase();
+            const key = getModelKey(item.marca, item.modelo);
             counts[key] = (counts[key] || 0) + 1;
         });
 
@@ -2254,32 +2269,32 @@ function renderTable() {
         const isChecked = (appState.selectedIds && appState.selectedIds.has(item.id)) ? 'checked' : '';
 
         const actionsHTML = `
-            <div style="display: flex; gap: 0.25rem;">
+            <div class="table-actions-cell">
                 <button class="btn btn-outline btn-icon-only btn-view-ficha" data-id="${item.id}" title="Ver Ficha"><i data-lucide="eye"></i></button>
                 <button class="btn btn-outline btn-icon-only btn-edit-equipo" data-id="${item.id}" title="Editar Equipo" style="color: var(--warning); border-color: var(--warning);"><i data-lucide="edit-2"></i></button>
                 <button class="btn btn-outline btn-icon-only btn-duplicate-equipo" data-id="${item.id}" title="Duplicar Equipo"><i data-lucide="copy"></i></button>
-                ${item.estado === 'EN DEPÓSITO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="CERTIFICANDO" title="Certificar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Certificar <i data-lucide="activity"></i></button>` : ''}
-                ${item.estado === 'CERTIFICANDO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Finalizar" style="color: var(--state-certificando); border-color: var(--state-certificando);">Finalizar <i data-lucide="check"></i></button>` : ''}
+                ${item.estado === 'EN DEPÓSITO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="CERTIFICANDO" title="Certificar Equipo" style="color: var(--state-certificando); border-color: var(--state-certificando);">Certificar <i data-lucide="activity"></i></button>` : ''}
+                ${item.estado === 'CERTIFICANDO' ? `<button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Finalizar Calibración" style="color: var(--state-certificando); border-color: var(--state-certificando);">Finalizar <i data-lucide="check"></i></button>` : ''}
                 ${item.estado === 'DISPONIBLE' ? `
-                    <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="VENDIDO - DESPACHADO" title="Despachar">Despachar <i data-lucide="arrow-right"></i></button>
+                    <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="VENDIDO - DESPACHADO" title="Despachar Equipo">Despachar <i data-lucide="arrow-right"></i></button>
                     <button class="btn btn-outline btn-icon-only btn-change-state" data-id="${item.id}" data-target-state="VENTA INTERNA" title="Venta Interna" style="color: #6b7280; border-color: #cbd5e1;"><i data-lucide="home"></i></button>
                 ` : ''}
                 ${(item.estado === 'RESERVADO' || item.estado === 'VENDIDO - DESPACHADO') ? `
                     <button class="btn btn-outline btn-change-state" data-id="${item.id}" data-target-state="DISPONIBLE" title="Devolución a Disponible" style="color: #059669; border-color: #10b981;"><i data-lucide="rotate-ccw"></i> Devolución</button>
-                    <button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar Certificado">Entregar Certificado <i data-lucide="user-check"></i></button>
+                    <button class="btn btn-primary btn-change-state" data-id="${item.id}" data-target-state="ENTREGADO" title="Entregar Certificado">Entregar <i data-lucide="user-check"></i></button>
                 ` : ''}
             </div>
         `;
 
         return `<tr>
-            <td style="text-align: center;"><input type="checkbox" class="bulk-item-select" data-id="${item.id}" ${isChecked} style="width: 16px; height: 16px; cursor: pointer;"></td>
+            <td style="text-align: center;"><input type="checkbox" class="bulk-item-select" data-id="${item.id}" ${isChecked} style="width: 15px; height: 15px; cursor: pointer;"></td>
             <td><strong>${item.id}</strong></td>
-            <td><strong>${item.instrumento || '---'}</strong><br><small style="color: var(--text-secondary);">${item.marca || ''} ${item.modelo || ''}</small></td>
-            <td>${item.serie || ''}</td>
-            <td><span class="badge ${stateClass}">${displayEstado}</span></td>
-            <td>${item.fecha_calibracion || ''}</td>
-            <td><strong>${certText}</strong></td>
-            <td>${clienteText}</td>
+            <td><div style="line-height: 1.25;"><strong class="text-truncate" title="${item.instrumento || ''}">${item.instrumento || '---'}</strong><br><small style="color: var(--text-secondary);" class="text-truncate" title="${item.marca || ''} ${item.modelo || ''}">${item.marca || ''} ${item.modelo || ''}</small></div></td>
+            <td><span class="text-truncate" title="${item.serie || ''}">${item.serie || ''}</span></td>
+            <td style="text-align: center;"><span class="badge ${stateClass}">${displayEstado}</span></td>
+            <td style="text-align: center;">${item.fecha_calibracion || ''}</td>
+            <td style="text-align: center;"><strong>${certText}</strong></td>
+            <td><span class="cliente-cell text-truncate" title="${item.cliente || 'Sin Asignar'}">${clienteText}</span></td>
             <td>${actionsHTML}</td>
         </tr>`;
     }).join('');
