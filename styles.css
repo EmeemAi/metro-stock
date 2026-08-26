@@ -541,15 +541,15 @@ table {
     width: 100%;
 }
 
-#instrumentos-table th:nth-child(1) { width: 36px; text-align: center; }
-#instrumentos-table th:nth-child(2) { width: 92px; }
-#instrumentos-table th:nth-child(3) { width: 170px; }
-#instrumentos-table th:nth-child(4) { width: 105px; }
-#instrumentos-table th:nth-child(5) { width: 142px; text-align: center; }
-#instrumentos-table th:nth-child(6) { width: 98px; text-align: center; }
-#instrumentos-table th:nth-child(7) { width: 135px; text-align: center; }
-#instrumentos-table th:nth-child(8) { width: 115px; }
-#instrumentos-table th:nth-child(9) { width: 255px; text-align: right; }
+#instrumentos-table th:nth-child(1) { width: 36px !important; text-align: center !important; }
+#instrumentos-table th:nth-child(2) { width: 92px !important; white-space: nowrap !important; }
+#instrumentos-table th:nth-child(3) { width: 170px !important; }
+#instrumentos-table th:nth-child(4) { width: 105px !important; white-space: nowrap !important; }
+#instrumentos-table th:nth-child(5) { width: 142px !important; text-align: center !important; }
+#instrumentos-table th:nth-child(6) { width: 98px !important; text-align: center !important; white-space: nowrap !important; }
+#instrumentos-table th:nth-child(7) { width: 135px !important; text-align: center !important; white-space: nowrap !important; }
+#instrumentos-table th:nth-child(8) { width: 115px !important; }
+#instrumentos-table th:nth-child(9) { width: 255px !important; text-align: right !important; }
 
 /* Controles de Paginación */
 .pagination-container {
