@@ -2288,12 +2288,12 @@ function renderTable() {
 
         return `<tr>
             <td style="text-align: center;"><input type="checkbox" class="bulk-item-select" data-id="${item.id}" ${isChecked} style="width: 15px; height: 15px; cursor: pointer;"></td>
-            <td><strong>${item.id}</strong></td>
+            <td style="white-space: nowrap;"><strong>${item.id}</strong></td>
             <td><div style="line-height: 1.25;"><strong class="text-truncate" title="${item.instrumento || ''}">${item.instrumento || '---'}</strong><br><small style="color: var(--text-secondary);" class="text-truncate" title="${item.marca || ''} ${item.modelo || ''}">${item.marca || ''} ${item.modelo || ''}</small></div></td>
-            <td><span class="text-truncate" title="${item.serie || ''}">${item.serie || ''}</span></td>
-            <td style="text-align: center;"><span class="badge ${stateClass}">${displayEstado}</span></td>
-            <td style="text-align: center;">${item.fecha_calibracion || ''}</td>
-            <td style="text-align: center;"><strong>${certText}</strong></td>
+            <td style="white-space: nowrap;"><span class="text-truncate" title="${item.serie || ''}">${item.serie || ''}</span></td>
+            <td style="text-align: center; white-space: nowrap;"><span class="badge ${stateClass}">${displayEstado}</span></td>
+            <td style="text-align: center; white-space: nowrap;">${item.fecha_calibracion || ''}</td>
+            <td style="text-align: center; white-space: nowrap;"><strong>${certText}</strong></td>
             <td><span class="cliente-cell text-truncate" title="${item.cliente || 'Sin Asignar'}">${clienteText}</span></td>
             <td>${actionsHTML}</td>
         </tr>`;
