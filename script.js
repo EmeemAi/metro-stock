@@ -3456,15 +3456,15 @@ function renderSolicitudes() {
         const targetIndex = realIndex > -1 ? realIndex : index;
         
         tr.innerHTML = `
-            <td>${s.timestamp}</td>
-            <td><strong>${s.empresa}</strong><br><small>${s.contacto}</small></td>
-            <td><code>${s.certificado}</code></td>
-            <td>${s.email}</td>
-            <td><span class="badge ${badgeClass}">${s.estado || 'pendiente'}</span>${priorWarningHtml}</td>
-            <td>
-                <div style="display: flex; gap: 0.25rem;">
-                    ${isEnviado ? '' : `<button class="btn btn-primary btn-sm btn-atender-solicitud" data-index="${targetIndex}"><i data-lucide="external-link" style="width:14px; height:14px;"></i> Atender</button>`}
-                    <button class="btn btn-outline btn-sm btn-ver-ficha-solicitud" data-index="${targetIndex}" title="Ver Ficha del Instrumento"><i data-lucide="eye" style="width:14px; height:14px;"></i> Info</button>
+            <td style="white-space: nowrap; font-family: var(--font-data);">${s.timestamp}</td>
+            <td><strong class="text-truncate" style="max-width: 180px; display: block;" title="${s.empresa}">${s.empresa}</strong><small style="color: var(--text-secondary);" class="text-truncate" title="${s.contacto}">${s.contacto}</small></td>
+            <td style="text-align: center; white-space: nowrap; font-family: var(--font-data);"><code>${s.certificado}</code></td>
+            <td><span class="text-truncate" style="max-width: 180px; display: block;" title="${s.email}">${s.email}</span></td>
+            <td style="text-align: center; white-space: nowrap;"><span class="badge ${badgeClass}">${s.estado || 'pendiente'}</span>${priorWarningHtml}</td>
+            <td style="text-align: right; padding-right: 0.5rem;">
+                <div style="display: flex; gap: 0.25rem; justify-content: flex-end; align-items: center;">
+                    ${isEnviado ? '' : `<button class="btn btn-primary btn-sm btn-atender-solicitud" data-index="${targetIndex}" style="height: 25px; padding: 0 0.5rem; font-size: 0.7rem; white-space: nowrap;"><i data-lucide="external-link" style="width:13px; height:13px;"></i> Atender</button>`}
+                    <button class="btn btn-outline btn-sm btn-ver-ficha-solicitud" data-index="${targetIndex}" title="Ver Ficha del Instrumento" style="height: 25px; padding: 0 0.5rem; font-size: 0.7rem; white-space: nowrap;"><i data-lucide="eye" style="width:13px; height:13px;"></i> Info</button>
                 </div>
             </td>
         `;
@@ -3941,16 +3941,16 @@ function renderVencimientos() {
         const isEnviado = eq.estado_recordatorio === 'Enviado';
 
         tr.innerHTML = `
-            <td><strong>${eq.id}</strong></td>
-            <td>${eq.instrumento}</td>
-            <td><strong>${eq.cliente || '---'}</strong><br><small>${eq.email}</small></td>
-            <td>${fechaFormateada}</td>
-            <td><span class="badge status-badge ${eq.estadoVenc}">${labelVenc}</span></td>
-            <td><span class="badge ${isEnviado ? 'entregado' : 'reservado'}">${eq.estado_recordatorio || 'pendiente'}</span></td>
-            <td>
+            <td style="white-space: nowrap; font-family: var(--font-data);"><strong>${eq.id}</strong></td>
+            <td><strong class="text-truncate" style="max-width: 170px; display: block;" title="${eq.instrumento}">${eq.instrumento}</strong></td>
+            <td><strong class="text-truncate" style="max-width: 170px; display: block;" title="${eq.cliente || '---'}">${eq.cliente || '---'}</strong><small style="color: var(--text-secondary);" class="text-truncate" title="${eq.email}">${eq.email}</small></td>
+            <td style="text-align: center; white-space: nowrap; font-family: var(--font-data);">${fechaFormateada}</td>
+            <td style="text-align: center; white-space: nowrap;"><span class="badge status-badge ${eq.estadoVenc}">${labelVenc}</span></td>
+            <td style="text-align: center; white-space: nowrap;"><span class="badge ${isEnviado ? 'entregado' : 'reservado'}">${eq.estado_recordatorio || 'pendiente'}</span></td>
+            <td style="text-align: right; padding-right: 0.5rem;">
                 ${eq.email !== '---' && eq.email.includes('@') ? 
-                `<button class="btn ${isEnviado ? 'btn-outline' : 'btn-primary'} btn-sm btn-enviar-aviso" onclick="handleEnviarAviso('${eq.id}')">
-                    <i data-lucide="${isEnviado ? 'check-circle' : 'mail'}" style="width:14px; height:14px;"></i> ${isEnviado ? 'Re-avisar' : 'Avisar'}
+                `<button class="btn ${isEnviado ? 'btn-outline' : 'btn-primary'} btn-sm btn-enviar-aviso" onclick="handleEnviarAviso('${eq.id}')" style="height: 25px; padding: 0 0.5rem; font-size: 0.7rem; white-space: nowrap;">
+                    <i data-lucide="${isEnviado ? 'check-circle' : 'mail'}" style="width:13px; height:13px;"></i> ${isEnviado ? 'Re-avisar' : 'Avisar'}
                 </button>` : `<span class="null-text">Sin Email</span>`}
             </td>
         `;

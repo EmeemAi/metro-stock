@@ -551,6 +551,29 @@ table {
 #instrumentos-table th:nth-child(8) { width: 115px !important; }
 #instrumentos-table th:nth-child(9) { width: 255px !important; text-align: right !important; }
 
+#table-solicitudes-grid {
+    table-layout: fixed;
+    width: 100%;
+}
+#table-solicitudes-grid th:nth-child(1), #table-solicitudes-grid td:nth-child(1) { width: 95px !important; white-space: nowrap !important; font-family: var(--font-data) !important; }
+#table-solicitudes-grid th:nth-child(2), #table-solicitudes-grid td:nth-child(2) { width: 190px !important; }
+#table-solicitudes-grid th:nth-child(3), #table-solicitudes-grid td:nth-child(3) { width: 140px !important; text-align: center !important; white-space: nowrap !important; font-family: var(--font-data) !important; }
+#table-solicitudes-grid th:nth-child(4), #table-solicitudes-grid td:nth-child(4) { width: 190px !important; }
+#table-solicitudes-grid th:nth-child(5), #table-solicitudes-grid td:nth-child(5) { width: 110px !important; text-align: center !important; white-space: nowrap !important; }
+#table-solicitudes-grid th:nth-child(6), #table-solicitudes-grid td:nth-child(6) { width: 165px !important; text-align: right !important; padding-right: 0.5rem !important; }
+
+#table-vencimientos-grid {
+    table-layout: fixed;
+    width: 100%;
+}
+#table-vencimientos-grid th:nth-child(1), #table-vencimientos-grid td:nth-child(1) { width: 85px !important; white-space: nowrap !important; font-family: var(--font-data) !important; }
+#table-vencimientos-grid th:nth-child(2), #table-vencimientos-grid td:nth-child(2) { width: 180px !important; }
+#table-vencimientos-grid th:nth-child(3), #table-vencimientos-grid td:nth-child(3) { width: 180px !important; }
+#table-vencimientos-grid th:nth-child(4), #table-vencimientos-grid td:nth-child(4) { width: 100px !important; text-align: center !important; white-space: nowrap !important; font-family: var(--font-data) !important; }
+#table-vencimientos-grid th:nth-child(5), #table-vencimientos-grid td:nth-child(5) { width: 110px !important; text-align: center !important; white-space: nowrap !important; }
+#table-vencimientos-grid th:nth-child(6), #table-vencimientos-grid td:nth-child(6) { width: 110px !important; text-align: center !important; white-space: nowrap !important; }
+#table-vencimientos-grid th:nth-child(7), #table-vencimientos-grid td:nth-child(7) { width: 130px !important; text-align: right !important; padding-right: 0.5rem !important; }
+
 /* Controles de Paginación */
 .pagination-container {
     display: flex;

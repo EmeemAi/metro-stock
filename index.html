@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Charts (Chart.js) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=35.0">
+    <link rel="stylesheet" href="styles.css?v=40.0">
     <style>
         #instrumentos-table {
             table-layout: fixed !important;
@@ -29,6 +29,29 @@
         #instrumentos-table th:nth-child(8), #instrumentos-table td:nth-child(8) { width: 115px !important; }
         #instrumentos-table th:nth-child(9), #instrumentos-table td:nth-child(9) { width: 255px !important; text-align: right !important; padding-right: 0.5rem !important; }
         
+        #table-solicitudes-grid {
+            table-layout: fixed !important;
+            width: 100% !important;
+        }
+        #table-solicitudes-grid th:nth-child(1), #table-solicitudes-grid td:nth-child(1) { width: 95px !important; white-space: nowrap !important; font-family: var(--font-data) !important; }
+        #table-solicitudes-grid th:nth-child(2), #table-solicitudes-grid td:nth-child(2) { width: 190px !important; }
+        #table-solicitudes-grid th:nth-child(3), #table-solicitudes-grid td:nth-child(3) { width: 140px !important; text-align: center !important; white-space: nowrap !important; font-family: var(--font-data) !important; }
+        #table-solicitudes-grid th:nth-child(4), #table-solicitudes-grid td:nth-child(4) { width: 190px !important; }
+        #table-solicitudes-grid th:nth-child(5), #table-solicitudes-grid td:nth-child(5) { width: 110px !important; text-align: center !important; white-space: nowrap !important; }
+        #table-solicitudes-grid th:nth-child(6), #table-solicitudes-grid td:nth-child(6) { width: 165px !important; text-align: right !important; padding-right: 0.5rem !important; }
+
+        #table-vencimientos-grid {
+            table-layout: fixed !important;
+            width: 100% !important;
+        }
+        #table-vencimientos-grid th:nth-child(1), #table-vencimientos-grid td:nth-child(1) { width: 85px !important; white-space: nowrap !important; font-family: var(--font-data) !important; }
+        #table-vencimientos-grid th:nth-child(2), #table-vencimientos-grid td:nth-child(2) { width: 180px !important; }
+        #table-vencimientos-grid th:nth-child(3), #table-vencimientos-grid td:nth-child(3) { width: 180px !important; }
+        #table-vencimientos-grid th:nth-child(4), #table-vencimientos-grid td:nth-child(4) { width: 100px !important; text-align: center !important; white-space: nowrap !important; font-family: var(--font-data) !important; }
+        #table-vencimientos-grid th:nth-child(5), #table-vencimientos-grid td:nth-child(5) { width: 110px !important; text-align: center !important; white-space: nowrap !important; }
+        #table-vencimientos-grid th:nth-child(6), #table-vencimientos-grid td:nth-child(6) { width: 110px !important; text-align: center !important; white-space: nowrap !important; }
+        #table-vencimientos-grid th:nth-child(7), #table-vencimientos-grid td:nth-child(7) { width: 130px !important; text-align: right !important; padding-right: 0.5rem !important; }
+
         .table-actions-cell {
             display: flex !important;
             align-items: center !important;
@@ -336,15 +359,23 @@
                     </button>
                 </div>
                 <div class="table-container shadow-sm">
-                    <table class="data-table">
+                    <table class="data-table" id="table-solicitudes-grid" style="table-layout: fixed; width: 100%;">
+                        <colgroup>
+                            <col style="width: 95px;">
+                            <col style="width: 190px;">
+                            <col style="width: 140px;">
+                            <col style="width: 190px;">
+                            <col style="width: 110px;">
+                            <col style="width: 165px;">
+                        </colgroup>
                         <thead>
                             <tr>
-                                <th>Fecha</th>
-                                <th>Empresa / Cliente</th>
-                                <th>Certificado Solicitado</th>
-                                <th>Email</th>
-                                <th>Estado</th>
-                                <th>Acción</th>
+                                <th style="width: 95px; white-space: nowrap;">Fecha</th>
+                                <th style="width: 190px;">Empresa / Cliente</th>
+                                <th style="width: 140px; text-align: center; white-space: nowrap;">Certificado Solicitado</th>
+                                <th style="width: 190px;">Email</th>
+                                <th style="width: 110px; text-align: center; white-space: nowrap;">Estado</th>
+                                <th style="width: 165px; text-align: right; padding-right: 0.5rem;">Acción</th>
                             </tr>
                         </thead>
                         <tbody id="table-solicitudes">
@@ -381,16 +412,25 @@
                 </div>
 
                 <div class="table-container shadow-sm">
-                    <table class="data-table">
+                    <table class="data-table" id="table-vencimientos-grid" style="table-layout: fixed; width: 100%;">
+                        <colgroup>
+                            <col style="width: 85px;">
+                            <col style="width: 180px;">
+                            <col style="width: 180px;">
+                            <col style="width: 100px;">
+                            <col style="width: 110px;">
+                            <col style="width: 110px;">
+                            <col style="width: 130px;">
+                        </colgroup>
                         <thead>
                             <tr>
-                                <th>ID</th>
-                                <th>Instrumento</th>
-                                <th>Cliente</th>
-                                <th>Vencimiento</th>
-                                <th>Alerta</th>
-                                <th>Recordatorio</th>
-                                <th>Acción</th>
+                                <th style="width: 85px; white-space: nowrap;">ID</th>
+                                <th style="width: 180px;">Instrumento</th>
+                                <th style="width: 180px;">Cliente</th>
+                                <th style="width: 100px; text-align: center; white-space: nowrap;">Vencimiento</th>
+                                <th style="width: 110px; text-align: center; white-space: nowrap;">Alerta</th>
+                                <th style="width: 110px; text-align: center; white-space: nowrap;">Recordatorio</th>
+                                <th style="width: 130px; text-align: right; padding-right: 0.5rem;">Acción</th>
                             </tr>
                         </thead>
                         <tbody id="table-vencimientos">
@@ -992,6 +1032,6 @@
     <!-- Firebase SDK (Compat v10) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="script.js?v=35.0"></script>
+    <script src="script.js?v=40.0"></script>
 </body>
 </html>
