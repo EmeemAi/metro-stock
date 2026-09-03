@@ -161,27 +161,56 @@
 
             <!-- Dashboard de Inteligencia de Negocio (BI) -->
             <section id="bi-dashboard" style="display: none; flex-direction: column; gap: 1.5rem;">
-                <!-- KPIs Rápidos -->
+                <!-- Barra de Filtros del BI (Período y Categoría) -->
+                <div class="bi-toolbar">
+                    <div class="bi-toolbar-left">
+                        <div class="bi-filter-group">
+                            <label for="bi-period-select"><i data-lucide="calendar" style="width: 14px; height: 14px;"></i> Período:</label>
+                            <select id="bi-period-select" class="bi-select">
+                                <option value="30">Últimos 30 días</option>
+                                <option value="90">Últimos 90 días</option>
+                                <option value="180">Últimos 6 meses</option>
+                                <option value="365">Último año</option>
+                                <option value="all" selected>Todo el histórico</option>
+                            </select>
+                        </div>
+                        <div class="bi-filter-group">
+                            <label for="bi-category-select"><i data-lucide="tag" style="width: 14px; height: 14px;"></i> Magnitud / Familia:</label>
+                            <select id="bi-category-select" class="bi-select">
+                                <option value="ALL">Todas las familias</option>
+                                <!-- Inyectado dinámicamente por JS -->
+                            </select>
+                        </div>
+                    </div>
+                    <div class="bi-toolbar-right">
+                        <span id="bi-data-summary" class="bi-summary-tag"><i data-lucide="activity" style="width: 14px; height: 14px;"></i> Inventario sincronizado</span>
+                    </div>
+                </div>
+
+                <!-- KPIs Rápidos con Subtítulo Contextual -->
                 <div class="kpi-grid">
                     <div class="kpi-card stock-disponible">
                         <div class="kpi-icon"><i data-lucide="package"></i></div>
                         <div class="kpi-info">
-                            <h3>En Stock</h3>
+                            <h3>En Stock Disponible</h3>
                             <div class="kpi-value" id="kpi-disponible">0</div>
+                            <small class="kpi-subtext" id="kpi-disponible-sub">0 modelos listos</small>
                         </div>
                     </div>
                     <div class="kpi-card stock-entregado">
                         <div class="kpi-icon"><i data-lucide="shopping-cart"></i></div>
                         <div class="kpi-info">
-                            <h3>Ventas Totales</h3>
+                            <h3>Ventas en Período</h3>
                             <div class="kpi-value" id="kpi-ventas">0</div>
+                            <small class="kpi-subtext" id="kpi-ventas-sub">0 u / mes promedio</small>
                         </div>
                     </div>
                     <div class="kpi-card stock-despachado">
                         <div class="kpi-icon"><i data-lucide="alert-triangle"></i></div>
                         <div class="kpi-info">
-                            <h3>Sugerencia Reposición</h3>
+                            <h3>Radar Reposición</h3>
                             <div class="kpi-value" id="kpi-reposicion">0</div>
+                            <small class="kpi-subtext" id="kpi-reposicion-sub">Modelos activos en riesgo</small>
                         </div>
                     </div>
                     <div class="kpi-card stock-certificando">
@@ -189,6 +218,7 @@
                         <div class="kpi-info">
                             <h3>En Certificación</h3>
                             <div class="kpi-value" id="kpi-certificando">0</div>
+                            <small class="kpi-subtext" id="kpi-certificando-sub">En calibración</small>
                         </div>
                     </div>
                     <div class="kpi-card stock-deposito">
@@ -196,62 +226,106 @@
                         <div class="kpi-info">
                             <h3>En Depósito</h3>
                             <div class="kpi-value" id="kpi-deposito">0</div>
+                            <small class="kpi-subtext" id="kpi-deposito-sub">Stock bruto sin calibrar</small>
                         </div>
                     </div>
-                    <div class="kpi-card stock-inmovilizado">
-                        <div class="kpi-icon" style="background: rgba(107, 114, 128, 0.1); color: #6b7280;"><i data-lucide="archive"></i></div>
+                    <div class="kpi-card stock-envejecido">
+                        <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;"><i data-lucide="clock"></i></div>
                         <div class="kpi-info">
-                            <h3>Inmovilizados</h3>
-                            <div class="kpi-value" id="kpi-inmovilizados">0</div>
+                            <h3>Calib. Envejecidas</h3>
+                            <div class="kpi-value" id="kpi-envejecido">0</div>
+                            <small class="kpi-subtext" id="kpi-envejecido-sub">> 6 meses en stock</small>
                         </div>
                     </div>
                 </div>
 
-                <!-- Radar de Reposición Prominente (Grande, lista completa) -->
-                <div class="chart-container-card" style="border-left: 5px solid #ef4444; width: 100%; display: flex; flex-direction: column; gap: 1rem;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                        <h3 style="margin: 0; color: #ef4444; font-size: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-                            <i data-lucide="alert-octagon" style="width: 20px; height: 20px;"></i>
-                            RADAR DE REPOSICIÓN: Modelos en Stock Crítico o Faltantes
-                        </h3>
-                        <span id="kpi-reposicion-count" style="background: #ef4444; color: white; font-size: 0.75rem; font-weight: bold; padding: 0.2rem 0.6rem; border-radius: 20px;">0 modelos</span>
+                <!-- Radar de Reposición Inteligente (Limpio y claro) -->
+                <div class="bi-card bi-radar-card">
+                    <div class="bi-card-header">
+                        <div>
+                            <h3 class="bi-card-title" style="color: #ef4444;">
+                                <i data-lucide="alert-octagon"></i>
+                                RADAR DE REPOSICIÓN INTELIGENTE
+                            </h3>
+                            <p class="bi-card-subtitle">
+                                Sugerencias basadas en velocidad de venta mensual y días de cobertura. Se omiten productos sin rotación activa.
+                            </p>
+                        </div>
+                        <div class="bi-radar-header-actions">
+                            <div class="radar-tab-group" id="radar-tab-group">
+                                <button type="button" class="radar-tab-btn active" data-tab="all">Todos (<span id="radar-count-all">0</span>)</button>
+                                <button type="button" class="radar-tab-btn" data-tab="critical">Crítico &lt;15d (<span id="radar-count-critical">0</span>)</button>
+                                <button type="button" class="radar-tab-btn" data-tab="warning">Reposición &lt;30d (<span id="radar-count-warning">0</span>)</button>
+                                <button type="button" class="radar-tab-btn" data-tab="deposito">Con Depósito (<span id="radar-count-deposito">0</span>)</button>
+                            </div>
+                            <span id="kpi-reposicion-count" class="badge-alert-count">0 modelos</span>
+                        </div>
                     </div>
-                    <div id="replenishment-list" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1rem; width: 100%; overflow-y: auto; flex: 1; padding-right: 0.5rem;">
+                    
+                    <div id="replenishment-list" class="bi-radar-grid">
                         <!-- Inyectado por JS -->
                     </div>
-                    <div id="discontinued-container" style="border-top: 1px solid var(--border-color); padding-top: 0.75rem; display: none; flex-direction: column; gap: 0.5rem; width: 100%;">
-                        <h4 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); display: flex; align-items: center; gap: 0.25rem;">
+
+                    <div id="discontinued-container" class="bi-discontinued-box" style="display: none;">
+                        <h4 class="bi-discontinued-title">
                             <i data-lucide="archive" style="width: 14px; height: 14px;"></i> Modelos Discontinuados
                         </h4>
-                        <div id="discontinued-list" style="display: flex; flex-wrap: wrap; gap: 0.5rem; font-size: 0.75rem; max-height: 80px; overflow-y: auto;">
+                        <div id="discontinued-list" class="bi-discontinued-list">
                             <!-- Inyectado por JS -->
                         </div>
                     </div>
                 </div>
 
-                <!-- Gráficos y Alertas -->
+                <!-- Gráficos y Análisis -->
                 <div class="bi-charts-grid">
+                    <!-- Gráfico 1: Evolución Mensual de Ventas -->
                     <div class="chart-container-card chart-span-2">
-                        <h3><i data-lucide="line-chart"></i> Evolución de Ventas Mensuales</h3>
+                        <div class="chart-header-flex">
+                            <h3><i data-lucide="line-chart"></i> Evolución de Ventas Mensuales</h3>
+                            <div class="chart-range-pills" id="chart-evol-pills">
+                                <button type="button" class="pill-btn" data-range="6m">6 Meses</button>
+                                <button type="button" class="pill-btn active" data-range="1y">1 Año</button>
+                                <button type="button" class="pill-btn" data-range="all">Histórico</button>
+                            </div>
+                        </div>
                         <div class="chart-wrapper">
                             <canvas id="chart-evolution"></canvas>
                         </div>
                     </div>
+
+                    <!-- Gráfico 2: Top Equipos Más Demandados y Estado de Stock -->
                     <div class="chart-container-card chart-sales-card">
-                        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                        <div class="chart-header-flex">
                             <h3 style="margin: 0; border-bottom: none; padding-bottom: 0;"><i data-lucide="trending-up"></i> Top 10 Equipos Más Vendidos</h3>
                             <div style="font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 0.5rem; align-items: center;">
-                                <span><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ef4444;"></span> &lt;5u Crítico</span>
-                                <span><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#f97316;"></span> &lt;10u Reposición</span>
+                                <span><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#ef4444;"></span> &lt;15d Cobertura</span>
+                                <span><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#f97316;"></span> &lt;30d Cobertura</span>
+                                <span><span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:#10b981;"></span> Stock Óptimo</span>
                             </div>
                         </div>
                         <div class="chart-wrapper" style="flex: 1; position: relative;">
                             <canvas id="chart-sales"></canvas>
                         </div>
                     </div>
-                    <div class="chart-container-card">
-                        <h3><i data-lucide="slash"></i> Stock Inmovilizado / Baja Rotación</h3>
-                        <div id="low-rotation-list" class="alert-list">
+
+                    <!-- Panel 3: Salud del Stock y Alertas de Calidad -->
+                    <div class="chart-container-card bi-health-card">
+                        <div class="health-tab-header" id="health-tab-header">
+                            <button type="button" class="health-tab-btn active" id="tab-btn-envejecido" data-tab="envejecido">
+                                <i data-lucide="clock" style="width: 14px; height: 14px;"></i> Calib. Envejecidas (<span id="health-count-envejecido">0</span>)
+                            </button>
+                            <button type="button" class="health-tab-btn" id="tab-btn-inmovilizado" data-tab="inmovilizado">
+                                <i data-lucide="slash" style="width: 14px; height: 14px;"></i> Sin Rotación (<span id="health-count-inmovilizado">0</span>)
+                            </button>
+                        </div>
+                        
+                        <!-- Lista 1: Calibraciones Envejecidas (>180 días) -->
+                        <div id="aged-stock-list" class="alert-list">
+                            <!-- Inyectado por JS -->
+                        </div>
+
+                        <!-- Lista 2: Inmovilizados / Sin Rotación -->
+                        <div id="low-rotation-list" class="alert-list" style="display: none;">
                             <!-- Inyectado por JS -->
                         </div>
                     </div>

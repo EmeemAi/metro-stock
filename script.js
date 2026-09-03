@@ -512,9 +512,16 @@ let appState = {
     filter: 'ALL',
     search: '',
     radarItems: [],
+    discontinuedModels: [],
     currentPage: 1,
     pageSize: 50,
-    selectedIds: new Set()
+    selectedIds: new Set(),
+    // Parámetros de Inteligencia de Negocio (BI)
+    biPeriod: 'all',          // '30', '90', '180', '365', 'all'
+    biCategory: 'ALL',        // 'ALL' o categoría específica
+    biRadarTab: 'all',        // 'all', 'critical', 'warning', 'deposito'
+    biEvolRange: '1y',        // '6m', '1y', 'all'
+    biHealthTab: 'envejecido' // 'envejecido', 'inmovilizado'
 };
 
 let syncIntervalId = null;
@@ -627,16 +634,107 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnAddPuntoEdit = document.getElementById('btn-add-punto-edit');
     if (btnAddPuntoEdit) btnAddPuntoEdit.addEventListener('click', () => addPuntoRowEdit());
     
+    // --- CONTROLADORES DE INTELIGENCIA DE NEGOCIO (BI) ---
+    // Selector de Período
+    const biPeriodSelect = document.getElementById('bi-period-select');
+    if (biPeriodSelect) {
+        biPeriodSelect.addEventListener('change', (e) => {
+            appState.biPeriod = e.target.value;
+            updateDashboard();
+        });
+    }
+
+    // Selector de Categoría / Magnitud
+    const biCategorySelect = document.getElementById('bi-category-select');
+    if (biCategorySelect) {
+        biCategorySelect.addEventListener('change', (e) => {
+            appState.biCategory = e.target.value;
+            updateDashboard();
+        });
+    }
+
+    // Pestañas del Radar de Reposición
+    const radarTabGroup = document.getElementById('radar-tab-group');
+    if (radarTabGroup) {
+        radarTabGroup.addEventListener('click', (e) => {
+            const btn = e.target.closest('.radar-tab-btn');
+            if (btn) {
+                radarTabGroup.querySelectorAll('.radar-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                appState.biRadarTab = btn.getAttribute('data-tab') || 'all';
+                renderRadarList(appState.radarItems, appState.discontinuedModels);
+            }
+        });
+    }
+
+    // Píldoras de rango del gráfico evolutivo
+    const chartEvolPills = document.getElementById('chart-evol-pills');
+    if (chartEvolPills) {
+        chartEvolPills.addEventListener('click', (e) => {
+            const btn = e.target.closest('.pill-btn');
+            if (btn) {
+                chartEvolPills.querySelectorAll('.pill-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                appState.biEvolRange = btn.getAttribute('data-range') || '1y';
+                renderEvolutionChart();
+            }
+        });
+    }
+
+    // Pestañas de Salud de Inventario (Envejecidos vs Inmovilizados)
+    const healthTabHeader = document.getElementById('health-tab-header');
+    if (healthTabHeader) {
+        healthTabHeader.addEventListener('click', (e) => {
+            const btn = e.target.closest('.health-tab-btn');
+            if (btn) {
+                healthTabHeader.querySelectorAll('.health-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                const tab = btn.getAttribute('data-tab');
+                appState.biHealthTab = tab;
+                const agedList = document.getElementById('aged-stock-list');
+                const lowList = document.getElementById('low-rotation-list');
+                if (tab === 'envejecido') {
+                    if (agedList) agedList.style.display = 'flex';
+                    if (lowList) lowList.style.display = 'none';
+                } else {
+                    if (agedList) agedList.style.display = 'none';
+                    if (lowList) lowList.style.display = 'flex';
+                }
+            }
+        });
+    }
+
     // Radares de Reposición (Delegación de eventos click)
     const replenishmentList = document.getElementById('replenishment-list');
     if (replenishmentList) {
         replenishmentList.addEventListener('click', async (e) => {
-            const btn = e.target.closest('.btn-reponer-radar');
-            if (btn) {
-                const id = btn.getAttribute('data-id');
+            const btnReponer = e.target.closest('.btn-reponer-radar');
+            if (btnReponer) {
+                const id = btnReponer.getAttribute('data-id');
                 if (id) {
                     switchView('gestion');
                     openModalDuplicate(id);
+                }
+            }
+
+            const btnCertificar = e.target.closest('.btn-certificar-radar');
+            if (btnCertificar) {
+                const id = btnCertificar.getAttribute('data-id');
+                const modelName = btnCertificar.getAttribute('data-model');
+                if (id) {
+                    switchView('gestion');
+                    const searchInput = document.getElementById('search-input');
+                    if (searchInput && modelName) {
+                        searchInput.value = modelName;
+                        appState.search = modelName.toLowerCase();
+                        appState.filter = 'EN DEPÓSITO';
+                        document.querySelectorAll('.filter-btn').forEach(b => {
+                            if (b.getAttribute('data-filter') === 'EN DEPÓSITO') b.classList.add('active');
+                            else b.classList.remove('active');
+                        });
+                        appState.currentPage = 1;
+                        renderTable();
+                    }
                 }
             }
             
@@ -1573,427 +1671,440 @@ function switchView(view) {
     }
 }
 
+// ==========================================
+// INTELIGENCIA DE NEGOCIO (BI) Y CONTROL DE STOCK
+// ==========================================
+
 let salesChart = null;
 let evolutionChart = null;
 
-function parseYearMonth(dateStr) {
+function parseFullDate(dateStr) {
     if (!dateStr || typeof dateStr !== 'string') return null;
     dateStr = dateStr.trim();
-    if (dateStr === '' || dateStr === '---') return null;
+    if (dateStr === '' || dateStr === '---' || dateStr === 'N/A') return null;
 
-    // Try YYYY-MM-DD
+    // YYYY-MM-DD
     if (dateStr.includes('-')) {
         const parts = dateStr.split('-');
-        if (parts.length >= 2) {
+        if (parts.length >= 3) {
             let y = parseInt(parts[0], 10);
-            const m = parseInt(parts[1], 10);
-            if (!isNaN(y) && !isNaN(m)) {
+            let m = parseInt(parts[1], 10) - 1;
+            let d = parseInt(parts[2], 10);
+            if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
                 if (y < 100) y += 2000;
-                return { year: y, month: m };
+                return new Date(y, m, d);
             }
         }
     }
-    // Try DD/MM/YYYY
+    // DD/MM/YYYY
     if (dateStr.includes('/')) {
         const parts = dateStr.split('/');
         if (parts.length >= 3) {
+            let d = parseInt(parts[0], 10);
+            let m = parseInt(parts[1], 10) - 1;
             let y = parseInt(parts[2], 10);
-            const m = parseInt(parts[1], 10);
-            if (!isNaN(y) && !isNaN(m)) {
+            if (!isNaN(y) && !isNaN(m) && !isNaN(d)) {
                 if (y < 100) y += 2000;
-                return { year: y, month: m };
+                return new Date(y, m, d);
             }
         }
     }
     return null;
 }
 
+function parseYearMonth(dateStr) {
+    const d = parseFullDate(dateStr);
+    if (!d) return null;
+    return { year: d.getFullYear(), month: d.getMonth() + 1 };
+}
+
+function getNormalizedState(item) {
+    if (!item) return 'DISPONIBLE';
+    const est = String(item.estado || '').trim().toUpperCase();
+    if (est === 'DESPACHADO' || est === 'RESERVADO' || est === 'VENDIDO - DESPACHADO') return 'VENDIDO - DESPACHADO';
+    if (est === 'ENTREGADO' || est === 'VENDIDO - ENTREGADO') return 'VENDIDO - ENTREGADO';
+    if (est === 'VENTA INTERNA') return 'VENTA INTERNA';
+    if (est === 'CERTIFICANDO') return 'CERTIFICANDO';
+    if (est.includes('DEP') || est === 'SIN CERTIFICAR' || est === 'EN DEPÓSITO') return 'EN DEPÓSITO';
+    if (est === 'DISPONIBLE') return 'DISPONIBLE';
+    return est || 'DISPONIBLE';
+}
+
+function isItemSold(item) {
+    const norm = getNormalizedState(item);
+    return norm === 'VENDIDO - DESPACHADO' || norm === 'VENDIDO - ENTREGADO' || norm === 'VENTA INTERNA';
+}
+
+function getInstrumentCategory(instrumento) {
+    const str = String(instrumento || '').trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    if (str.includes('decibel')) return 'Acústica (Decibelímetros)';
+    if (str.includes('lux')) return 'Óptica (Luxómetros)';
+    if (str.includes('termohigro') || str.includes('higro') || str.includes('logger')) return 'Humedad y Temperatura';
+    if (str.includes('piro') || str.includes('termometro') || str.includes('termocupla') || str.includes('temperatura')) return 'Temperatura';
+    if (str.includes('crono') || str.includes('tiempo')) return 'Tiempo y Frecuencia';
+    if (str.includes('calibre') || str.includes('micro') || str.includes('regla') || str.includes('cinta') || str.includes('espesor') || str.includes('recubrimiento') || str.includes('galga') || str.includes('nivel') || str.includes('inclinometro') || str.includes('goniometro') || str.includes('cuenta metro')) return 'Dimensional';
+    if (str.includes('manometro') || str.includes('vacuo') || str.includes('presion')) return 'Presión';
+    if (str.includes('durometro') || str.includes('dureza') || str.includes('dinamo') || str.includes('torque') || str.includes('torquimetro') || str.includes('balanza') || str.includes('pesa')) return 'Mecánica y Fuerza';
+    if (str.includes('multi') || str.includes('mego') || str.includes('teluri') || str.includes('decade') || str.includes('resistencia') || str.includes('disyuntor') || str.includes('tension') || str.includes('lazo') || str.includes('seguridad')) return 'Electricidad';
+    if (str.includes('ultrasonido')) return 'Ultrasonido';
+    if (str.includes('taco')) return 'Velocidad (Tacómetros)';
+    return 'Otros Instrumentos';
+}
+
+function populateBICategories() {
+    const select = document.getElementById('bi-category-select');
+    if (!select) return;
+
+    const currentVal = appState.biCategory || 'ALL';
+    const categories = new Set();
+    (appState.data || []).forEach(item => {
+        const cat = getInstrumentCategory(item.instrumento);
+        if (cat) categories.add(cat);
+    });
+
+    const sortedCats = Array.from(categories).sort();
+    let html = '<option value="ALL">Todas las familias</option>';
+    sortedCats.forEach(cat => {
+        const isSelected = cat === currentVal ? 'selected' : '';
+        html += `<option value="${cat}" ${isSelected}>${cat}</option>`;
+    });
+
+    select.innerHTML = html;
+}
+
 function updateDashboard() {
     const biSection = document.getElementById('bi-dashboard');
     if (!biSection) return;
+    if (!appState.data || appState.data.length === 0) return;
 
-    if(biSection.style.display === 'none' && !appState.loading) {
-         // Si no estamos viendo el dashboard, solo calculamos los números básicos para los KPIs si fuera necesario, 
-         // pero los gráficos Chart.js requieren que el canvas sea visible.
+    populateBICategories();
+
+    // 1. Configuración de Filtros de Período y Categoría
+    const selectedPeriod = appState.biPeriod || 'all';
+    const selectedCat = appState.biCategory || 'ALL';
+    
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    let cutoffDate = null;
+    let monthsInPeriod = 12.0;
+
+    if (selectedPeriod === '30') {
+        cutoffDate = new Date(today.getTime() - 30 * 86400000);
+        monthsInPeriod = 1.0;
+    } else if (selectedPeriod === '90') {
+        cutoffDate = new Date(today.getTime() - 90 * 86400000);
+        monthsInPeriod = 3.0;
+    } else if (selectedPeriod === '180') {
+        cutoffDate = new Date(today.getTime() - 180 * 86400000);
+        monthsInPeriod = 6.0;
+    } else if (selectedPeriod === '365') {
+        cutoffDate = new Date(today.getTime() - 365 * 86400000);
+        monthsInPeriod = 12.0;
+    } else {
+        // Histórico completo: estimar meses totales de actividad
+        let earliestDate = today;
+        appState.data.forEach(item => {
+            const d = parseFullDate(item.fecha_calibracion);
+            if (d && d < earliestDate && d.getFullYear() > 2020) {
+                earliestDate = d;
+            }
+        });
+        const totalDays = Math.max(90, Math.round((today - earliestDate) / 86400000));
+        monthsInPeriod = Math.max(3.0, totalDays / 30.4);
     }
 
-    if(!appState.data || appState.data.length === 0) return;
-
-    // 1. Cálculos de Ventas y Reposición
+    // 2. Procesamiento de Modelos y Estados
     const stats = {};
     let totalAvailable = 0;
-    let totalVentas = 0;
-
+    let totalPeriodSales = 0;
     let totalCertificando = 0;
     let totalDeposito = 0;
+    const agedStockItems = [];
+
     appState.data.forEach(item => {
+        const itemCat = getInstrumentCategory(item.instrumento);
+        if (selectedCat !== 'ALL' && itemCat !== selectedCat) {
+            return;
+        }
+
         const key = getModelKey(item.marca, item.modelo);
-        if(!stats[key]) stats[key] = { disponible: 0, entregado: 0, discontinuado: false, items: [] };
-        
+        if (!stats[key]) {
+            stats[key] = {
+                name: key,
+                marca: item.marca || '',
+                modelo: item.modelo || '',
+                instrumento: item.instrumento || '',
+                category: itemCat,
+                disponible: 0,
+                deposito: 0,
+                certificando: 0,
+                ventasPeriodo: 0,
+                ventasTotal: 0,
+                discontinuado: false,
+                items: [],
+                depositoItems: []
+            };
+        }
+
         stats[key].items.push(item);
         if (item.discontinuado === 'SI' || item.discontinuado === 'si' || item.discontinuado === true) {
             stats[key].discontinuado = true;
         }
-        
-        const est = (item.estado || '').toUpperCase();
-        if(est === 'DISPONIBLE') {
+
+        const normState = getNormalizedState(item);
+        const itemDate = parseFullDate(item.fecha_calibracion);
+
+        if (normState === 'DISPONIBLE') {
             stats[key].disponible++;
             totalAvailable++;
-        } else if (est === 'ENTREGADO' || est === 'VENDIDO - ENTREGADO' || est === 'RESERVADO' || est === 'VENDIDO - DESPACHADO' || est === 'VENTA INTERNA') {
-            stats[key].entregado++;
-            totalVentas++;
-        } else if (est === 'CERTIFICANDO') {
+
+            // Detección de Calibración Envejecida (>180 días desde calibración en stock disponible)
+            if (itemDate) {
+                const daysAged = Math.round((today - itemDate) / 86400000);
+                if (daysAged > 180) {
+                    agedStockItems.push({
+                        id: item.id,
+                        modelName: key,
+                        instrumento: item.instrumento || key,
+                        serie: item.serie || 'S/N',
+                        fecha: item.fecha_calibracion,
+                        daysAged: daysAged
+                    });
+                }
+            }
+        } else if (isItemSold(item)) {
+            stats[key].ventasTotal++;
+            const inPeriod = !cutoffDate || (itemDate && itemDate >= cutoffDate);
+            if (inPeriod) {
+                stats[key].ventasPeriodo++;
+                totalPeriodSales++;
+            }
+        } else if (normState === 'CERTIFICANDO') {
+            stats[key].certificando++;
             totalCertificando++;
-        } else if (est === 'SIN CERTIFICAR' || est === 'EN DEPÓSITO') {
+        } else if (normState === 'EN DEPÓSITO') {
+            stats[key].deposito++;
+            stats[key].depositoItems.push(item);
             totalDeposito++;
         }
     });
 
-    // Calcular total de modelos inmovilizados (en stock pero con 0 ventas)
-    let totalInmovilizados = 0;
+    // 3. Cálculo de Reposición Inteligente
+    const criticalRadar = [];
+    const discontinuedModels = [];
+    const lowRotationItems = [];
+
     Object.values(stats).forEach(s => {
-        if (s.disponible > 0 && s.entregado === 0) {
-            totalInmovilizados++;
+        if (s.discontinuado) {
+            discontinuedModels.push(s.name);
+            return;
         }
-    });
 
-    // 2. Actualizar KPIs
-    const elDisponible = document.getElementById('kpi-disponible');
-    if (elDisponible) elDisponible.innerText = totalAvailable;
-    const elVentas = document.getElementById('kpi-ventas');
-    if (elVentas) elVentas.innerText = totalVentas;
-    const elCertificando = document.getElementById('kpi-certificando');
-    if (elCertificando) elCertificando.innerText = totalCertificando;
-    const elDeposito = document.getElementById('kpi-deposito');
-    if (elDeposito) elDeposito.innerText = totalDeposito;
-    const elInmovilizados = document.getElementById('kpi-inmovilizados');
-    if (elInmovilizados) elInmovilizados.innerText = totalInmovilizados;
+        // Velocidad de venta mensual en el período analizado
+        s.monthlyRunRate = Number((s.ventasPeriodo / monthsInPeriod).toFixed(2));
+        
+        // Cobertura estimada de stock en días
+        if (s.monthlyRunRate > 0) {
+            s.coberturaDias = Math.round((s.disponible / (s.monthlyRunRate / 30.4)));
+        } else {
+            s.coberturaDias = 999; // Sin demanda en período
+        }
 
-    // 3. Radar de Reposición (Lógica Crítica: <10 unidades)
-    const replenishmentList = document.getElementById('replenishment-list');
-    
-    const criticalItems = Object.entries(stats)
-        .map(([name, s]) => ({ name, ...s }))
-        .filter(s => s.entregado > 0 && s.disponible < 10 && !s.discontinuado) // Menos de 10 unidades y con historial de ventas, no discontinuado
-        .sort((a,b) => {
-            if (a.disponible !== b.disponible) return a.disponible - b.disponible;
-            return b.entregado - a.entregado;
-        });
+        // REGLA DE EXCLUSIÓN: Si no tiene casi rotación, NO sugerir reposición
+        const hasActiveRotation = s.ventasTotal >= 2 && s.monthlyRunRate >= 0.2;
 
-    const discontinuedModels = Object.entries(stats)
-        .map(([name, s]) => ({ name, ...s }))
-        .filter(s => s.discontinuado)
-        .map(s => s.name);
-
-    const elReposicion = document.getElementById('kpi-reposicion');
-    if (elReposicion) elReposicion.innerText = criticalItems.length;
-
-    appState.radarItems = criticalItems;
-    renderRadarList(criticalItems, discontinuedModels);
-
-        // Alertas de Baja Rotación
-        const lowRotationList = document.getElementById('low-rotation-list');
-        if (lowRotationList) {
-            lowRotationList.innerHTML = '';
-            
-            const lowRotationItems = Object.entries(stats)
-                .map(([name, s]) => ({ name, ...s }))
-                .filter(s => s.disponible > 0 && s.entregado <= 1)
-                .sort((a,b) => a.entregado - b.entregado);
-            
-            if(lowRotationItems.length === 0) {
-                lowRotationList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted);">No hay alertas de stock inmovilizado.</p>';
-            } else {
-                lowRotationItems.forEach(item => {
-                    const isNula = item.entregado === 0;
-                    const label = isNula ? 'Inmovilizado' : 'Baja Rotación';
-                    const reason = isNula 
-                        ? `Sin ventas registradas. Stock: ${item.disponible}u` 
-                        : `Solo 1 venta registrada. Stock: ${item.disponible}u`;
-                    
-                    const div = document.createElement('div');
-                    div.className = 'alert-item priority-low';
-                    div.innerHTML = `
-                        <div class="alert-info-text">
-                            <span class="alert-model">${item.name}</span>
-                            <span class="alert-reason">${reason}</span>
-                        </div>
-                        <div class="alert-action-badge">${label}</div>
-                    `;
-                    lowRotationList.appendChild(div);
+        if (hasActiveRotation) {
+            if (s.disponible === 0) {
+                s.urgency = 'critical';
+                s.urgencyLabel = 'Quiebre Inminente';
+                s.urgencyReason = `Sin stock disponible (0u). Demanda: ${s.monthlyRunRate} u/mes`;
+                criticalRadar.push(s);
+            } else if (s.coberturaDias <= 15) {
+                s.urgency = 'critical';
+                s.urgencyLabel = `Crítico (${s.coberturaDias}d)`;
+                s.urgencyReason = `Stock crítico: ${s.disponible}u (${s.coberturaDias} días). Demanda: ${s.monthlyRunRate} u/mes`;
+                criticalRadar.push(s);
+            } else if (s.coberturaDias <= 30) {
+                s.urgency = 'warning';
+                s.urgencyLabel = `Reposición (${s.coberturaDias}d)`;
+                s.urgencyReason = `Reposición sugerida: ${s.disponible}u (${s.coberturaDias} días). Demanda: ${s.monthlyRunRate} u/mes`;
+                criticalRadar.push(s);
+            }
+        } else {
+            // Modelo con baja o nula rotación
+            if (s.disponible > 0 && s.ventasTotal <= 1) {
+                lowRotationItems.push({
+                    name: s.name,
+                    category: s.category,
+                    disponible: s.disponible,
+                    ventasTotal: s.ventasTotal
                 });
             }
         }
+    });
 
-        const isMatte = document.body.classList.contains('theme-matte');
-        const chartColor = isMatte ? '#60a5fa' : '#2563eb';
-        const gridColor = isMatte ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
-        const textColor = isMatte ? '#a1a1aa' : '#4b5563';
+    // Ordenar radar por urgencia y cobertura ascendente
+    criticalRadar.sort((a, b) => {
+        if (a.disponible === 0 && b.disponible > 0) return -1;
+        if (b.disponible === 0 && a.disponible > 0) return 1;
+        if (a.coberturaDias !== b.coberturaDias) return a.coberturaDias - b.coberturaDias;
+        return b.monthlyRunRate - a.monthlyRunRate;
+    });
 
-        // 4. Gráfico de Ventas (Top 10 Demand + Alertas de Stock)
-        const canvas = document.getElementById('chart-sales');
-        if(canvas) {
-            const ctx = canvas.getContext('2d');
-            const salesData = Object.entries(stats)
-                .map(([name, s]) => ({ name, count: s.entregado, stock: s.disponible }))
-                .filter(s => s.count > 0)
-                .sort((a, b) => b.count - a.count)
-                .slice(0, 10); // Top 10 equipos más vendidos
-            
-            if(salesChart) salesChart.destroy();
+    // 4. Actualizar Indicadores Rápidos (KPIs)
+    const elDisponible = document.getElementById('kpi-disponible');
+    if (elDisponible) elDisponible.innerText = totalAvailable;
+    const elDispSub = document.getElementById('kpi-disponible-sub');
+    if (elDispSub) {
+        const availableModelsCount = Object.values(stats).filter(s => s.disponible > 0).length;
+        elDispSub.innerText = `${availableModelsCount} modelo${availableModelsCount !== 1 ? 's' : ''} listo${availableModelsCount !== 1 ? 's' : ''}`;
+    }
 
-            // Colores por barra según alerta de stock (Roja < 5u, Naranja < 10u, Normal >= 10u)
-            const barColors = salesData.map(d => {
-                if (d.stock < 5) return '#ef4444'; // Alerta Roja (Crítico)
-                if (d.stock < 10) return '#f97316'; // Alerta Naranja (Reposición)
-                return chartColor; // Stock Normal
-            });
-            
-            salesChart = new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: salesData.map(d => d.name),
-                    datasets: [{
-                        label: 'Unidades Vendidas',
-                        data: salesData.map(d => d.count),
-                        backgroundColor: barColors,
-                        borderRadius: 4,
-                        barThickness: 12
-                    }]
-                },
-                options: {
-                    indexAxis: 'y',
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 500
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            callbacks: {
-                                label: function(context) {
-                                    const d = salesData[context.dataIndex];
-                                    let statusStr = '🟢 Stock OK';
-                                    if (d.stock < 5) statusStr = '🔴 ALERTA ROJA (Stock Crítico)';
-                                    else if (d.stock < 10) statusStr = '🟠 ALERTA NARANJA (Stock Bajo)';
-                                    return [
-                                        ` Ventas: ${d.count} u`,
-                                        ` Stock disp: ${d.stock} u`,
-                                        ` Estado: ${statusStr}`
-                                    ];
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: { 
-                            beginAtZero: true, 
-                            grid: { display: false },
-                            ticks: { stepSize: 1, color: textColor } 
-                        },
-                        y: { 
-                            grid: { display: false },
-                            ticks: {
-                                autoSkip: false,
-                                font: { size: 10 },
-                                color: textColor
-                            }
-                        }
-                    }
-                }
-            });
-        }
+    const elVentas = document.getElementById('kpi-ventas');
+    if (elVentas) elVentas.innerText = totalPeriodSales;
+    const elVentasSub = document.getElementById('kpi-ventas-sub');
+    if (elVentasSub) {
+        const monthlyAvg = Number((totalPeriodSales / monthsInPeriod).toFixed(1));
+        elVentasSub.innerText = `~${monthlyAvg} u/mes promedio`;
+    }
 
-        // 5. Gráfico Evolutivo de Ventas Mensuales
-        const canvasEvol = document.getElementById('chart-evolution');
-        if(canvasEvol) {
-            const ctxEvol = canvasEvol.getContext('2d');
-            
-            const salesByMonth = {};
-            appState.data.forEach(item => {
-                const est = (item.estado || '').toUpperCase();
-                if (est === 'ENTREGADO' || est === 'VENDIDO - ENTREGADO' || est === 'RESERVADO' || est === 'VENDIDO - DESPACHADO' || est === 'VENTA INTERNA') {
-                    const dateParsed = parseYearMonth(item.fecha_calibracion);
-                    if (dateParsed) {
-                        const key = `${dateParsed.year}-${String(dateParsed.month).padStart(2, '0')}`;
-                        salesByMonth[key] = (salesByMonth[key] || 0) + 1;
-                    }
-                }
-            });
+    const elReposicion = document.getElementById('kpi-reposicion');
+    if (elReposicion) elReposicion.innerText = criticalRadar.length;
+    const elRepoSub = document.getElementById('kpi-reposicion-sub');
+    if (elRepoSub) {
+        const critOnly = criticalRadar.filter(x => x.urgency === 'critical').length;
+        elRepoSub.innerText = `${critOnly} en riesgo crítico (<15d)`;
+    }
 
-            const keys = Object.keys(salesByMonth);
-            let sortedData = [];
-            if (keys.length > 0) {
-                keys.sort();
-                const minKey = keys[0];
-                const maxKey = keys[keys.length - 1];
+    const elCertificando = document.getElementById('kpi-certificando');
+    if (elCertificando) elCertificando.innerText = totalCertificando;
 
-                const [minY, minM] = minKey.split('-').map(Number);
-                const [maxY, maxM] = maxKey.split('-').map(Number);
+    const elDeposito = document.getElementById('kpi-deposito');
+    if (elDeposito) elDeposito.innerText = totalDeposito;
 
-                let currY = minY;
-                let currM = minM;
-                const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const elEnvejecido = document.getElementById('kpi-envejecido');
+    if (elEnvejecido) elEnvejecido.innerText = agedStockItems.length;
 
-                while (currY < maxY || (currY === maxY && currM <= maxM)) {
-                    const key = `${currY}-${String(currM).padStart(2, '0')}`;
-                    const label = `${monthNames[currM - 1]} ${currY}`;
-                    const count = salesByMonth[key] || 0;
-                    sortedData.push({ label, count });
+    // 5. Renderizar Componentes
+    appState.radarItems = criticalRadar;
+    appState.discontinuedModels = discontinuedModels;
+    renderRadarList(criticalRadar, discontinuedModels);
 
-                    currM++;
-                    if (currM > 12) {
-                        currM = 1;
-                        currY++;
-                    }
-                }
-            } else {
-                const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-                let d = new Date();
-                for (let i = 5; i >= 0; i--) {
-                    let temp = new Date(d.getFullYear(), d.getMonth() - i, 1);
-                    sortedData.push({ label: `${monthNames[temp.getMonth()]} ${temp.getFullYear()}`, count: 0 });
-                }
-            }
-
-            // Create a gorgeous gradient for the area chart
-            const gradient = ctxEvol.createLinearGradient(0, 0, 0, 200);
-            if (isMatte) {
-                gradient.addColorStop(0, 'rgba(96, 165, 250, 0.3)');
-                gradient.addColorStop(1, 'rgba(96, 165, 250, 0.0)');
-            } else {
-                gradient.addColorStop(0, 'rgba(37, 99, 235, 0.2)');
-                gradient.addColorStop(1, 'rgba(37, 99, 235, 0.0)');
-            }
-
-            if(evolutionChart) evolutionChart.destroy();
-
-            evolutionChart = new Chart(ctxEvol, {
-                type: 'line',
-                data: {
-                    labels: sortedData.map(d => d.label),
-                    datasets: [{
-                        label: 'Ventas Mensuales',
-                        data: sortedData.map(d => d.count),
-                        borderColor: chartColor,
-                        backgroundColor: gradient,
-                        fill: true,
-                        tension: 0.4,
-                        borderWidth: 2,
-                        pointBackgroundColor: chartColor,
-                        pointBorderColor: isMatte ? '#0f0f0f' : '#ffffff',
-                        pointBorderWidth: 2,
-                        pointRadius: 4,
-                        pointHoverRadius: 6
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: {
-                        duration: 500
-                    },
-                    plugins: {
-                        legend: { display: false },
-                        tooltip: {
-                            mode: 'index',
-                            intersect: false,
-                            backgroundColor: isMatte ? '#1f2937' : '#ffffff',
-                            titleColor: isMatte ? '#ffffff' : '#1f2937',
-                            bodyColor: isMatte ? '#d1d5db' : '#4b5563',
-                            borderColor: isMatte ? '#374151' : '#e5e7eb',
-                            borderWidth: 1,
-                            padding: 10,
-                            displayColors: false,
-                            callbacks: {
-                                label: function(context) {
-                                    return ` Ventas: ${context.parsed.y} u`;
-                                }
-                            }
-                        }
-                    },
-                    scales: {
-                        x: {
-                            grid: { 
-                                display: true,
-                                color: gridColor
-                            },
-                            ticks: { color: textColor }
-                        },
-                        y: {
-                            beginAtZero: true,
-                            grid: { 
-                                display: true,
-                                color: gridColor
-                            },
-                            ticks: { 
-                                stepSize: 1, 
-                                color: textColor 
-                            }
-                        }
-                    }
-                }
-            });
-        }
+    renderHealthPanel(agedStockItems, lowRotationItems);
+    renderSalesChart(stats);
+    renderEvolutionChart();
 }
 
 function renderRadarList(criticalItems, discontinuedModels = []) {
     const replenishmentList = document.getElementById('replenishment-list');
     const kpiReposicionCount = document.getElementById('kpi-reposicion-count');
     
+    // Contadores de pestañas
+    const countAll = document.getElementById('radar-count-all');
+    const countCrit = document.getElementById('radar-count-critical');
+    const countWarn = document.getElementById('radar-count-warning');
+    const countDep = document.getElementById('radar-count-deposito');
+
+    const totalCrit = criticalItems.filter(x => x.urgency === 'critical').length;
+    const totalWarn = criticalItems.filter(x => x.urgency === 'warning').length;
+    const totalDep = criticalItems.filter(x => x.deposito > 0).length;
+
+    if (countAll) countAll.innerText = criticalItems.length;
+    if (countCrit) countCrit.innerText = totalCrit;
+    if (countWarn) countWarn.innerText = totalWarn;
+    if (countDep) countDep.innerText = totalDep;
+
     if (kpiReposicionCount) {
         kpiReposicionCount.innerText = `${criticalItems.length} modelo${criticalItems.length !== 1 ? 's' : ''}`;
     }
 
-    if (replenishmentList) {
-        replenishmentList.innerHTML = '';
-        if (criticalItems.length === 0) {
-            replenishmentList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted); grid-column: 1 / -1;">No hay alertas críticas de reposición.</p>';
-        } else {
-            criticalItems.forEach(item => {
-                const isRedAlert = item.disponible < 5;
-                const priorityClass = isRedAlert ? 'priority-high' : 'priority-medium';
-                
-                let reason = '';
-                let badgeBtnText = 'Reponer';
-                if (item.disponible === 0) {
-                    reason = `🚨 SIN STOCK (0u). Ventas: ${item.entregado}u`;
-                    badgeBtnText = 'Calibrar';
-                } else if (isRedAlert) {
-                    reason = `🔴 ALERTA ROJA - Stock Crítico (${item.disponible}u restantes). Ventas: ${item.entregado}u`;
-                    badgeBtnText = 'Reponer Urgente';
-                } else {
-                    reason = `🟠 ALERTA NARANJA - Reposición Sugerida (${item.disponible}u restantes). Ventas: ${item.entregado}u`;
-                    badgeBtnText = 'Reponer';
-                }
-                
-                const matchedItem = appState.data.find(x => getModelKey(x.marca, x.modelo) === item.name);
-                const targetId = matchedItem ? matchedItem.id : '';
-                
-                const div = document.createElement('div');
-                div.className = `alert-item ${priorityClass}`;
-                div.style.margin = '0';
-                div.innerHTML = `
-                    <div class="alert-info-text">
-                        <span class="alert-model">${item.name}</span>
-                        <span class="alert-reason">${reason}</span>
-                    </div>
-                    <div style="display: flex; gap: 0.5rem; align-items: center;">
-                        <button type="button" class="btn btn-outline btn-sm btn-discontinuar-radar" data-model="${item.name}" title="Discontinuar Modelo" style="padding: 0.25rem 0.5rem; height: 32px; border-color: rgba(220, 38, 38, 0.2); color: #dc2626; border-radius: 4px; display: inline-flex; align-items: center; justify-content: center; background: transparent;">
-                            <i data-lucide="archive" style="width: 14px; height: 14px;"></i>
-                        </button>
-                        <button type="button" class="alert-action-badge btn-reponer-radar" data-id="${targetId}" style="height: 32px; border: none; cursor: pointer; display: inline-flex; align-items: center;">
-                            ${badgeBtnText}
-                        </button>
-                    </div>
-                `;
-                replenishmentList.appendChild(div);
-            });
-        }
+    if (!replenishmentList) return;
+    replenishmentList.innerHTML = '';
+
+    const currentTab = appState.biRadarTab || 'all';
+    let filteredList = criticalItems;
+
+    if (currentTab === 'critical') {
+        filteredList = criticalItems.filter(x => x.urgency === 'critical');
+    } else if (currentTab === 'warning') {
+        filteredList = criticalItems.filter(x => x.urgency === 'warning');
+    } else if (currentTab === 'deposito') {
+        filteredList = criticalItems.filter(x => x.deposito > 0);
     }
 
-    // Renderizar lista de modelos discontinuados
+    if (filteredList.length === 0) {
+        let emptyMsg = 'No hay alertas de reposición para el filtro actual.';
+        if (criticalItems.length === 0) emptyMsg = '✅ Stock en niveles óptimos. No se detectaron riesgos de quiebre en modelos activos.';
+        replenishmentList.innerHTML = `
+            <div style="text-align:center; padding: 2.5rem 1rem; color: var(--text-muted); grid-column: 1 / -1;">
+                <i data-lucide="check-circle-2" style="width: 32px; height: 32px; color: var(--state-disponible); margin-bottom: 0.5rem;"></i>
+                <p style="margin: 0; font-size: 0.85rem; font-weight: 500;">${emptyMsg}</p>
+            </div>
+        `;
+    } else {
+        filteredList.forEach(item => {
+            const isCritical = item.urgency === 'critical';
+            const cardClass = isCritical ? '' : 'warning';
+            const badgeClass = isCritical ? 'critical' : 'warning';
+            
+            const matchedItem = (item.items && item.items.length > 0) ? item.items[0] : null;
+            const targetId = matchedItem ? matchedItem.id : '';
+            const hasDeposito = item.deposito > 0;
+            const firstDepositoId = (item.depositoItems && item.depositoItems.length > 0) ? item.depositoItems[0].id : targetId;
+
+            const div = document.createElement('div');
+            div.className = `radar-card-item ${cardClass}`;
+            div.innerHTML = `
+                <div class="radar-card-top">
+                    <div>
+                        <div class="radar-model-title">${item.name}</div>
+                        <div class="radar-model-cat">${item.category}</div>
+                    </div>
+                    <span class="radar-badge-urgency ${badgeClass}">${item.urgencyLabel}</span>
+                </div>
+
+                <div class="radar-stats-row">
+                    <div class="radar-stat-box">
+                        <span class="radar-stat-lbl">Disponible</span>
+                        <span class="radar-stat-val" style="color: ${item.disponible === 0 ? '#ef4444' : 'var(--text-primary)'};">${item.disponible} u</span>
+                    </div>
+                    <div class="radar-stat-box">
+                        <span class="radar-stat-lbl">Ritmo</span>
+                        <span class="radar-stat-val">${item.monthlyRunRate} u/m</span>
+                    </div>
+                    <div class="radar-stat-box">
+                        <span class="radar-stat-lbl">En Depósito</span>
+                        <span class="radar-stat-val" style="color: ${hasDeposito ? 'var(--state-certificando)' : 'var(--text-muted)'};">${item.deposito} u</span>
+                    </div>
+                </div>
+
+                <div class="radar-actions-row">
+                    <div class="radar-coverage-info">
+                        <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                        <span>${item.disponible === 0 ? 'Sin stock' : `~${item.coberturaDias}d cobertura`}</span>
+                    </div>
+                    <div class="radar-action-buttons">
+                        <button type="button" class="btn-radar-disc btn-discontinuar-radar" data-model="${item.name}" title="Discontinuar Modelo">
+                            <i data-lucide="archive" style="width: 13px; height: 13px;"></i>
+                        </button>
+                        ${hasDeposito ? `
+                            <button type="button" class="btn-radar-action certificar btn-certificar-radar" data-id="${firstDepositoId}" data-model="${item.name}" title="Certificar desde depósito">
+                                <i data-lucide="play" style="width: 12px; height: 12px;"></i> Calibrar (${item.deposito})
+                            </button>
+                        ` : `
+                            <button type="button" class="btn-radar-action reponer btn-reponer-radar" data-id="${targetId}" title="Crear / Reponer stock">
+                                <i data-lucide="plus" style="width: 12px; height: 12px;"></i> Reponer
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+            replenishmentList.appendChild(div);
+        });
+    }
+
+    // Renderizar lista de discontinuados
     const discontinuedContainer = document.getElementById('discontinued-container');
     const discontinuedList = document.getElementById('discontinued-list');
     if (discontinuedContainer && discontinuedList) {
@@ -2002,7 +2113,7 @@ function renderRadarList(criticalItems, discontinuedModels = []) {
             discontinuedModels.forEach(modelName => {
                 const span = document.createElement('span');
                 span.className = 'badge';
-                span.style.cssText = 'background: rgba(107, 114, 128, 0.1); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.35rem 0.6rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.35rem; margin-right: 0.5rem; margin-bottom: 0.5rem;';
+                span.style.cssText = 'background: rgba(107, 114, 128, 0.1); color: var(--text-secondary); border: 1px solid var(--border-color); padding: 0.3rem 0.6rem; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.35rem;';
                 span.innerHTML = `
                     ${modelName}
                     <button type="button" class="btn-reactivar-model" data-model="${modelName}" style="background:none; border:none; color:#10b981; cursor:pointer; padding:0; display:inline-flex; align-items:center;" title="Reactivar Modelo">
@@ -2016,14 +2127,287 @@ function renderRadarList(criticalItems, discontinuedModels = []) {
             discontinuedContainer.style.display = 'none';
         }
     }
-    
-    // Inicializar iconos de Lucide
+
     if (typeof lucide !== 'undefined' && lucide.createIcons) {
         lucide.createIcons();
     }
 }
 
+function renderHealthPanel(agedStockItems = [], lowRotationItems = []) {
+    const countAged = document.getElementById('health-count-envejecido');
+    const countLow = document.getElementById('health-count-inmovilizado');
+    if (countAged) countAged.innerText = agedStockItems.length;
+    if (countLow) countLow.innerText = lowRotationItems.length;
 
+    const agedList = document.getElementById('aged-stock-list');
+    if (agedList) {
+        agedList.innerHTML = '';
+        if (agedStockItems.length === 0) {
+            agedList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted); font-size: 0.8rem;">No hay instrumentos disponibles con calibración envejecida (>6 meses).</p>';
+        } else {
+            agedStockItems.sort((a, b) => b.daysAged - a.daysAged);
+            agedStockItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'alert-item priority-high';
+                div.innerHTML = `
+                    <div class="alert-info-text">
+                        <span class="alert-model">${item.id}: ${item.modelName}</span>
+                        <span class="alert-reason">Calibrado: ${item.fecha || 'Sin fecha'} (${item.daysAged} días de antigüedad) - Serie: ${item.serie}</span>
+                    </div>
+                    <button type="button" class="alert-action-badge" style="cursor: pointer; border: none;" onclick="switchView('gestion'); document.getElementById('search-input').value='${item.id}'; appState.search='${item.id.toLowerCase()}'; appState.filter='ALL'; renderTable();">
+                        Ver
+                    </button>
+                `;
+                agedList.appendChild(div);
+            });
+        }
+    }
+
+    const lowList = document.getElementById('low-rotation-list');
+    if (lowList) {
+        lowList.innerHTML = '';
+        if (lowRotationItems.length === 0) {
+            lowList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted); font-size: 0.8rem;">No hay instrumentos en stock sin rotación.</p>';
+        } else {
+            lowRotationItems.sort((a, b) => b.disponible - a.disponible);
+            lowRotationItems.forEach(item => {
+                const div = document.createElement('div');
+                div.className = 'alert-item priority-low';
+                div.innerHTML = `
+                    <div class="alert-info-text">
+                        <span class="alert-model">${item.name}</span>
+                        <span class="alert-reason">${item.ventasTotal === 0 ? 'Sin ventas registradas' : 'Solo 1 venta histórica'} | Stock: ${item.disponible}u</span>
+                    </div>
+                    <div class="alert-action-badge" style="background: #6b7280;">Baja Rotación</div>
+                `;
+                lowList.appendChild(div);
+            });
+        }
+    }
+}
+
+function renderSalesChart(stats = {}) {
+    const canvas = document.getElementById('chart-sales');
+    if (!canvas) return;
+
+    const isMatte = document.body.classList.contains('theme-matte');
+    const chartColor = isMatte ? '#60a5fa' : '#2563eb';
+    const textColor = isMatte ? '#a1a1aa' : '#4b5563';
+
+    const salesData = Object.values(stats)
+        .filter(s => s.ventasPeriodo > 0)
+        .sort((a, b) => b.ventasPeriodo - a.ventasPeriodo)
+        .slice(0, 10);
+
+    const ctx = canvas.getContext('2d');
+    if (salesChart) salesChart.destroy();
+
+    if (salesData.length === 0) {
+        return;
+    }
+
+    // Colores según cobertura: Roja (<15d), Naranja (<30d), Verde/Azul (>30d)
+    const barColors = salesData.map(d => {
+        if (d.disponible === 0 || d.coberturaDias <= 15) return '#ef4444';
+        if (d.coberturaDias <= 30) return '#f97316';
+        return '#10b981';
+    });
+
+    salesChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: salesData.map(d => d.name),
+            datasets: [{
+                label: 'Unidades Vendidas',
+                data: salesData.map(d => d.ventasPeriodo),
+                backgroundColor: barColors,
+                borderRadius: 4,
+                barThickness: 12
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 400 },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const d = salesData[context.dataIndex];
+                            let statusStr = '🟢 Stock Óptimo';
+                            if (d.disponible === 0) statusStr = '🔴 SIN STOCK (0u)';
+                            else if (d.coberturaDias <= 15) statusStr = `🔴 CRÍTICO (~${d.coberturaDias}d cobertura)`;
+                            else if (d.coberturaDias <= 30) statusStr = `🟠 REPOSICIÓN (~${d.coberturaDias}d cobertura)`;
+                            
+                            return [
+                                ` Ventas período: ${d.ventasPeriodo} u`,
+                                ` Stock disponible: ${d.disponible} u`,
+                                ` En depósito: ${d.deposito} u`,
+                                ` Estado: ${statusStr}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { 
+                    beginAtZero: true, 
+                    grid: { display: false },
+                    ticks: { stepSize: 1, color: textColor } 
+                },
+                y: { 
+                    grid: { display: false },
+                    ticks: {
+                        autoSkip: false,
+                        font: { size: 10 },
+                        color: textColor
+                    }
+                }
+            }
+        }
+    });
+}
+
+function renderEvolutionChart() {
+    const canvasEvol = document.getElementById('chart-evolution');
+    if (!canvasEvol) return;
+
+    const isMatte = document.body.classList.contains('theme-matte');
+    const chartColor = isMatte ? '#60a5fa' : '#2563eb';
+    const gridColor = isMatte ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+    const textColor = isMatte ? '#a1a1aa' : '#4b5563';
+
+    const ctxEvol = canvasEvol.getContext('2d');
+    const selectedCat = appState.biCategory || 'ALL';
+    const evolRange = appState.biEvolRange || '1y';
+
+    const salesByMonth = {};
+    (appState.data || []).forEach(item => {
+        if (selectedCat !== 'ALL' && getInstrumentCategory(item.instrumento) !== selectedCat) {
+            return;
+        }
+
+        if (isItemSold(item)) {
+            const dateParsed = parseYearMonth(item.fecha_calibracion);
+            if (dateParsed) {
+                const key = `${dateParsed.year}-${String(dateParsed.month).padStart(2, '0')}`;
+                salesByMonth[key] = (salesByMonth[key] || 0) + 1;
+            }
+        }
+    });
+
+    const monthNames = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+    const today = new Date();
+    let numMonths = 12;
+    if (evolRange === '6m') numMonths = 6;
+    else if (evolRange === '1y') numMonths = 12;
+    else if (evolRange === 'all') numMonths = 24;
+
+    let sortedData = [];
+    if (evolRange === 'all') {
+        const keys = Object.keys(salesByMonth).sort();
+        if (keys.length > 0) {
+            const [minY, minM] = keys[0].split('-').map(Number);
+            const [maxY, maxM] = [today.getFullYear(), today.getMonth() + 1];
+            let currY = minY;
+            let currM = minM;
+            while (currY < maxY || (currY === maxY && currM <= maxM)) {
+                const key = `${currY}-${String(currM).padStart(2, '0')}`;
+                sortedData.push({
+                    label: `${monthNames[currM - 1]} ${String(currY).slice(-2)}`,
+                    count: salesByMonth[key] || 0
+                });
+                currM++;
+                if (currM > 12) {
+                    currM = 1;
+                    currY++;
+                }
+            }
+        }
+    }
+
+    if (sortedData.length === 0) {
+        for (let i = numMonths - 1; i >= 0; i--) {
+            const temp = new Date(today.getFullYear(), today.getMonth() - i, 1);
+            const y = temp.getFullYear();
+            const m = temp.getMonth() + 1;
+            const key = `${y}-${String(m).padStart(2, '0')}`;
+            sortedData.push({
+                label: `${monthNames[temp.getMonth()]} ${String(y).slice(-2)}`,
+                count: salesByMonth[key] || 0
+            });
+        }
+    }
+
+    const gradient = ctxEvol.createLinearGradient(0, 0, 0, 220);
+    if (isMatte) {
+        gradient.addColorStop(0, 'rgba(96, 165, 250, 0.35)');
+        gradient.addColorStop(1, 'rgba(96, 165, 250, 0.0)');
+    } else {
+        gradient.addColorStop(0, 'rgba(37, 99, 235, 0.25)');
+        gradient.addColorStop(1, 'rgba(37, 99, 235, 0.0)');
+    }
+
+    if (evolutionChart) evolutionChart.destroy();
+
+    evolutionChart = new Chart(ctxEvol, {
+        type: 'line',
+        data: {
+            labels: sortedData.map(d => d.label),
+            datasets: [{
+                label: 'Ventas Mensuales',
+                data: sortedData.map(d => d.count),
+                borderColor: chartColor,
+                backgroundColor: gradient,
+                fill: true,
+                tension: 0.35,
+                borderWidth: 2.5,
+                pointBackgroundColor: chartColor,
+                pointBorderColor: isMatte ? '#18181b' : '#ffffff',
+                pointBorderWidth: 2,
+                pointRadius: 4,
+                pointHoverRadius: 6
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: { duration: 400 },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: isMatte ? '#1f2937' : '#ffffff',
+                    titleColor: isMatte ? '#ffffff' : '#1f2937',
+                    bodyColor: isMatte ? '#d1d5db' : '#4b5563',
+                    borderColor: isMatte ? '#374151' : '#e5e7eb',
+                    borderWidth: 1,
+                    padding: 10,
+                    displayColors: false,
+                    callbacks: {
+                        label: function(context) {
+                            return ` Ventas: ${context.parsed.y} u`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    grid: { display: true, color: gridColor },
+                    ticks: { color: textColor, font: { size: 10 } }
+                },
+                y: {
+                    beginAtZero: true,
+                    grid: { display: true, color: gridColor },
+                    ticks: { stepSize: 1, color: textColor, font: { size: 10 } }
+                }
+            }
+        }
+    });
+}
 
 // ==========================================
 // RENDERIZADO UI
