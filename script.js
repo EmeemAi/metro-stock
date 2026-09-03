@@ -1734,17 +1734,17 @@ function isItemSold(item) {
 
 function getInstrumentCategory(instrumento) {
     const str = String(instrumento || '').trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-    if (str.includes('decibel')) return 'Acústica (Decibelímetros)';
-    if (str.includes('lux')) return 'Óptica (Luxómetros)';
+    if (str.includes('decibel') || str.includes('deci') || str.includes('sono') || str.includes('acustic') || str.includes('ruido')) return 'Acústica (Decibelímetros)';
+    if (str.includes('lux') || str.includes('luz') || str.includes('optic') || str.includes('iluminac')) return 'Óptica (Luxómetros)';
     if (str.includes('termohigro') || str.includes('higro') || str.includes('logger')) return 'Humedad y Temperatura';
-    if (str.includes('piro') || str.includes('termometro') || str.includes('termocupla') || str.includes('temperatura')) return 'Temperatura';
-    if (str.includes('crono') || str.includes('tiempo')) return 'Tiempo y Frecuencia';
-    if (str.includes('calibre') || str.includes('micro') || str.includes('regla') || str.includes('cinta') || str.includes('espesor') || str.includes('recubrimiento') || str.includes('galga') || str.includes('nivel') || str.includes('inclinometro') || str.includes('goniometro') || str.includes('cuenta metro')) return 'Dimensional';
-    if (str.includes('manometro') || str.includes('vacuo') || str.includes('presion')) return 'Presión';
-    if (str.includes('durometro') || str.includes('dureza') || str.includes('dinamo') || str.includes('torque') || str.includes('torquimetro') || str.includes('balanza') || str.includes('pesa')) return 'Mecánica y Fuerza';
-    if (str.includes('multi') || str.includes('mego') || str.includes('teluri') || str.includes('decade') || str.includes('resistencia') || str.includes('disyuntor') || str.includes('tension') || str.includes('lazo') || str.includes('seguridad')) return 'Electricidad';
-    if (str.includes('ultrasonido')) return 'Ultrasonido';
-    if (str.includes('taco')) return 'Velocidad (Tacómetros)';
+    if (str.includes('piro') || str.includes('termom') || str.includes('termocupla') || str.includes('temperat')) return 'Temperatura';
+    if (str.includes('crono') || str.includes('tiempo') || str.includes('frecuencia')) return 'Tiempo y Frecuencia';
+    if (str.includes('calibre') || str.includes('micro') || str.includes('regla') || str.includes('cinta') || str.includes('espes') || str.includes('recubrimiento') || str.includes('galga') || str.includes('nivel') || str.includes('inclinom') || str.includes('goniom') || str.includes('cuenta metro') || str.includes('odomet') || str.includes('palpador') || str.includes('comparador')) return 'Dimensional';
+    if (str.includes('manom') || str.includes('vacuo') || str.includes('presion')) return 'Presión';
+    if (str.includes('durom') || str.includes('dureza') || str.includes('dinam') || str.includes('torque') || str.includes('torquim') || str.includes('balanza') || str.includes('pesa')) return 'Mecánica y Fuerza';
+    if (str.includes('multi') || str.includes('mego') || str.includes('teluri') || str.includes('decade') || str.includes('resistencia') || str.includes('disyuntor') || str.includes('tension') || str.includes('lazo') || str.includes('pinza') || str.includes('amperimetr') || str.includes('seguridad')) return 'Electricidad';
+    if (str.includes('ultrasonido') || str.includes('ultrasonico')) return 'Ultrasonido';
+    if (str.includes('taco') || str.includes('rpm') || str.includes('velocidad')) return 'Velocidad (Tacómetros)';
     return 'Otros Instrumentos';
 }
 
@@ -2332,6 +2332,16 @@ function renderInmovilizados(inmovilizadosList = [], bajaRotacionList = [], aged
 function renderSalesChart(stats = {}) {
     const canvas = document.getElementById('chart-sales');
     if (!canvas) return;
+
+    const titleEl = document.getElementById('chart-sales-title');
+    if (titleEl) {
+        if (appState.biCategory && appState.biCategory !== 'ALL') {
+            titleEl.innerHTML = `<i data-lucide="trending-up"></i> Top 10: ${appState.biCategory} <button type="button" class="btn btn-outline btn-xs" style="font-size:0.68rem; padding:0.15rem 0.5rem; margin-left:0.5rem; border-radius:4px; cursor:pointer;" onclick="appState.biCategory='ALL'; document.getElementById('bi-category-select').value='ALL'; updateDashboard();">Ver Global</button>`;
+        } else {
+            titleEl.innerHTML = `<i data-lucide="trending-up"></i> Top 10 Equipos Más Vendidos (Todas las Familias)`;
+        }
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    }
 
     const isMatte = document.body.classList.contains('theme-matte');
     const chartColor = isMatte ? '#60a5fa' : '#2563eb';
