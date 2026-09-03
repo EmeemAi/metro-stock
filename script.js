@@ -1718,11 +1718,11 @@ function parseYearMonth(dateStr) {
 function getNormalizedState(item) {
     if (!item) return 'DISPONIBLE';
     const est = String(item.estado || '').trim().toUpperCase();
-    if (est === 'DESPACHADO' || est === 'RESERVADO' || est === 'VENDIDO - DESPACHADO') return 'VENDIDO - DESPACHADO';
-    if (est === 'ENTREGADO' || est === 'VENDIDO - ENTREGADO') return 'VENDIDO - ENTREGADO';
-    if (est === 'VENTA INTERNA') return 'VENTA INTERNA';
-    if (est === 'CERTIFICANDO') return 'CERTIFICANDO';
-    if (est.includes('DEP') || est === 'SIN CERTIFICAR' || est === 'EN DEPÓSITO') return 'EN DEPÓSITO';
+    if (est === 'DESPACHADO' || est === 'RESERVADO' || est.includes('DESPACH') || est.includes('RESERV')) return 'VENDIDO - DESPACHADO';
+    if (est === 'ENTREGADO' || est.includes('ENTREG')) return 'VENDIDO - ENTREGADO';
+    if (est.includes('VENTA')) return 'VENTA INTERNA';
+    if (est === 'CERTIFICANDO' || est.includes('CERTIF')) return 'CERTIFICANDO';
+    if (est.includes('DEP') || est.includes('SIN CERTIFICAR')) return 'EN DEPÓSITO';
     if (est === 'DISPONIBLE') return 'DISPONIBLE';
     return est || 'DISPONIBLE';
 }
