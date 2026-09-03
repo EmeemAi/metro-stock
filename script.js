@@ -681,7 +681,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Pestañas del Radar de Stock Inmovilizado y Salud (Inmovilizados, Baja Rotación, Envejecidos)
+    // Pestañas del Radar de Stock Inmovilizado y Salud (Inmovilizados, Baja Rotación, Envejecidos, Vencidos)
     const healthTabGroup = document.getElementById('health-tab-group');
     if (healthTabGroup) {
         healthTabGroup.addEventListener('click', (e) => {
@@ -694,9 +694,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const gridInm = document.getElementById('inmovilizado-grid');
                 const gridBaja = document.getElementById('bajarot-grid');
                 const gridAged = document.getElementById('aged-stock-grid');
+                const gridVenc = document.getElementById('vencido-stock-grid');
                 if (gridInm) gridInm.style.display = (tab === 'inmovilizado') ? 'grid' : 'none';
                 if (gridBaja) gridBaja.style.display = (tab === 'bajarotacion') ? 'grid' : 'none';
                 if (gridAged) gridAged.style.display = (tab === 'envejecido') ? 'grid' : 'none';
+                if (gridVenc) gridVenc.style.display = (tab === 'vencido') ? 'grid' : 'none';
             }
         });
     }
@@ -1856,10 +1858,19 @@ function updateDashboard() {
             stats[key].disponible++;
             totalAvailable++;
 
-            // Detección de Calibración en Estantería (>45 días desde calibración en stock disponible)
+            // Detección de Calibraciones en Estantería (45-365d) y Vencidas (>365d / >1 año)
             if (itemDate) {
                 const daysAged = Math.round((today - itemDate) / 86400000);
-                if (daysAged > 45) {
+                if (daysAged > 365) {
+                    vencidoStockItems.push({
+                        id: item.id,
+                        modelName: key,
+                        instrumento: item.instrumento || key,
+                        serie: item.serie || 'S/N',
+                        fecha: item.fecha_calibracion || '',
+                        daysAged: daysAged
+                    });
+                } else if (daysAged > 45) {
                     agedStockItems.push({
                         id: item.id,
                         modelName: key,
@@ -1954,6 +1965,7 @@ function updateDashboard() {
     inmovilizadosList.sort((a, b) => (b.disponible + b.deposito) - (a.disponible + a.deposito));
     bajaRotacionList.sort((a, b) => (b.disponible + b.deposito) - (a.disponible + a.deposito));
     agedStockItems.sort((a, b) => b.daysAged - a.daysAged);
+    vencidoStockItems.sort((a, b) => b.daysAged - a.daysAged);
 
     // 4. Actualizar Indicadores Rápidos (KPIs)
     const elDisponible = document.getElementById('kpi-disponible');
@@ -1995,14 +2007,14 @@ function updateDashboard() {
     }
 
     const elEnvejecido = document.getElementById('kpi-envejecido');
-    if (elEnvejecido) elEnvejecido.innerText = agedStockItems.length;
+    if (elEnvejecido) elEnvejecido.innerText = vencidoStockItems.length + agedStockItems.length;
 
     // 5. Renderizar Componentes
     appState.radarItems = criticalRadar;
     appState.discontinuedModels = discontinuedModels;
     renderRadarList(criticalRadar, discontinuedModels);
 
-    renderInmovilizados(inmovilizadosList, bajaRotacionList, agedStockItems);
+    renderInmovilizados(inmovilizadosList, bajaRotacionList, agedStockItems, vencidoStockItems);
     renderSalesChart(stats);
     renderEvolutionChart();
 }
@@ -2144,14 +2156,16 @@ function renderRadarList(criticalItems, discontinuedModels = []) {
     }
 }
 
-function renderInmovilizados(inmovilizadosList = [], bajaRotacionList = [], agedStockItems = []) {
+function renderInmovilizados(inmovilizadosList = [], bajaRotacionList = [], agedStockItems = [], vencidoStockItems = []) {
     const countInmov = document.getElementById('health-count-inmovilizado');
     const countBaja = document.getElementById('health-count-bajarot');
     const countAged = document.getElementById('health-count-envejecido');
+    const countVenc = document.getElementById('health-count-vencido');
 
     if (countInmov) countInmov.innerText = inmovilizadosList.length;
     if (countBaja) countBaja.innerText = bajaRotacionList.length;
     if (countAged) countAged.innerText = agedStockItems.length;
+    if (countVenc) countVenc.innerText = vencidoStockItems.length;
 
     // 1. Grid Inmovilizados (0 Ventas)
     const gridInm = document.getElementById('inmovilizado-grid');
@@ -2267,7 +2281,7 @@ function renderInmovilizados(inmovilizadosList = [], bajaRotacionList = [], aged
         }
     }
 
-    // 3. Grid Calibraciones en Estantería (>45 días)
+    // 3. Grid Calibraciones en Estantería (45 a 365 días)
     const gridAged = document.getElementById('aged-stock-grid');
     if (gridAged) {
         gridAged.innerHTML = '';
@@ -2280,7 +2294,7 @@ function renderInmovilizados(inmovilizadosList = [], bajaRotacionList = [], aged
             `;
         } else {
             agedStockItems.forEach(item => {
-                const isVeryAged = item.daysAged > 90;
+                const isVeryAged = item.daysAged > 180;
                 const div = document.createElement('div');
                 div.className = 'radar-card-item envejecido';
                 div.innerHTML = `
@@ -2308,9 +2322,9 @@ function renderInmovilizados(inmovilizadosList = [], bajaRotacionList = [], aged
                     </div>
 
                     <div class="radar-actions-row">
-                        <div class="radar-coverage-info" style="color: #dc2626;">
+                        <div class="radar-coverage-info" style="color: #d97706;">
                             <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
-                            <span>Priorizar despacho inmediato</span>
+                            <span>Priorizar despacho de stock disponible</span>
                         </div>
                         <div class="radar-action-buttons">
                             <button type="button" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; height: 28px; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="switchView('gestion'); document.getElementById('search-input').value='${item.id}'; appState.search='${item.id.toLowerCase()}'; appState.filter='ALL'; appState.currentPage=1; renderTable();">
@@ -2320,6 +2334,63 @@ function renderInmovilizados(inmovilizadosList = [], bajaRotacionList = [], aged
                     </div>
                 `;
                 gridAged.appendChild(div);
+            });
+        }
+    }
+
+    // 4. Grid Calibraciones Vencidas (>1 año / >365 días)
+    const gridVenc = document.getElementById('vencido-stock-grid');
+    if (gridVenc) {
+        gridVenc.innerHTML = '';
+        if (vencidoStockItems.length === 0) {
+            gridVenc.innerHTML = `
+                <div style="text-align:center; padding: 2.5rem 1rem; color: var(--text-muted); grid-column: 1 / -1;">
+                    <i data-lucide="check-circle-2" style="width: 32px; height: 32px; color: var(--state-disponible); margin-bottom: 0.5rem;"></i>
+                    <p style="margin: 0; font-size: 0.85rem; font-weight: 500;">Excelente: No hay instrumentos en stock con certificado vencido (&gt;1 año).</p>
+                </div>
+            `;
+        } else {
+            vencidoStockItems.forEach(item => {
+                const expiredDaysAgo = item.daysAged - 365;
+                const div = document.createElement('div');
+                div.className = 'radar-card-item vencido';
+                div.innerHTML = `
+                    <div class="radar-card-top">
+                        <div>
+                            <div class="radar-model-title">${item.id}: ${item.modelName}</div>
+                            <div class="radar-model-cat">${item.instrumento} · Serie: ${item.serie}</div>
+                        </div>
+                        <span class="radar-badge-urgency vencido">🚨 VENCIDO (${item.daysAged}d)</span>
+                    </div>
+
+                    <div class="radar-stats-row">
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">Calibrado</span>
+                            <span class="radar-stat-val" style="font-size: 0.75rem;">${item.fecha || 'S/F'}</span>
+                        </div>
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">Antigüedad</span>
+                            <span class="radar-stat-val" style="color: #b91c1c; font-weight: 700;">${item.daysAged} días</span>
+                        </div>
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">Condición</span>
+                            <span class="radar-stat-val" style="color: #dc2626; font-weight: 700;">Expirado</span>
+                        </div>
+                    </div>
+
+                    <div class="radar-actions-row">
+                        <div class="radar-coverage-info" style="color: #b91c1c; font-weight: 600;">
+                            <i data-lucide="alert-octagon" style="width: 12px; height: 12px;"></i>
+                            <span>Vencido hace ${expiredDaysAgo}d. Recalibrar antes de entregar.</span>
+                        </div>
+                        <div class="radar-action-buttons">
+                            <button type="button" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; height: 28px; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="switchView('gestion'); document.getElementById('search-input').value='${item.id}'; appState.search='${item.id.toLowerCase()}'; appState.filter='ALL'; appState.currentPage=1; renderTable();">
+                                <i data-lucide="external-link" style="width: 11px; height: 11px;"></i> Ver en Tabla
+                            </button>
+                        </div>
+                    </div>
+                `;
+                gridVenc.appendChild(div);
             });
         }
     }

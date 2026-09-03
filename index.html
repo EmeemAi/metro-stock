@@ -305,7 +305,10 @@
                                     <i data-lucide="trending-down" style="width:12px; height:12px;"></i> Baja Rotación (1 venta) (<span id="health-count-bajarot">0</span>)
                                 </button>
                                 <button type="button" class="radar-tab-btn" data-tab="envejecido">
-                                    <i data-lucide="clock" style="width:12px; height:12px;"></i> En Estantería &gt;45d (<span id="health-count-envejecido">0</span>)
+                                    <i data-lucide="clock" style="width:12px; height:12px;"></i> En Estantería (45-365d) (<span id="health-count-envejecido">0</span>)
+                                </button>
+                                <button type="button" class="radar-tab-btn" data-tab="vencido" style="color: #dc2626;">
+                                    <i data-lucide="alert-octagon" style="width:12px; height:12px; color:#dc2626;"></i> Calib. Vencida (&gt;1 año) (<span id="health-count-vencido">0</span>)
                                 </button>
                             </div>
                         </div>
@@ -321,8 +324,13 @@
                         <!-- Inyectado por JS -->
                     </div>
 
-                    <!-- Lista 3: Calibraciones Envejecidas (>45 días) -->
+                    <!-- Lista 3: Calibraciones en Estantería (45 a 365 días) -->
                     <div id="aged-stock-grid" class="bi-radar-grid" style="display: none;">
+                        <!-- Inyectado por JS -->
+                    </div>
+
+                    <!-- Lista 4: Calibraciones Vencidas (>1 año / >365 días) -->
+                    <div id="vencido-stock-grid" class="bi-radar-grid" style="display: none;">
                         <!-- Inyectado por JS -->
                     </div>
                 </div>

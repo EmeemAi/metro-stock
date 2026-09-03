@@ -1763,6 +1763,17 @@ td:nth-child(9) {
     border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
+.radar-card-item.vencido {
+    border-left-color: #b91c1c;
+    background: rgba(239, 68, 68, 0.02);
+}
+
+.radar-badge-urgency.vencido {
+    background-color: #fee2e2;
+    color: #991b1b;
+    border: 1px solid #ef4444;
+}
+
 .radar-stats-row {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
