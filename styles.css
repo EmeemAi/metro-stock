@@ -1692,6 +1692,18 @@ td:nth-child(9) {
     border-left-color: #f59e0b;
 }
 
+.radar-card-item.inmovilizado {
+    border-left-color: #6b7280;
+}
+
+.radar-card-item.bajarot {
+    border-left-color: #d97706;
+}
+
+.radar-card-item.envejecido {
+    border-left-color: #ef4444;
+}
+
 .radar-card-top {
     display: flex;
     justify-content: space-between;
@@ -1731,6 +1743,24 @@ td:nth-child(9) {
     background-color: rgba(245, 158, 11, 0.12);
     color: #d97706;
     border: 1px solid rgba(245, 158, 11, 0.25);
+}
+
+.radar-badge-urgency.inmovilizado {
+    background-color: rgba(107, 114, 128, 0.15);
+    color: #374151;
+    border: 1px solid rgba(107, 114, 128, 0.3);
+}
+
+.radar-badge-urgency.bajarot {
+    background-color: rgba(245, 158, 11, 0.15);
+    color: #b45309;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.radar-badge-urgency.envejecido {
+    background-color: rgba(239, 68, 68, 0.15);
+    color: #dc2626;
+    border: 1px solid rgba(239, 68, 68, 0.3);
 }
 
 .radar-stats-row {

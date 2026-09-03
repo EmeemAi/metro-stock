@@ -229,23 +229,31 @@
                             <small class="kpi-subtext" id="kpi-deposito-sub">Stock bruto sin calibrar</small>
                         </div>
                     </div>
+                    <div class="kpi-card stock-inmovilizado" style="border-left: 4px solid #6b7280;">
+                        <div class="kpi-icon" style="background: rgba(107, 114, 128, 0.1); color: #4b5563;"><i data-lucide="slash"></i></div>
+                        <div class="kpi-info">
+                            <h3>Stock Inmovilizado</h3>
+                            <div class="kpi-value" id="kpi-inmovilizados" style="color: #4b5563;">0</div>
+                            <small class="kpi-subtext" id="kpi-inmovilizados-sub">0 ventas en stock</small>
+                        </div>
+                    </div>
                     <div class="kpi-card stock-envejecido">
                         <div class="kpi-icon" style="background: rgba(239, 68, 68, 0.1); color: #ef4444;"><i data-lucide="clock"></i></div>
                         <div class="kpi-info">
-                            <h3>Calib. Envejecidas</h3>
+                            <h3>Calib. en Estantería</h3>
                             <div class="kpi-value" id="kpi-envejecido">0</div>
-                            <small class="kpi-subtext" id="kpi-envejecido-sub">> 6 meses en stock</small>
+                            <small class="kpi-subtext" id="kpi-envejecido-sub">&gt; 45 días sin vender</small>
                         </div>
                     </div>
                 </div>
 
-                <!-- Radar de Reposición Inteligente (Limpio y claro) -->
+                <!-- 1. Radar de Reposición Inteligente (Qué SÍ reponer/calibrar por demanda activa) -->
                 <div class="bi-card bi-radar-card">
                     <div class="bi-card-header">
                         <div>
                             <h3 class="bi-card-title" style="color: #ef4444;">
                                 <i data-lucide="alert-octagon"></i>
-                                RADAR DE REPOSICIÓN INTELIGENTE
+                                RADAR DE REPOSICIÓN INTELIGENTE (ALTA DEMANDA)
                             </h3>
                             <p class="bi-card-subtitle">
                                 Sugerencias basadas en velocidad de venta mensual y días de cobertura. Se omiten productos sin rotación activa.
@@ -276,10 +284,53 @@
                     </div>
                 </div>
 
-                <!-- Gráficos y Análisis -->
-                <div class="bi-charts-grid">
+                <!-- 2. Radar de Stock Inmovilizado y Baja Rotación (QUÉ NO CALIBRAR / EVITAR GASTOS INNECESARIOS) -->
+                <div class="bi-card" style="border-left: 4px solid #6b7280;">
+                    <div class="bi-card-header">
+                        <div>
+                            <h3 class="bi-card-title" style="color: #374151;">
+                                <i data-lucide="shield-alert" style="color: #ef4444;"></i>
+                                STOCK INMOVILIZADO Y BAJA ROTACIÓN: EVITAR CALIBRACIONES
+                            </h3>
+                            <p class="bi-card-subtitle">
+                                Modelos con stock físico disponible o en depósito pero con <strong>demanda nula o mínima</strong>. <span style="color:#dc2626; font-weight:600;">No mandar a calibrar lotes de estos modelos</span> para evitar certificados vencidos en estantería.
+                            </p>
+                        </div>
+                        <div class="bi-radar-header-actions">
+                            <div class="radar-tab-group" id="health-tab-group">
+                                <button type="button" class="radar-tab-btn active" data-tab="inmovilizado">
+                                    <i data-lucide="slash" style="width:12px; height:12px;"></i> Sin Ventas (0 ventas) (<span id="health-count-inmovilizado">0</span>)
+                                </button>
+                                <button type="button" class="radar-tab-btn" data-tab="bajarotacion">
+                                    <i data-lucide="trending-down" style="width:12px; height:12px;"></i> Baja Rotación (1 venta) (<span id="health-count-bajarot">0</span>)
+                                </button>
+                                <button type="button" class="radar-tab-btn" data-tab="envejecido">
+                                    <i data-lucide="clock" style="width:12px; height:12px;"></i> En Estantería &gt;45d (<span id="health-count-envejecido">0</span>)
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Lista 1: Sin Ventas (0 ventas) -->
+                    <div id="inmovilizado-grid" class="bi-radar-grid">
+                        <!-- Inyectado por JS -->
+                    </div>
+
+                    <!-- Lista 2: Baja Rotación (1 venta) -->
+                    <div id="bajarot-grid" class="bi-radar-grid" style="display: none;">
+                        <!-- Inyectado por JS -->
+                    </div>
+
+                    <!-- Lista 3: Calibraciones Envejecidas (>45 días) -->
+                    <div id="aged-stock-grid" class="bi-radar-grid" style="display: none;">
+                        <!-- Inyectado por JS -->
+                    </div>
+                </div>
+
+                <!-- 3. Gráficos y Análisis de Demanda -->
+                <div class="bi-charts-grid" style="grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));">
                     <!-- Gráfico 1: Evolución Mensual de Ventas -->
-                    <div class="chart-container-card chart-span-2">
+                    <div class="chart-container-card" style="min-height: 340px;">
                         <div class="chart-header-flex">
                             <h3><i data-lucide="line-chart"></i> Evolución de Ventas Mensuales</h3>
                             <div class="chart-range-pills" id="chart-evol-pills">
@@ -294,7 +345,7 @@
                     </div>
 
                     <!-- Gráfico 2: Top Equipos Más Demandados y Estado de Stock -->
-                    <div class="chart-container-card chart-sales-card">
+                    <div class="chart-container-card chart-sales-card" style="min-height: 340px;">
                         <div class="chart-header-flex">
                             <h3 style="margin: 0; border-bottom: none; padding-bottom: 0;"><i data-lucide="trending-up"></i> Top 10 Equipos Más Vendidos</h3>
                             <div style="font-size: 0.7rem; color: var(--text-muted); display: flex; gap: 0.5rem; align-items: center;">
@@ -305,28 +356,6 @@
                         </div>
                         <div class="chart-wrapper" style="flex: 1; position: relative;">
                             <canvas id="chart-sales"></canvas>
-                        </div>
-                    </div>
-
-                    <!-- Panel 3: Salud del Stock y Alertas de Calidad -->
-                    <div class="chart-container-card bi-health-card">
-                        <div class="health-tab-header" id="health-tab-header">
-                            <button type="button" class="health-tab-btn active" id="tab-btn-envejecido" data-tab="envejecido">
-                                <i data-lucide="clock" style="width: 14px; height: 14px;"></i> Calib. Envejecidas (<span id="health-count-envejecido">0</span>)
-                            </button>
-                            <button type="button" class="health-tab-btn" id="tab-btn-inmovilizado" data-tab="inmovilizado">
-                                <i data-lucide="slash" style="width: 14px; height: 14px;"></i> Sin Rotación (<span id="health-count-inmovilizado">0</span>)
-                            </button>
-                        </div>
-                        
-                        <!-- Lista 1: Calibraciones Envejecidas (>180 días) -->
-                        <div id="aged-stock-list" class="alert-list">
-                            <!-- Inyectado por JS -->
-                        </div>
-
-                        <!-- Lista 2: Inmovilizados / Sin Rotación -->
-                        <div id="low-rotation-list" class="alert-list" style="display: none;">
-                            <!-- Inyectado por JS -->
                         </div>
                     </div>
                 </div>

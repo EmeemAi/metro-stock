@@ -681,25 +681,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Pestañas de Salud de Inventario (Envejecidos vs Inmovilizados)
-    const healthTabHeader = document.getElementById('health-tab-header');
-    if (healthTabHeader) {
-        healthTabHeader.addEventListener('click', (e) => {
-            const btn = e.target.closest('.health-tab-btn');
+    // Pestañas del Radar de Stock Inmovilizado y Salud (Inmovilizados, Baja Rotación, Envejecidos)
+    const healthTabGroup = document.getElementById('health-tab-group');
+    if (healthTabGroup) {
+        healthTabGroup.addEventListener('click', (e) => {
+            const btn = e.target.closest('.radar-tab-btn');
             if (btn) {
-                healthTabHeader.querySelectorAll('.health-tab-btn').forEach(b => b.classList.remove('active'));
+                healthTabGroup.querySelectorAll('.radar-tab-btn').forEach(b => b.classList.remove('active'));
                 btn.classList.add('active');
-                const tab = btn.getAttribute('data-tab');
+                const tab = btn.getAttribute('data-tab') || 'inmovilizado';
                 appState.biHealthTab = tab;
-                const agedList = document.getElementById('aged-stock-list');
-                const lowList = document.getElementById('low-rotation-list');
-                if (tab === 'envejecido') {
-                    if (agedList) agedList.style.display = 'flex';
-                    if (lowList) lowList.style.display = 'none';
-                } else {
-                    if (agedList) agedList.style.display = 'none';
-                    if (lowList) lowList.style.display = 'flex';
-                }
+                const gridInm = document.getElementById('inmovilizado-grid');
+                const gridBaja = document.getElementById('bajarot-grid');
+                const gridAged = document.getElementById('aged-stock-grid');
+                if (gridInm) gridInm.style.display = (tab === 'inmovilizado') ? 'grid' : 'none';
+                if (gridBaja) gridBaja.style.display = (tab === 'bajarotacion') ? 'grid' : 'none';
+                if (gridAged) gridAged.style.display = (tab === 'envejecido') ? 'grid' : 'none';
             }
         });
     }
@@ -1859,16 +1856,16 @@ function updateDashboard() {
             stats[key].disponible++;
             totalAvailable++;
 
-            // Detección de Calibración Envejecida (>180 días desde calibración en stock disponible)
+            // Detección de Calibración en Estantería (>45 días desde calibración en stock disponible)
             if (itemDate) {
                 const daysAged = Math.round((today - itemDate) / 86400000);
-                if (daysAged > 180) {
+                if (daysAged > 45) {
                     agedStockItems.push({
                         id: item.id,
                         modelName: key,
                         instrumento: item.instrumento || key,
                         serie: item.serie || 'S/N',
-                        fecha: item.fecha_calibracion,
+                        fecha: item.fecha_calibracion || '',
                         daysAged: daysAged
                     });
                 }
@@ -1890,10 +1887,11 @@ function updateDashboard() {
         }
     });
 
-    // 3. Cálculo de Reposición Inteligente
+    // 3. Cálculo de Reposición Inteligente y Modelos Inmovilizados
     const criticalRadar = [];
     const discontinuedModels = [];
-    const lowRotationItems = [];
+    const inmovilizadosList = [];
+    const bajaRotacionList = [];
 
     Object.values(stats).forEach(s => {
         if (s.discontinuado) {
@@ -1911,7 +1909,18 @@ function updateDashboard() {
             s.coberturaDias = 999; // Sin demanda en período
         }
 
-        // REGLA DE EXCLUSIÓN: Si no tiene casi rotación, NO sugerir reposición
+        const totalEnStock = s.disponible + s.deposito + s.certificando;
+
+        // REGLA 1: MODELOS INMOVILIZADOS Y BAJA ROTACIÓN (EVITAR CALIBRACIONES INNECESARIAS)
+        if (totalEnStock > 0) {
+            if (s.ventasTotal === 0) {
+                inmovilizadosList.push(s);
+            } else if (s.ventasTotal === 1) {
+                bajaRotacionList.push(s);
+            }
+        }
+
+        // REGLA 2: REPOSICIÓN INTELIGENTE (SOLO SI TIENE ROTACIÓN ACTIVA)
         const hasActiveRotation = s.ventasTotal >= 2 && s.monthlyRunRate >= 0.2;
 
         if (hasActiveRotation) {
@@ -1931,26 +1940,20 @@ function updateDashboard() {
                 s.urgencyReason = `Reposición sugerida: ${s.disponible}u (${s.coberturaDias} días). Demanda: ${s.monthlyRunRate} u/mes`;
                 criticalRadar.push(s);
             }
-        } else {
-            // Modelo con baja o nula rotación
-            if (s.disponible > 0 && s.ventasTotal <= 1) {
-                lowRotationItems.push({
-                    name: s.name,
-                    category: s.category,
-                    disponible: s.disponible,
-                    ventasTotal: s.ventasTotal
-                });
-            }
         }
     });
 
-    // Ordenar radar por urgencia y cobertura ascendente
+    // Ordenar listas
     criticalRadar.sort((a, b) => {
         if (a.disponible === 0 && b.disponible > 0) return -1;
         if (b.disponible === 0 && a.disponible > 0) return 1;
         if (a.coberturaDias !== b.coberturaDias) return a.coberturaDias - b.coberturaDias;
         return b.monthlyRunRate - a.monthlyRunRate;
     });
+
+    inmovilizadosList.sort((a, b) => (b.disponible + b.deposito) - (a.disponible + a.deposito));
+    bajaRotacionList.sort((a, b) => (b.disponible + b.deposito) - (a.disponible + a.deposito));
+    agedStockItems.sort((a, b) => b.daysAged - a.daysAged);
 
     // 4. Actualizar Indicadores Rápidos (KPIs)
     const elDisponible = document.getElementById('kpi-disponible');
@@ -1983,6 +1986,14 @@ function updateDashboard() {
     const elDeposito = document.getElementById('kpi-deposito');
     if (elDeposito) elDeposito.innerText = totalDeposito;
 
+    const elInmovilizados = document.getElementById('kpi-inmovilizados');
+    if (elInmovilizados) elInmovilizados.innerText = inmovilizadosList.length;
+    const elInmovilizadosSub = document.getElementById('kpi-inmovilizados-sub');
+    if (elInmovilizadosSub) {
+        const inmovUnits = inmovilizadosList.reduce((acc, x) => acc + x.disponible + x.deposito, 0);
+        elInmovilizadosSub.innerText = `${inmovUnits} unidades sin salida`;
+    }
+
     const elEnvejecido = document.getElementById('kpi-envejecido');
     if (elEnvejecido) elEnvejecido.innerText = agedStockItems.length;
 
@@ -1991,7 +2002,7 @@ function updateDashboard() {
     appState.discontinuedModels = discontinuedModels;
     renderRadarList(criticalRadar, discontinuedModels);
 
-    renderHealthPanel(agedStockItems, lowRotationItems);
+    renderInmovilizados(inmovilizadosList, bajaRotacionList, agedStockItems);
     renderSalesChart(stats);
     renderEvolutionChart();
 }
@@ -2133,56 +2144,188 @@ function renderRadarList(criticalItems, discontinuedModels = []) {
     }
 }
 
-function renderHealthPanel(agedStockItems = [], lowRotationItems = []) {
+function renderInmovilizados(inmovilizadosList = [], bajaRotacionList = [], agedStockItems = []) {
+    const countInmov = document.getElementById('health-count-inmovilizado');
+    const countBaja = document.getElementById('health-count-bajarot');
     const countAged = document.getElementById('health-count-envejecido');
-    const countLow = document.getElementById('health-count-inmovilizado');
-    if (countAged) countAged.innerText = agedStockItems.length;
-    if (countLow) countLow.innerText = lowRotationItems.length;
 
-    const agedList = document.getElementById('aged-stock-list');
-    if (agedList) {
-        agedList.innerHTML = '';
-        if (agedStockItems.length === 0) {
-            agedList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted); font-size: 0.8rem;">No hay instrumentos disponibles con calibración envejecida (>6 meses).</p>';
+    if (countInmov) countInmov.innerText = inmovilizadosList.length;
+    if (countBaja) countBaja.innerText = bajaRotacionList.length;
+    if (countAged) countAged.innerText = agedStockItems.length;
+
+    // 1. Grid Inmovilizados (0 Ventas)
+    const gridInm = document.getElementById('inmovilizado-grid');
+    if (gridInm) {
+        gridInm.innerHTML = '';
+        if (inmovilizadosList.length === 0) {
+            gridInm.innerHTML = `
+                <div style="text-align:center; padding: 2.5rem 1rem; color: var(--text-muted); grid-column: 1 / -1;">
+                    <i data-lucide="check-circle-2" style="width: 32px; height: 32px; color: var(--state-disponible); margin-bottom: 0.5rem;"></i>
+                    <p style="margin: 0; font-size: 0.85rem; font-weight: 500;">Excelente: No hay modelos en stock o depósito con 0 ventas.</p>
+                </div>
+            `;
         } else {
-            agedStockItems.sort((a, b) => b.daysAged - a.daysAged);
-            agedStockItems.forEach(item => {
+            inmovilizadosList.forEach(item => {
+                const totalUnits = item.disponible + item.deposito;
                 const div = document.createElement('div');
-                div.className = 'alert-item priority-high';
+                div.className = 'radar-card-item inmovilizado';
                 div.innerHTML = `
-                    <div class="alert-info-text">
-                        <span class="alert-model">${item.id}: ${item.modelName}</span>
-                        <span class="alert-reason">Calibrado: ${item.fecha || 'Sin fecha'} (${item.daysAged} días de antigüedad) - Serie: ${item.serie}</span>
+                    <div class="radar-card-top">
+                        <div>
+                            <div class="radar-model-title">${item.name}</div>
+                            <div class="radar-model-cat">${item.category}</div>
+                        </div>
+                        <span class="radar-badge-urgency inmovilizado">🚫 NO CALIBRAR</span>
                     </div>
-                    <button type="button" class="alert-action-badge" style="cursor: pointer; border: none;" onclick="switchView('gestion'); document.getElementById('search-input').value='${item.id}'; appState.search='${item.id.toLowerCase()}'; appState.filter='ALL'; renderTable();">
-                        Ver
-                    </button>
+
+                    <div class="radar-stats-row">
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">Disponible</span>
+                            <span class="radar-stat-val" style="color: ${item.disponible > 0 ? '#b45309' : 'var(--text-muted)'};">${item.disponible} u</span>
+                        </div>
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">En Depósito</span>
+                            <span class="radar-stat-val" style="color: ${item.deposito > 0 ? '#dc2626' : 'var(--text-muted)'}; font-weight: 700;">${item.deposito} u</span>
+                        </div>
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">Ventas Hist.</span>
+                            <span class="radar-stat-val" style="color: #6b7280;">0 u</span>
+                        </div>
+                    </div>
+
+                    <div class="radar-actions-row">
+                        <div class="radar-coverage-info" style="color: #6b7280;">
+                            <i data-lucide="alert-circle" style="width: 12px; height: 12px;"></i>
+                            <span>${totalUnits} u inmovilizadas (${item.deposito} en depósito)</span>
+                        </div>
+                        <div class="radar-action-buttons">
+                            <button type="button" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; height: 28px; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="switchView('gestion'); document.getElementById('search-input').value='${item.name}'; appState.search='${item.name.toLowerCase()}'; appState.filter='ALL'; appState.currentPage=1; renderTable();">
+                                <i data-lucide="search" style="width: 11px; height: 11px;"></i> Ver en Tabla
+                            </button>
+                        </div>
+                    </div>
                 `;
-                agedList.appendChild(div);
+                gridInm.appendChild(div);
             });
         }
     }
 
-    const lowList = document.getElementById('low-rotation-list');
-    if (lowList) {
-        lowList.innerHTML = '';
-        if (lowRotationItems.length === 0) {
-            lowList.innerHTML = '<p style="text-align:center; padding: 2rem; color: var(--text-muted); font-size: 0.8rem;">No hay instrumentos en stock sin rotación.</p>';
+    // 2. Grid Baja Rotación (1 Venta)
+    const gridBaja = document.getElementById('bajarot-grid');
+    if (gridBaja) {
+        gridBaja.innerHTML = '';
+        if (bajaRotacionList.length === 0) {
+            gridBaja.innerHTML = `
+                <div style="text-align:center; padding: 2.5rem 1rem; color: var(--text-muted); grid-column: 1 / -1;">
+                    <i data-lucide="check-circle-2" style="width: 32px; height: 32px; color: var(--state-disponible); margin-bottom: 0.5rem;"></i>
+                    <p style="margin: 0; font-size: 0.85rem; font-weight: 500;">No hay modelos en stock con rotación mínima (1 venta).</p>
+                </div>
+            `;
         } else {
-            lowRotationItems.sort((a, b) => b.disponible - a.disponible);
-            lowRotationItems.forEach(item => {
+            bajaRotacionList.forEach(item => {
+                const totalUnits = item.disponible + item.deposito;
                 const div = document.createElement('div');
-                div.className = 'alert-item priority-low';
+                div.className = 'radar-card-item bajarot';
                 div.innerHTML = `
-                    <div class="alert-info-text">
-                        <span class="alert-model">${item.name}</span>
-                        <span class="alert-reason">${item.ventasTotal === 0 ? 'Sin ventas registradas' : 'Solo 1 venta histórica'} | Stock: ${item.disponible}u</span>
+                    <div class="radar-card-top">
+                        <div>
+                            <div class="radar-model-title">${item.name}</div>
+                            <div class="radar-model-cat">${item.category}</div>
+                        </div>
+                        <span class="radar-badge-urgency bajarot">⚠️ ROTACIÓN MÍNIMA</span>
                     </div>
-                    <div class="alert-action-badge" style="background: #6b7280;">Baja Rotación</div>
+
+                    <div class="radar-stats-row">
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">Disponible</span>
+                            <span class="radar-stat-val">${item.disponible} u</span>
+                        </div>
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">En Depósito</span>
+                            <span class="radar-stat-val">${item.deposito} u</span>
+                        </div>
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">Ventas Hist.</span>
+                            <span class="radar-stat-val" style="color: #b45309; font-weight: 700;">1 u</span>
+                        </div>
+                    </div>
+
+                    <div class="radar-actions-row">
+                        <div class="radar-coverage-info" style="color: #b45309;">
+                            <i data-lucide="alert-triangle" style="width: 12px; height: 12px;"></i>
+                            <span>Precaución: Solo 1 venta registrada</span>
+                        </div>
+                        <div class="radar-action-buttons">
+                            <button type="button" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; height: 28px; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="switchView('gestion'); document.getElementById('search-input').value='${item.name}'; appState.search='${item.name.toLowerCase()}'; appState.filter='ALL'; appState.currentPage=1; renderTable();">
+                                <i data-lucide="search" style="width: 11px; height: 11px;"></i> Ver en Tabla
+                            </button>
+                        </div>
+                    </div>
                 `;
-                lowList.appendChild(div);
+                gridBaja.appendChild(div);
             });
         }
+    }
+
+    // 3. Grid Calibraciones en Estantería (>45 días)
+    const gridAged = document.getElementById('aged-stock-grid');
+    if (gridAged) {
+        gridAged.innerHTML = '';
+        if (agedStockItems.length === 0) {
+            gridAged.innerHTML = `
+                <div style="text-align:center; padding: 2.5rem 1rem; color: var(--text-muted); grid-column: 1 / -1;">
+                    <i data-lucide="check-circle-2" style="width: 32px; height: 32px; color: var(--state-disponible); margin-bottom: 0.5rem;"></i>
+                    <p style="margin: 0; font-size: 0.85rem; font-weight: 500;">Todo el stock disponible fue calibrado recientemente (&lt; 45 días).</p>
+                </div>
+            `;
+        } else {
+            agedStockItems.forEach(item => {
+                const isVeryAged = item.daysAged > 90;
+                const div = document.createElement('div');
+                div.className = 'radar-card-item envejecido';
+                div.innerHTML = `
+                    <div class="radar-card-top">
+                        <div>
+                            <div class="radar-model-title">${item.id}: ${item.modelName}</div>
+                            <div class="radar-model-cat">${item.instrumento} · Serie: ${item.serie}</div>
+                        </div>
+                        <span class="radar-badge-urgency envejecido">${item.daysAged}d en stock</span>
+                    </div>
+
+                    <div class="radar-stats-row">
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">Calibrado</span>
+                            <span class="radar-stat-val" style="font-size: 0.75rem;">${item.fecha || 'S/F'}</span>
+                        </div>
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">Antigüedad</span>
+                            <span class="radar-stat-val" style="color: ${isVeryAged ? '#dc2626' : '#d97706'}; font-weight: 700;">${item.daysAged} días</span>
+                        </div>
+                        <div class="radar-stat-box">
+                            <span class="radar-stat-lbl">Estado</span>
+                            <span class="radar-stat-val" style="color: var(--state-disponible);">Listo</span>
+                        </div>
+                    </div>
+
+                    <div class="radar-actions-row">
+                        <div class="radar-coverage-info" style="color: #dc2626;">
+                            <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                            <span>Priorizar despacho inmediato</span>
+                        </div>
+                        <div class="radar-action-buttons">
+                            <button type="button" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; height: 28px; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="switchView('gestion'); document.getElementById('search-input').value='${item.id}'; appState.search='${item.id.toLowerCase()}'; appState.filter='ALL'; appState.currentPage=1; renderTable();">
+                                <i data-lucide="external-link" style="width: 11px; height: 11px;"></i> Ver Registro
+                            </button>
+                        </div>
+                    </div>
+                `;
+                gridAged.appendChild(div);
+            });
+        }
+    }
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
     }
 }
 
