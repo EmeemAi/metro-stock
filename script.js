@@ -1820,6 +1820,7 @@ function updateDashboard() {
     let totalCertificando = 0;
     let totalDeposito = 0;
     const agedStockItems = [];
+    const vencidoStockItems = [];
 
     appState.data.forEach(item => {
         const itemCat = getInstrumentCategory(item.instrumento);
