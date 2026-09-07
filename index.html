@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Charts (Chart.js) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=42.0">
+    <link rel="stylesheet" href="styles.css?v=43.0">
     <style>
         #instrumentos-table {
             table-layout: fixed !important;
@@ -387,6 +387,7 @@
                         <button class="filter-btn" data-filter="VENDIDO - DESPACHADO">Vendidos - Despachados</button>
                         <button class="filter-btn" data-filter="VENDIDO - ENTREGADO">Vendidos - Entregados</button>
                         <button class="filter-btn" data-filter="VENTA INTERNA">Venta Interna</button>
+                        <button class="filter-btn" data-filter="DADO DE BAJA">Dados de Baja</button>
                     </div>
                 </section>
 
@@ -808,6 +809,7 @@
                                  <option value="VENDIDO - DESPACHADO">VENDIDO - DESPACHADO</option>
                                  <option value="VENDIDO - ENTREGADO">VENDIDO - ENTREGADO</option>
                                  <option value="VENTA INTERNA">VENTA INTERNA</option>
+                                 <option value="DADO DE BAJA">DADO DE BAJA (Descarte)</option>
                              </select>
                         </div>
                         <div class="form-group">
@@ -860,9 +862,12 @@
                             <i data-lucide="plus"></i> Añadir otro punto
                         </button>
                     </div>
-                    <div class="modal-actions">
-                        <button type="button" class="btn btn-outline btn-close-action">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" id="btn-save-edit">Guardar Cambios</button>
+                    <div class="modal-actions" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                        <button type="button" class="btn btn-outline btn-sm" id="btn-edit-dar-baja" style="color: #dc2626; border-color: #fca5a5;"><i data-lucide="archive" style="width:14px; height:14px;"></i> Dar de Baja</button>
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button type="button" class="btn btn-outline btn-close-action">Cancelar</button>
+                            <button type="submit" class="btn btn-primary" id="btn-save-edit">Guardar Cambios</button>
+                        </div>
                     </div>
                 </form>
             </div>
@@ -1086,6 +1091,9 @@
                 <button class="btn btn-outline btn-sm" id="btn-bulk-editar" style="color: var(--warning); border-color: var(--warning);">
                     <i data-lucide="edit-2" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> Editar Datos
                 </button>
+                <button class="btn btn-outline btn-sm" id="btn-bulk-dar-baja" style="color: #dc2626; border-color: #fca5a5;">
+                    <i data-lucide="archive" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> Dar de Baja
+                </button>
                 <button class="btn btn-primary btn-sm" id="btn-bulk-eliminar" style="background-color: var(--error); border-color: var(--error); color: white;">
                     <i data-lucide="trash-2" style="width: 14px; height: 14px; vertical-align: middle; margin-right: 4px;"></i> Eliminar
                 </button>
@@ -1128,6 +1136,7 @@
                             <option value="CERTIFICANDO">CERTIFICANDO</option>
                             <option value="DISPONIBLE">DISPONIBLE</option>
                             <option value="VENTA INTERNA">VENTA INTERNA</option>
+                            <option value="DADO DE BAJA">DADO DE BAJA (Descarte)</option>
                         </select>
                     </div>
                     <div class="modal-actions">
@@ -1143,6 +1152,6 @@
     <!-- Firebase SDK (Compat v10) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="script.js?v=42.0"></script>
+    <script src="script.js?v=43.0"></script>
 </body>
 </html>

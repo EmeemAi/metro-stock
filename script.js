@@ -633,6 +633,34 @@ document.addEventListener('DOMContentLoaded', () => {
     
     const btnAddPuntoEdit = document.getElementById('btn-add-punto-edit');
     if (btnAddPuntoEdit) btnAddPuntoEdit.addEventListener('click', () => addPuntoRowEdit());
+
+    const btnEditDarBaja = document.getElementById('btn-edit-dar-baja');
+    if (btnEditDarBaja) {
+        btnEditDarBaja.addEventListener('click', async () => {
+            const id = document.getElementById('edit-id').value.trim();
+            if (!id) return;
+            const item = appState.data.find(x => x.id === id);
+            const label = item ? `${item.id}: ${item.instrumento || item.modelo}` : `#${id}`;
+            if (!confirm(`¿Estás seguro de que deseas DAR DE BAJA el equipo ${label}? Pasará a estado "DADO DE BAJA" y se excluirá de las alertas y stock activo.`)) {
+                return;
+            }
+            try {
+                const idx = appState.data.findIndex(x => x.id === id);
+                if (idx !== -1) {
+                    appState.data[idx].estado = 'DADO DE BAJA';
+                }
+                closeAllModals();
+                renderTable();
+                updateDashboard();
+                showToast(`Equipo ${label} dado de baja exitosamente.`, "success");
+
+                await updateStateRecord(id, 'DADO DE BAJA', {});
+            } catch(e) {
+                console.error("Error al dar de baja equipo:", e);
+                showToast("Error al dar de baja el equipo en Firebase: " + e.message, "error");
+            }
+        });
+    }
     
     // --- CONTROLADORES DE INTELIGENCIA DE NEGOCIO (BI) ---
     // Selector de Período
@@ -1511,7 +1539,7 @@ async function saveFullUpdate(record) {
     }
 }
 
-async function updateStateRecord(id, newState, extraData) {
+async function updateStateRecord(id, newState, extraData = {}) {
     console.log(">>> Solicitando cambio de estado en Firebase:", { id, newState, extraData });
     
     let apiState = newState;
@@ -1528,11 +1556,11 @@ async function updateStateRecord(id, newState, extraData) {
         const currentData = docSnap.data();
 
         const updates = { estado: apiState };
-        if (extraData.cliente !== undefined) updates.cliente = String(extraData.cliente || '');
-        if (extraData.certificado !== undefined) updates.certificado = String(extraData.certificado || '');
-        if (extraData.fecha !== undefined) updates.fecha_calibracion = String(extraData.fecha || '');
-        if (extraData.patrones !== undefined) updates.patrones = String(extraData.patrones || '[]');
-        if (extraData.discontinuado !== undefined) updates.discontinuado = String(extraData.discontinuado || '');
+        if (extraData && extraData.cliente !== undefined) updates.cliente = String(extraData.cliente || '');
+        if (extraData && extraData.certificado !== undefined) updates.certificado = String(extraData.certificado || '');
+        if (extraData && extraData.fecha !== undefined) updates.fecha_calibracion = String(extraData.fecha || '');
+        if (extraData && extraData.patrones !== undefined) updates.patrones = String(extraData.patrones || '[]');
+        if (extraData && extraData.discontinuado !== undefined) updates.discontinuado = String(extraData.discontinuado || '');
 
         await docRef.update(updates);
         console.log(`✅ Estado de ${docId} actualizado en Firebase.`);
@@ -1541,9 +1569,9 @@ async function updateStateRecord(id, newState, extraData) {
             const fullItem = {
                 id: docId,
                 instrumento: String(currentData.instrumento || '') + " " + String(currentData.modelo || ''),
-                certificado: extraData.certificado !== undefined ? String(extraData.certificado) : String(currentData.certificado || ''),
-                fecha_calibracion: extraData.fecha !== undefined ? String(extraData.fecha) : String(currentData.fecha_calibracion || ''),
-                cliente: extraData.cliente !== undefined ? String(extraData.cliente) : String(currentData.cliente || ''),
+                certificado: (extraData && extraData.certificado !== undefined) ? String(extraData.certificado) : String(currentData.certificado || ''),
+                fecha_calibracion: (extraData && extraData.fecha !== undefined) ? String(extraData.fecha) : String(currentData.fecha_calibracion || ''),
+                cliente: (extraData && extraData.cliente !== undefined) ? String(extraData.cliente) : String(currentData.cliente || ''),
                 email: String(currentData.email || '---'),
                 estado_recordatorio: 'pendiente'
             };
@@ -1720,6 +1748,7 @@ function parseYearMonth(dateStr) {
 function getNormalizedState(item) {
     if (!item) return 'DISPONIBLE';
     const est = String(item.estado || '').trim().toUpperCase();
+    if (est === 'DADO DE BAJA' || est.includes('BAJA') || est.includes('DESCART')) return 'DADO DE BAJA';
     if (est === 'DESPACHADO' || est === 'RESERVADO' || est.includes('DESPACH') || est.includes('RESERV')) return 'VENDIDO - DESPACHADO';
     if (est === 'ENTREGADO' || est.includes('ENTREG')) return 'VENDIDO - ENTREGADO';
     if (est.includes('VENTA')) return 'VENTA INTERNA';
@@ -1828,6 +1857,11 @@ function updateDashboard() {
             return;
         }
 
+        const normState = getNormalizedState(item);
+        if (normState === 'DADO DE BAJA') {
+            return; // Equipos descartados/dados de baja no se incluyen en stock activo ni radares
+        }
+
         const key = getModelKey(item.marca, item.modelo);
         if (!stats[key]) {
             stats[key] = {
@@ -1852,7 +1886,6 @@ function updateDashboard() {
             stats[key].discontinuado = true;
         }
 
-        const normState = getNormalizedState(item);
         const itemDate = parseFullDate(item.fecha_calibracion);
 
         if (normState === 'DISPONIBLE') {
@@ -2331,6 +2364,9 @@ function renderInmovilizados(inmovilizadosList = [], bajaRotacionList = [], aged
                             <button type="button" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; height: 28px; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="switchView('gestion'); document.getElementById('search-input').value='${item.id}'; appState.search='${item.id.toLowerCase()}'; appState.filter='ALL'; appState.currentPage=1; renderTable();">
                                 <i data-lucide="external-link" style="width: 11px; height: 11px;"></i> Ver Registro
                             </button>
+                            <button type="button" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; height: 28px; border-radius: 4px; color: #dc2626; border-color: #fca5a5; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="darDeBajaItemDirect('${item.id}')" title="Dar de baja este instrumento">
+                                <i data-lucide="archive" style="width: 11px; height: 11px;"></i> Baja
+                            </button>
                         </div>
                     </div>
                 `;
@@ -2387,6 +2423,9 @@ function renderInmovilizados(inmovilizadosList = [], bajaRotacionList = [], aged
                         <div class="radar-action-buttons">
                             <button type="button" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; height: 28px; border-radius: 4px; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="switchView('gestion'); document.getElementById('search-input').value='${item.id}'; appState.search='${item.id.toLowerCase()}'; appState.filter='ALL'; appState.currentPage=1; renderTable();">
                                 <i data-lucide="external-link" style="width: 11px; height: 11px;"></i> Ver en Tabla
+                            </button>
+                            <button type="button" class="btn btn-outline btn-sm" style="font-size: 0.72rem; padding: 0.25rem 0.6rem; height: 28px; border-radius: 4px; color: #dc2626; border-color: #fca5a5; display: inline-flex; align-items: center; gap: 0.3rem;" onclick="darDeBajaItemDirect('${item.id}')" title="Dar de baja este instrumento">
+                                <i data-lucide="archive" style="width: 11px; height: 11px;"></i> Baja
                             </button>
                         </div>
                     </div>
@@ -2740,6 +2779,8 @@ function renderTable() {
                 if (iState !== 'VENDIDO - DESPACHADO' && iState !== 'RESERVADO') return false;
             } else if (fState === 'VENDIDO - ENTREGADO') {
                 if (iState !== 'VENDIDO - ENTREGADO' && iState !== 'ENTREGADO') return false;
+            } else if (fState === 'DADO DE BAJA') {
+                if (iState !== 'DADO DE BAJA' && !String(iState).includes('BAJA') && !String(iState).includes('DESCART')) return false;
             } else {
                 if (iState !== fState) return false;
             }
@@ -2787,9 +2828,10 @@ function renderTable() {
         const counts = {};
         filtered.forEach(item => {
             let stateName = (item.estado || 'SIN ESTADO').toUpperCase();
-            if (stateName.includes('DEP')) stateName = 'EN DEPÓSITO';
-            if (stateName === 'RESERVADO') stateName = 'VENDIDO - DESPACHADO';
-            if (stateName === 'ENTREGADO') stateName = 'VENDIDO - ENTREGADO';
+            if (stateName.includes('BAJA') || stateName.includes('DESCART')) stateName = 'DADO DE BAJA';
+            else if (stateName.includes('DEP')) stateName = 'EN DEPÓSITO';
+            else if (stateName === 'RESERVADO') stateName = 'VENDIDO - DESPACHADO';
+            else if (stateName === 'ENTREGADO') stateName = 'VENDIDO - ENTREGADO';
             counts[stateName] = (counts[stateName] || 0) + 1;
         });
 
@@ -2805,7 +2847,8 @@ function renderTable() {
             'DISPONIBLE',
             'VENDIDO - DESPACHADO',
             'VENDIDO - ENTREGADO',
-            'VENTA INTERNA'
+            'VENTA INTERNA',
+            'DADO DE BAJA'
         ];
 
         const sortedStates = Object.keys(counts).sort((a, b) => {
@@ -2827,6 +2870,7 @@ function renderTable() {
             else if (displayLabel === 'vendido - despachado') displayLabel = 'Vendido - Despachado';
             else if (displayLabel === 'vendido - entregado') displayLabel = 'Vendido - Entregado';
             else if (displayLabel === 'venta interna') displayLabel = 'Venta Interna';
+            else if (displayLabel === 'dado de baja') displayLabel = 'Dado de Baja';
             else displayLabel = displayLabel.charAt(0).toUpperCase() + displayLabel.slice(1);
             
             summaryHTML += `
@@ -2982,7 +3026,7 @@ function toggleEditStateFields() {
     if (!editEstado) return;
     
     const val = editEstado.value;
-    if (val === 'EN DEPÓSITO') {
+    if (val === 'EN DEPÓSITO' || val === 'DADO DE BAJA') {
         if (editFecha) {
             editFecha.required = false;
             editFecha.closest('.form-group').style.display = 'none';
@@ -3926,22 +3970,23 @@ async function handleFormEdit(e) {
     btn.innerText = 'Guardando...';
 
     try {
+        const isInactiveOrDep = document.getElementById('edit-estado').value === 'EN DEPÓSITO' || document.getElementById('edit-estado').value === 'DADO DE BAJA';
         const record = {
             id: document.getElementById('edit-id').value.trim(),
             instrumento: document.getElementById('edit-instrumento').value.trim(),
             marca: document.getElementById('edit-marca').value.trim(),
             modelo: document.getElementById('edit-modelo').value.trim(),
             serie: document.getElementById('edit-serie').value.trim(),
-            fecha_calibracion: document.getElementById('edit-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('edit-fecha').value,
+            fecha_calibracion: isInactiveOrDep ? '' : document.getElementById('edit-fecha').value,
             estado: (document.getElementById('edit-estado').value === 'VENDIDO - ENTREGADO') ? 'ENTREGADO' : document.getElementById('edit-estado').value,
-            certificado: document.getElementById('edit-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('edit-certificado').value.trim(),
-            cliente: document.getElementById('edit-estado').value === 'EN DEPÓSITO' ? '' : document.getElementById('edit-cliente').value.trim()
+            certificado: isInactiveOrDep ? '' : document.getElementById('edit-certificado').value.trim(),
+            cliente: isInactiveOrDep ? '' : document.getElementById('edit-cliente').value.trim()
         };
 
         if (record.estado === 'VENDIDO - DESPACHADO') record.estado = 'RESERVADO';
 
         const checkedPats = [];
-        if (record.estado !== 'EN DEPÓSITO') {
+        if (!isInactiveOrDep) {
             document.querySelectorAll('#edit-patrones-checklist input[type="checkbox"]:checked').forEach(function(cb) {
                 checkedPats.push(cb.value);
             });
@@ -3949,7 +3994,7 @@ async function handleFormEdit(e) {
         record.patrones = JSON.stringify(checkedPats);
 
         const puntos = [];
-        if (record.estado !== 'EN DEPÓSITO') {
+        if (!isInactiveOrDep) {
             document.querySelectorAll('#edit-tbody-puntos tr').forEach(tr => {
                 puntos.push({
                     pt: tr.querySelector('input[name="pt-name"]').value,
@@ -4060,6 +4105,11 @@ function renderSolicitudes() {
             priorWarningHtml = `<br><span class="badge" style="background:#fff3cd; color:#856404; border:1px solid #ffeeba; font-size:0.6rem; margin-top:2px; display:inline-block;" title="Ya fue enviado o entregado en el historial">⚠️ Ya enviado/entregado</span>`;
         }
 
+        let fechaEnvioHtml = '';
+        if (s.fecha_envio) {
+            fechaEnvioHtml = `<br><span style="font-size:0.68rem; color: var(--text-secondary); display:inline-flex; align-items:center; justify-content:center; gap:3px; margin-top:3px;" title="Fecha y hora de envío"><i data-lucide="send" style="width:10px; height:10px;"></i> ${s.fecha_envio}</span>`;
+        }
+
         // Obtener el índice real en appState.solicitudes
         const realIndex = appState.solicitudes.findIndex(orig => (orig.firestoreId && s.firestoreId) ? orig.firestoreId === s.firestoreId : (orig.id && s.id ? orig.id === s.id : orig === s));
         const targetIndex = realIndex > -1 ? realIndex : index;
@@ -4069,7 +4119,7 @@ function renderSolicitudes() {
             <td><strong class="text-truncate" style="max-width: 180px; display: block;" title="${s.empresa}">${s.empresa}</strong><small style="color: var(--text-secondary);" class="text-truncate" title="${s.contacto}">${s.contacto}</small></td>
             <td style="text-align: center; white-space: nowrap; font-family: var(--font-data);"><code>${s.certificado}</code></td>
             <td><span class="text-truncate" style="max-width: 180px; display: block;" title="${s.email}">${s.email}</span></td>
-            <td style="text-align: center; white-space: nowrap;"><span class="badge ${badgeClass}">${s.estado || 'pendiente'}</span>${priorWarningHtml}</td>
+            <td style="text-align: center; white-space: nowrap;"><span class="badge ${badgeClass}">${s.estado || 'pendiente'}</span>${fechaEnvioHtml}${priorWarningHtml}</td>
             <td style="text-align: right; padding-right: 0.5rem;">
                 <div style="display: flex; gap: 0.25rem; justify-content: flex-end; align-items: center;">
                     ${isEnviado ? '' : `<button class="btn btn-primary btn-sm btn-atender-solicitud" data-index="${targetIndex}" style="height: 25px; padding: 0 0.5rem; font-size: 0.7rem; white-space: nowrap;"><i data-lucide="external-link" style="width:13px; height:13px;"></i> Atender</button>`}
@@ -4349,6 +4399,10 @@ async function confirmSendEmail() {
         }
     }
 
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const fechaEnvio = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const requestData = {
         action: 'send_email',
         data: {
@@ -4360,7 +4414,8 @@ async function confirmSendEmail() {
             empresa: appState.pendingEmail ? appState.pendingEmail.empresa : '',
             contacto: appState.pendingEmail ? appState.pendingEmail.contacto : '',
             patrones: patternsData,
-            status: 'enviado'
+            status: 'enviado',
+            fecha_envio: fechaEnvio
         }
     };
 
@@ -4381,7 +4436,8 @@ async function confirmSendEmail() {
                 appState.pendingEmail.email,
                 certificado,
                 'enviado',
-                appState.pendingEmail.firestoreId || appState.pendingEmail.id
+                appState.pendingEmail.firestoreId || appState.pendingEmail.id,
+                fechaEnvio
             );
         }
 
@@ -4410,6 +4466,7 @@ async function confirmSendEmail() {
         // FORZADO LOCAL: Marcamos como enviado en la memoria de la web para cambio instantáneo
         if (appState.currentSolicitudIndex !== undefined) {
             appState.solicitudes[appState.currentSolicitudIndex].estado = 'enviado';
+            appState.solicitudes[appState.currentSolicitudIndex].fecha_envio = fechaEnvio;
             renderSolicitudes();
             updateBadge();
         }
@@ -5660,12 +5717,17 @@ function performVerifyCertSearch() {
     lucide.createIcons();
 }
 
-async function updateSolicitudStatusInFirestore(timestamp, email, certificado, newStatus, firestoreId) {
+async function updateSolicitudStatusInFirestore(timestamp, email, certificado, newStatus, firestoreId, fechaEnvio = null) {
     try {
+        const now = new Date();
+        const pad = n => String(n).padStart(2, '0');
+        const calculatedFechaEnvio = fechaEnvio || `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+        const updatePayload = { estado: newStatus, fecha_envio: calculatedFechaEnvio };
+
         let updatedDirectly = false;
         if (firestoreId) {
             try {
-                await db.collection("solicitudes").doc(firestoreId).update({ estado: newStatus });
+                await db.collection("solicitudes").doc(firestoreId).update(updatePayload);
                 console.log("✅ Solicitud actualizada por firestoreId en Firebase:", firestoreId);
                 updatedDirectly = true;
             } catch (eId) {
@@ -5695,7 +5757,7 @@ async function updateSolicitudStatusInFirestore(timestamp, email, certificado, n
                 const emailMatches = (dEmail === searchEmail);
 
                 if (certMatches && (emailMatches || timeMatches) && (dEst === '' || dEst === 'pendiente')) {
-                    batch.update(doc.ref, { estado: newStatus });
+                    batch.update(doc.ref, updatePayload);
                     batchCount++;
                 }
             });
@@ -5734,13 +5796,18 @@ async function markRequestAsAlreadySent() {
     lucide.createIcons();
     showLoader(`Marcando solicitud como: ${targetStatus}...`);
     
+    const now = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const fechaEnvio = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+
     const requestData = {
         action: 'mark_request_sent',
         data: {
             timestamp: s.timestamp,
             email: s.email,
             certificado: s.certificado,
-            status: targetStatus
+            status: targetStatus,
+            fecha_envio: fechaEnvio
         }
     };
     
@@ -5757,7 +5824,7 @@ async function markRequestAsAlreadySent() {
         }
 
         // Actualizar en Firebase Firestore
-        await updateSolicitudStatusInFirestore(s.timestamp, s.email, s.certificado, targetStatus, s.firestoreId);
+        await updateSolicitudStatusInFirestore(s.timestamp, s.email, s.certificado, targetStatus, s.firestoreId, fechaEnvio);
         
         // Auto-actualización del equipo asociado a ENTREGADO si existe
         if (appState.pendingEmail && appState.pendingEmail.equipoId) {
@@ -5778,6 +5845,7 @@ async function markRequestAsAlreadySent() {
         
         // Marcado local de la solicitud
         appState.solicitudes[index].estado = targetStatus;
+        appState.solicitudes[index].fecha_envio = fechaEnvio;
         renderSolicitudes();
         updateBadge();
         
@@ -5860,6 +5928,11 @@ function initBulkEvents() {
     const btnEliminar = document.getElementById('btn-bulk-eliminar');
     if (btnEliminar) {
         btnEliminar.addEventListener('click', bulkEliminar);
+    }
+
+    const btnDarBaja = document.getElementById('btn-bulk-dar-baja');
+    if (btnDarBaja) {
+        btnDarBaja.addEventListener('click', bulkDarDeBaja);
     }
 
     // 4. Formulario de edición masiva
@@ -6088,3 +6161,81 @@ async function bulkEliminar() {
         hideLoader();
     }
 }
+
+async function bulkDarDeBaja() {
+    const count = appState.selectedIds.size;
+    if (count === 0) return;
+
+    if (!confirm(`📦 ¿Estás seguro de que deseas DAR DE BAJA (descartar/liberar espacio) los ${count} equipos seleccionados?`)) {
+        return;
+    }
+
+    try {
+        const selectedArray = Array.from(appState.selectedIds);
+
+        // 1. ACTUALIZACIÓN OPTIMISTA
+        selectedArray.forEach(id => {
+            const item = appState.data.find(x => x.id === id);
+            if (item) item.estado = 'DADO DE BAJA';
+        });
+        clearBulkSelection();
+        renderTable();
+        updateDashboard();
+        showToast(`Se pasaron ${count} equipos a "DADO DE BAJA" con éxito.`, "success");
+
+        // 2. PERSISTENCIA EN SEGUNDO PLANO
+        commitBatchInChunks(selectedArray, (batch, id) => {
+            const docRef = db.collection("instrumentos").doc(id);
+            batch.update(docRef, { estado: 'DADO DE BAJA' });
+        }).then(() => {
+            if (GOOGLE_SHEETS_API_URL !== '') {
+                fetch(GOOGLE_SHEETS_API_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    credentials: 'omit',
+                    cache: 'no-cache',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        action: 'update_status_bulk',
+                        data: { ids: selectedArray, estado: 'DADO DE BAJA' }
+                    })
+                }).catch(err => console.error("Error al sincronizar estado DADO DE BAJA con Sheets:", err));
+            }
+        }).catch(err => {
+            console.error("Error al dar de baja en lote en Firestore:", err);
+            showToast("⚠️ Error al sincronizar el cambio de estado en la nube.", "warning");
+        });
+
+    } catch(err) {
+        console.error("Error al dar de baja en lote:", err);
+        showToast("⚠️ Falla al dar de baja en lote: " + err.toString(), "error");
+    } finally {
+        hideLoader();
+    }
+}
+
+async function darDeBajaItemDirect(id) {
+    if (!id) return;
+    const item = appState.data.find(x => x.id === id);
+    const label = item ? `${item.id}: ${item.instrumento || item.modelo}` : `#${id}`;
+    if (!confirm(`¿Estás seguro de que deseas DAR DE BAJA el equipo ${label}? Pasará a estado "DADO DE BAJA" y se excluirá de las alertas y stock activo.`)) {
+        return;
+    }
+    try {
+        const idx = appState.data.findIndex(x => x.id === id);
+        if (idx !== -1) {
+            appState.data[idx].estado = 'DADO DE BAJA';
+        }
+        renderTable();
+        updateDashboard();
+        showToast(`Equipo ${label} dado de baja exitosamente.`, "success");
+
+        await updateStateRecord(id, 'DADO DE BAJA', {});
+    } catch(e) {
+        console.error("Error al dar de baja equipo:", e);
+        showToast("Error al dar de baja en Firebase: " + e.message, "error");
+    }
+}
+
+window.darDeBajaItemDirect = darDeBajaItemDirect;
+

@@ -759,6 +759,15 @@ td:nth-child(9) {
     color: #6b7280;
 }
 
+.badge.dado-de-baja,
+.badge.dado---de---baja,
+.badge.baja,
+.badge.descartado {
+    background-color: rgba(100, 116, 139, 0.12);
+    color: #64748b;
+    border: 1px solid rgba(100, 116, 139, 0.25);
+}
+
 .badge.enviado-anteriormente {
     background-color: rgba(15, 23, 42, 0.05);
     color: #475569;
