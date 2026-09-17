@@ -43,7 +43,53 @@ const GeminiAI = {
             throw new Error("Por favor configura tu API Key gratuita de Google AI Studio.");
         }
 
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        const candidates = [];
+        
+        // 1. Consultar ModelService.ListModels para autodetectar los modelos soportados por esta API Key
+        try {
+            const listUrl = `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`;
+            const resp = await fetch(listUrl);
+            if (resp.ok) {
+                const data = await resp.json();
+                const available = (data.models || []).filter(m => 
+                    m.supportedGenerationMethods && m.supportedGenerationMethods.includes('generateContent')
+                );
+                
+                // Priorizar modelos flash
+                available.forEach(m => {
+                    const clean = m.name.replace(/^models\//, '');
+                    if (clean.includes('flash')) {
+                        candidates.push({ version: 'v1beta', model: clean });
+                    }
+                });
+                // Otros modelos compatibles (gemini-pro, etc.)
+                available.forEach(m => {
+                    const clean = m.name.replace(/^models\//, '');
+                    if (!clean.includes('flash') && clean.includes('gemini')) {
+                        candidates.push({ version: 'v1beta', model: clean });
+                    }
+                });
+            }
+        } catch (e) {
+            console.warn("No se pudo consultar ListModels, usando lista de candidatos:", e);
+        }
+
+        // 2. Candidatos de respaldo comprobados en orden de preferencia
+        const defaultCandidates = [
+            { version: 'v1beta', model: 'gemini-1.5-flash-latest' },
+            { version: 'v1', model: 'gemini-1.5-flash' },
+            { version: 'v1beta', model: 'gemini-2.0-flash' },
+            { version: 'v1beta', model: 'gemini-1.5-flash-001' },
+            { version: 'v1beta', model: 'gemini-1.5-flash-002' },
+            { version: 'v1beta', model: 'gemini-1.5-flash' },
+            { version: 'v1beta', model: 'gemini-pro' }
+        ];
+
+        defaultCandidates.forEach(dc => {
+            if (!candidates.some(c => c.model === dc.model && c.version === dc.version)) {
+                candidates.push(dc);
+            }
+        });
 
         const payload = {
             contents: [
@@ -63,25 +109,37 @@ const GeminiAI = {
             };
         }
 
-        const response = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-        });
+        let lastError = null;
 
-        if (!response.ok) {
-            const errData = await response.json().catch(() => ({}));
-            const msg = errData.error?.message || `Error HTTP ${response.status}`;
-            throw new Error(`Gemini API Error: ${msg}`);
+        for (const cand of candidates) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/${cand.version}/models/${cand.model}:generateContent?key=${apiKey}`;
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const candidate = data.candidates?.[0];
+                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                        console.log(`MetroCRM: Conexión exitosa con modelo ${cand.model} (${cand.version})`);
+                        return candidate.content.parts[0].text;
+                    }
+                } else {
+                    const errData = await response.json().catch(() => ({}));
+                    const msg = errData.error?.message || `HTTP ${response.status}`;
+                    lastError = new Error(msg);
+                    console.warn(`Intento con ${cand.model} (${cand.version}) falló: ${msg}. Probando siguiente modelo...`);
+                }
+            } catch (err) {
+                lastError = err;
+                console.warn(`Error de red con ${cand.model}:`, err);
+            }
         }
 
-        const data = await response.json();
-        const candidate = data.candidates?.[0];
-        if (!candidate || !candidate.content?.parts?.[0]?.text) {
-            throw new Error("Respuesta vacía o bloqueada por políticas de seguridad.");
-        }
-
-        return candidate.content.parts[0].text;
+        throw lastError || new Error("No se pudo obtener respuesta de ningún modelo de Gemini disponible.");
     },
 
     // 1. INVESTIGAR Y PERFILAR EMPRESA
