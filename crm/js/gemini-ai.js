@@ -36,7 +36,7 @@ const GeminiAI = {
         if (typeof lucide !== 'undefined') lucide.createIcons();
     },
 
-    async callModel(prompt, systemInstruction = '') {
+    async callModel(prompt, systemInstruction = '', enableSearch = false) {
         const apiKey = this.getApiKey();
         if (!apiKey) {
             window.openSettingsModal();
@@ -91,20 +91,20 @@ const GeminiAI = {
             }
         });
 
-        const payload = {
+        const basePayload = {
             contents: [
                 {
                     parts: [{ text: prompt }]
                 }
             ],
             generationConfig: {
-                temperature: 0.3,
+                temperature: 0.2,
                 maxOutputTokens: 800
             }
         };
 
         if (systemInstruction) {
-            payload.systemInstruction = {
+            basePayload.systemInstruction = {
                 parts: [{ text: systemInstruction }]
             };
         }
@@ -112,20 +112,52 @@ const GeminiAI = {
         let lastError = null;
 
         for (const cand of candidates) {
+            // Intento 1: Con Google Search Grounding si se habilitó y es v1beta
+            if (enableSearch && cand.version === 'v1beta') {
+                try {
+                    const searchPayload = {
+                        ...basePayload,
+                        tools: [{ google_search: {} }]
+                    };
+                    const url = `https://generativelanguage.googleapis.com/${cand.version}/models/${cand.model}:generateContent?key=${apiKey}`;
+                    const response = await fetch(url, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(searchPayload)
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const candidate = data.candidates?.[0];
+                        const text = candidate?.content?.parts?.map(p => p.text || '').join('\n').trim();
+                        if (text) {
+                            console.log(`MetroCRM: Conexión con búsqueda Google exitosa en ${cand.model}`);
+                            return text;
+                        }
+                    } else {
+                        console.warn(`Búsqueda web no soportada en ${cand.model} (${response.status}), pasando a modo estándar...`);
+                    }
+                } catch (errSearch) {
+                    console.warn(`Fallo search grounding en ${cand.model}:`, errSearch);
+                }
+            }
+
+            // Intento 2: Llamada estándar
             try {
                 const url = `https://generativelanguage.googleapis.com/${cand.version}/models/${cand.model}:generateContent?key=${apiKey}`;
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify(basePayload)
                 });
 
                 if (response.ok) {
                     const data = await response.json();
                     const candidate = data.candidates?.[0];
-                    if (candidate && candidate.content?.parts?.[0]?.text) {
+                    const text = candidate?.content?.parts?.map(p => p.text || '').join('\n').trim();
+                    if (text) {
                         console.log(`MetroCRM: Conexión exitosa con modelo ${cand.model} (${cand.version})`);
-                        return candidate.content.parts[0].text;
+                        return text;
                     }
                 } else {
                     const errData = await response.json().catch(() => ({}));
@@ -142,28 +174,47 @@ const GeminiAI = {
         throw lastError || new Error("No se pudo obtener respuesta de ningún modelo de Gemini disponible.");
     },
 
-    // 1. INVESTIGAR Y PERFILAR EMPRESA
+    // 1. INVESTIGAR Y PERFILAR EMPRESA (CON BÚSQUEDA WEB Y CONOCIMIENTO NORMATIVO)
     async investigateClient(client) {
-        const system = `Eres un consultor experto en inteligencia comercial B2B para un laboratorio de metrología y calibración en Argentina (CR MEDICION | SchwyzLab).
-Analiza los datos del cliente que compró instrumental por Mercado Libre y devuelve ÚNICAMENTE un objeto JSON válido, sin bloques de código markdown, con la siguiente estructura:
+        const system = `Eres un consultor experto en inteligencia comercial B2B y metrología industrial para el Laboratorio CR MEDICION / SchwyzLab en Argentina.
+Investiga en la web e identifica con precisión la actividad económica y rubro de esta empresa que compró instrumental en Mercado Libre.
+
+CRITERIOS ESTRICTOS DE CLASIFICACIÓN:
+1. "farma" (Farmacéutica, Alimentos y Laboratorios):
+   - OBLIGATORIO si la empresa es Droguería, Distribuidora de Medicamentos, Productos Médicos, Insumos Sanitarios, Laboratorio Medicinal, Cosmética o Alimentos.
+   - REGLA CRÍTICA: Si una droguería o distribuidora médica compra termohigrómetros, dataloggers o termómetros, su nicho es OBLIGATORIAMENTE "farma" (NUNCA "hs"). Para droguerías, los termohigrómetros son exigidos por Disposición ANMAT 2069/18 y Buenas Prácticas de Distribución (BPD) para mapeo térmico y control de depósitos (15°C a 25°C) y cadena de frío (2°C a 8°C). Su scoring debe ser "A".
+2. "hs" (Higiene, Seguridad y Medio Ambiente):
+   - Solo consultoras o profesionales de Higiene y Seguridad Laboral que miden ruido laboral (Res. SRT 85/12), iluminación (Res. SRT 84/12) o ergonomía con luxómetros, sonómetros o dosímetros.
+3. "metal" (Metalmecánica, Automotriz y Mecanizado):
+   - Mecanizados, autopartistas, matricerías, tornerías, metalúrgicas (calibres, micrómetros, torquímetros, ISO 9001).
+4. "end" (Construcción, END y Minería):
+   - Ensayos no destructivos, control de hormigón, ultrasonido, obras civiles.
+5. "gas" (Gas, Petróleo y Plantas de Proceso):
+   - Gas, petróleo, petroquímica, líneas de presión.
+6. "gral" (Servicios Generales y Mantenimiento):
+   - Mantenimiento general o usuario final.
+
+Devuelve ÚNICAMENTE un objeto JSON válido, sin bloques de código markdown, con la siguiente estructura:
 {
-  "rubro_detalle": "breve resumen de la actividad industrial o comercial del cliente",
-  "tipo_cliente": "Consultora de Higiene y Seguridad | Laboratorio/Farma | Metalúrgica | Industria/Planta | Usuario Final",
-  "nicho_id": "hs | farma | metal | end | gas | gral",
+  "rubro_detalle": "breve resumen de la actividad real de la empresa (ej: Droguería y distribución de medicamentos y productos médicos)",
+  "tipo_cliente": "Droguería / Distribuidora de Salud | Laboratorio Farma | Consultora HyS | Metalúrgica | Industria/Planta | Usuario Final",
+  "nicho_id": "farma | hs | metal | end | gas | gral",
   "scoring": "A | B | C",
-  "pitch_personalizado": "argumento de venta persuasivo y técnico de 2 líneas mencionando resoluciones o normas aplicables",
+  "pitch_personalizado": "argumento comercial persuasivo y técnico de 2 líneas mencionando normativas aplicables (ej: ANMAT BPD, SRT, ISO)",
   "oportunidades": ["oportunidad 1 de calibración o venta cruzada", "oportunidad 2"]
 }`;
 
-        const prompt = `Analiza este cliente:
+        const prompt = `Investiga en la web esta empresa de Argentina y perfila su rubro comercial:
 - Razón Social / Empresa: ${client.empresa || client.nombre}
+- Sitio Web / URL: ${client.web || 'No especificada (buscar en Google por el nombre)'}
 - Contacto: ${(client.contactos || []).join(', ')}
 - Email: ${(client.emails || []).join(', ')}
 - CUIT actual: ${client.cuit || 'Desconocido'}
-- Equipos comprados / calibrados: ${(client.categorias || []).join(', ')}
-- Marcas: ${(client.marcas || []).join(', ')}`;
+- Equipos comprados en Mercado Libre: ${(client.categorias || []).join(', ')}
+- Marcas: ${(client.marcas || []).join(', ')}
+${client.notas && client.notas.length > 0 ? `- Antecedentes o notas: ${client.notas.map(n => n.texto).join('; ')}` : ''}`;
 
-        const raw = await this.callModel(prompt, system);
+        const raw = await this.callModel(prompt, system, true);
         try {
             // Clean markdown fences if any
             const cleaned = raw.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/```\s*$/i, '').trim();

@@ -116,11 +116,11 @@ const ResearchEngine = {
 
     detectNiche(empresa, categorias = [], marcas = []) {
         const text = `${empresa || ''} ${categorias.join(' ')} ${marcas.join(' ')}`.toLowerCase();
-        if (/lux|sonom|decibel|ruido|acustico|carga termica|wintact|dosimetr|gas/.test(text) && !/farm|laborat/.test(text)) {
-            return 'hs';
-        }
-        if (/farm|medic|bio|salud|hospit|clinic|alimento|lacteo|frigorifico|quimic|thermo|datalogger|humedad|termohigr/.test(text)) {
+        if (/droguer|farm|medic|bio|salud|hospit|clinic|sanitari|alimento|lacteo|frigorifico|quimic|thermo|datalogger|humedad|termohigr/.test(text)) {
             return 'farma';
+        }
+        if (/lux|sonom|decibel|ruido|acustico|carga termica|wintact|dosimetr|gas/.test(text) && !/farm|laborat|droguer|medic/.test(text)) {
+            return 'hs';
         }
         if (/gas|petrol|combust|ypf|oil|valvula|presion/.test(text)) {
             return 'gas';

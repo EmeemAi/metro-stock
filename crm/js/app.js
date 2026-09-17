@@ -354,6 +354,24 @@ function openClientDrawer(clientId) {
     document.getElementById('drawer-contacts').innerText = selectedClient.contactos ? selectedClient.contactos.join(', ') : 'No especificado';
     document.getElementById('drawer-emails').innerText = selectedClient.emails ? selectedClient.emails.join(', ') : 'Sin email';
 
+    // Empresa and Web inputs
+    const empresaInput = document.getElementById('drawer-empresa-input');
+    if (empresaInput) empresaInput.value = selectedClient.empresa || selectedClient.nombre || '';
+
+    const webInput = document.getElementById('drawer-web-input');
+    const webBtn = document.getElementById('btn-drawer-web-link');
+    if (webInput) webInput.value = selectedClient.web || '';
+    if (webBtn) {
+        if (selectedClient.web) {
+            let url = selectedClient.web.trim();
+            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+            webBtn.href = url;
+            webBtn.classList.remove('hidden');
+        } else {
+            webBtn.classList.add('hidden');
+        }
+    }
+
     // CUIT input
     const cuitInput = document.getElementById('drawer-cuit-input');
     if (cuitInput) cuitInput.value = selectedClient.cuit || '';
@@ -429,28 +447,77 @@ function closeClientDrawer() {
 function updateClientDrawerData() {
     if (!selectedClient) return;
 
-    const cuitVal = document.getElementById('drawer-cuit-input').value.trim();
-    const statusVal = document.getElementById('drawer-status-select').value;
-    const nichoVal = document.getElementById('drawer-nicho-select').value;
-    const scoringVal = document.getElementById('drawer-scoring-select').value;
+    const empresaVal = document.getElementById('drawer-empresa-input')?.value.trim();
+    const webVal = document.getElementById('drawer-web-input')?.value.trim();
+    const cuitVal = document.getElementById('drawer-cuit-input')?.value.trim();
+    const statusVal = document.getElementById('drawer-status-select')?.value;
+    const nichoVal = document.getElementById('drawer-nicho-select')?.value;
+    const scoringVal = document.getElementById('drawer-scoring-select')?.value;
 
-    selectedClient.cuit = cuitVal;
-    selectedClient.estado = statusVal;
-    selectedClient.nicho_id = nichoVal;
-    selectedClient.scoring = scoringVal;
+    if (empresaVal) {
+        selectedClient.empresa = empresaVal;
+        const nameEl = document.getElementById('drawer-client-name');
+        if (nameEl) nameEl.innerText = empresaVal;
+    }
+    if (webVal !== undefined) {
+        selectedClient.web = webVal;
+        const webBtn = document.getElementById('btn-drawer-web-link');
+        if (webBtn) {
+            if (webVal) {
+                let url = webVal;
+                if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+                webBtn.href = url;
+                webBtn.classList.remove('hidden');
+            } else {
+                webBtn.classList.add('hidden');
+            }
+        }
+    }
+    if (cuitVal !== undefined) selectedClient.cuit = cuitVal;
+    if (statusVal) selectedClient.estado = statusVal;
+    if (scoringVal) selectedClient.scoring = scoringVal;
 
-    const ninfo = window.NICHES[nichoVal];
-    selectedClient.nicho = ninfo.name;
-    selectedClient.nicho_short = ninfo.short;
-    selectedClient.pitch = ninfo.pitch;
-    selectedClient.oportunidades = ninfo.oportunidades;
+    if (nichoVal) {
+        selectedClient.nicho_id = nichoVal;
+        const ninfo = window.NICHES[nichoVal];
+        if (ninfo) {
+            selectedClient.nicho = ninfo.name;
+            selectedClient.nicho_short = ninfo.short;
+            selectedClient.pitch = ninfo.pitch;
+            selectedClient.oportunidades = ninfo.oportunidades;
+
+            const badgeNicho = document.getElementById('drawer-nicho-badge');
+            if (badgeNicho) {
+                badgeNicho.className = `text-xs px-2.5 py-0.5 rounded-full font-bold ${ninfo.badgeClass}`;
+                badgeNicho.innerText = ninfo.name;
+            }
+            const pitchEl = document.getElementById('drawer-pitch');
+            if (pitchEl) pitchEl.innerText = `"${selectedClient.pitch || ninfo.pitch}"`;
+            const oppList = document.getElementById('drawer-oportunidades');
+            if (oppList) {
+                oppList.innerHTML = (selectedClient.oportunidades || ninfo.oportunidades || []).map(o => `<li>${o}</li>`).join('');
+            }
+        }
+    }
+
+    // Refresh research links with updated company name
+    const empName = selectedClient.empresa || selectedClient.nombre;
+    const googleBtn = document.getElementById('btn-research-google');
+    const cuitBtn = document.getElementById('btn-research-cuit');
+    const linkedinBtn = document.getElementById('btn-research-linkedin');
+    const mapsBtn = document.getElementById('btn-research-maps');
+
+    if (googleBtn) googleBtn.href = window.ResearchEngine.getGoogleSearchUrl(empName);
+    if (cuitBtn) cuitBtn.href = window.ResearchEngine.getCuitOnlineUrl(selectedClient.cuit || empName);
+    if (linkedinBtn) linkedinBtn.href = window.ResearchEngine.getLinkedInCompanyUrl(empName);
+    if (mapsBtn) mapsBtn.href = window.ResearchEngine.getGoogleMapsUrl(empName);
 
     window.DataSync.saveClients(clients);
     updateDashboardKPIs();
     renderClientsTable();
     if (currentView === 'pipeline') window.PipelineManager.renderKanban(clients, 'kanban-container');
 
-    showToast("Datos del cliente actualizados.");
+    showToast("Ficha del cliente actualizada.");
 }
 
 function moveClientStage(clientId, newStage) {

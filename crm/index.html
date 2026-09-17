@@ -476,44 +476,68 @@
                 </div>
 
                 <!-- Commercial Classification Overrides -->
-                <div class="bg-white p-4 rounded-xl border border-slate-200 grid grid-cols-2 gap-3 shadow-2xs">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">CUIT / Razón Social</label>
-                        <input type="text" id="drawer-cuit-input" onchange="window.updateClientDrawerData()" placeholder="Ej: 30-71234567-8" 
-                               class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 font-mono focus:bg-white focus:outline-none focus:border-blue-600">
+                <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3 shadow-2xs">
+                    <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                        <span class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                            <i data-lucide="building-2" class="w-3.5 h-3.5 text-blue-600"></i>
+                            <span>Perfil Comercial & Datos Fiscales</span>
+                        </span>
+                        <span class="text-[10px] text-slate-500 font-medium">Edición en tiempo real</span>
                     </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">Clasificación / Scoring</label>
-                        <select id="drawer-scoring-select" onchange="window.updateClientDrawerData()" 
-                                class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-blue-600 font-semibold">
-                            <option value="A">Tier A (Gran Empresa / Planta)</option>
-                            <option value="B">Tier B (Consultora / Pyme)</option>
-                            <option value="C">Tier C (Usuario / Taller)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">Estado de Seguimiento</label>
-                        <select id="drawer-status-select" onchange="window.updateClientDrawerData()" 
-                                class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-blue-600 font-semibold">
-                            <option value="nuevo">Nuevo Lead ML</option>
-                            <option value="investigado">Investigado & Perfilado</option>
-                            <option value="contactado">Primer Contacto Enviado</option>
-                            <option value="en_conversacion">En Conversación / Cotizado</option>
-                            <option value="ganado">Cliente Fidelizado</option>
-                            <option value="recalibracion">Próxima Recalibración</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-bold text-slate-700 mb-1">Nicho Industrial</label>
-                        <select id="drawer-nicho-select" onchange="window.updateClientDrawerData()" 
-                                class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-blue-600 font-semibold">
-                            <option value="hs">Higiene, Seguridad y Medio Ambiente</option>
-                            <option value="farma">Farmacéutica, Alimentos y Laboratorios</option>
-                            <option value="metal">Metalmecánica, Automotriz y Mecanizado</option>
-                            <option value="end">Construcción, END y Minería</option>
-                            <option value="gas">Gas, Petróleo y Plantas de Proceso</option>
-                            <option value="gral">Servicios Generales y Mantenimiento</option>
-                        </select>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Empresa / Razón Social Comercial</label>
+                            <input type="text" id="drawer-empresa-input" onchange="window.updateClientDrawerData()" placeholder="Ej: Droguería Piazza" 
+                                   class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 font-semibold focus:bg-white focus:outline-none focus:border-blue-600 transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Sitio Web / URL</label>
+                            <div class="flex items-center gap-1.5">
+                                <input type="text" id="drawer-web-input" onchange="window.updateClientDrawerData()" placeholder="Ej: drogueriapiazza.com.ar" 
+                                       class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-blue-600 transition">
+                                <a id="btn-drawer-web-link" href="#" target="_blank" class="hidden px-2 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg border border-blue-200 transition" title="Abrir sitio web oficial">
+                                    <i data-lucide="external-link" class="w-3.5 h-3.5"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">CUIT Fiscal</label>
+                            <input type="text" id="drawer-cuit-input" onchange="window.updateClientDrawerData()" placeholder="Ej: 30-71234567-8" 
+                                   class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 font-mono focus:bg-white focus:outline-none focus:border-blue-600 transition">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Clasificación / Scoring</label>
+                            <select id="drawer-scoring-select" onchange="window.updateClientDrawerData()" 
+                                    class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-blue-600 font-semibold transition">
+                                <option value="A">Tier A (Gran Empresa / Planta / Droguería)</option>
+                                <option value="B">Tier B (Consultora / Pyme)</option>
+                                <option value="C">Tier C (Usuario / Taller)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Nicho Industrial</label>
+                            <select id="drawer-nicho-select" onchange="window.updateClientDrawerData()" 
+                                    class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-blue-600 font-semibold transition">
+                                <option value="farma">Farmacéutica, Alimentos y Laboratorios</option>
+                                <option value="hs">Higiene, Seguridad y Medio Ambiente</option>
+                                <option value="metal">Metalmecánica, Automotriz y Mecanizado</option>
+                                <option value="end">Construcción, END y Minería</option>
+                                <option value="gas">Gas, Petróleo y Plantas de Proceso</option>
+                                <option value="gral">Servicios Generales y Mantenimiento</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-700 mb-1">Estado de Seguimiento</label>
+                            <select id="drawer-status-select" onchange="window.updateClientDrawerData()" 
+                                    class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-blue-600 font-semibold transition">
+                                <option value="nuevo">Nuevo Lead ML</option>
+                                <option value="investigado">Investigado & Perfilado</option>
+                                <option value="contactado">Primer Contacto Enviado</option>
+                                <option value="en_conversacion">En Conversación / Cotizado</option>
+                                <option value="ganado">Cliente Fidelizado</option>
+                                <option value="recalibracion">Próxima Recalibración</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
 
