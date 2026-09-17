@@ -227,7 +227,12 @@ const EmailStudio = {
         let primerCert = 'N/A';
         let primerVenc = '12 meses';
         if (client.equipos && client.equipos.length > 0) {
-            const eq = client.equipos[0];
+            const sortedEq = [...client.equipos].sort((a, b) => {
+                const va = a.fecha_vencimiento || '9999-12-31';
+                const vb = b.fecha_vencimiento || '9999-12-31';
+                return va.localeCompare(vb);
+            });
+            const eq = sortedEq[0];
             primerCert = eq.certificado || primerCert;
             primerVenc = eq.fecha_vencimiento || primerVenc;
         }
