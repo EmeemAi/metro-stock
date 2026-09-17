@@ -127,6 +127,11 @@ async function initApp() {
         clients = await window.DataSync.loadInitialClients();
         interactionsHistory = window.DataSync.loadHistory();
 
+        // Limpiar cualquier autocompletado del navegador en el buscador
+        const searchInput = document.getElementById('global-search');
+        if (searchInput) searchInput.value = '';
+        searchQuery = '';
+
         updateDashboardKPIs();
         renderNicheCards();
         renderNichePills();
@@ -408,11 +413,28 @@ function renderClientsTable() {
         tbody.innerHTML = `
         <tr>
             <td colspan="7" class="px-6 py-12 text-center text-slate-500">
-                <p class="text-sm font-semibold text-slate-700">No se encontraron clientes con los filtros aplicados.</p>
-                <p class="text-xs text-slate-500 mt-1">Prueba cambiando el filtro de vencimiento o el nicho seleccionado.</p>
+                <div class="max-w-md mx-auto space-y-3">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                        <i data-lucide="search-x" class="w-6 h-6"></i>
+                    </div>
+                    <p class="text-sm font-bold text-slate-800">No se encontraron clientes con los filtros aplicados.</p>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        ${searchQuery ? `Hay una búsqueda de texto activa: <span class="font-mono font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">"${searchQuery}"</span>.<br>` : ''}
+                        ${selectedNicheFilter !== 'todos' ? `Está seleccionado el nicho: <span class="font-bold text-indigo-700">${selectedNicheFilter}</span>.<br>` : ''}
+                        ${selectedExpirationFilter !== 'todos' ? `Filtro de vencimiento: <span class="font-bold text-rose-700">${selectedExpirationFilter}</span>.` : ''}
+                    </p>
+                    <div class="pt-2">
+                        <button onclick="window.resetAllFilters()" 
+                                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer inline-flex items-center gap-2">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                            <span>Restablecer Filtros y Ver los 271 Clientes</span>
+                        </button>
+                    </div>
+                </div>
             </td>
         </tr>
         `;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
     }
 
@@ -1297,6 +1319,15 @@ window.setExpirationFilter = function(filterType) {
         currentSortOrder = 'vencimiento_urgente';
         const sortSel = document.getElementById('table-sort-select');
         if (sortSel) sortSel.value = 'vencimiento_urgente';
+
+        // Si estaba seleccionado un nicho sin clientes en esta categoría, resetear nicho a 'todos'
+        if (selectedNicheFilter !== 'todos') {
+            const inNiche = clients.filter(c => (c.nicho_id || 'gral') === selectedNicheFilter);
+            if (inNiche.length === 0) {
+                selectedNicheFilter = 'todos';
+                renderNichePills();
+            }
+        }
     }
 
     renderClientsTable();
@@ -1321,10 +1352,29 @@ window.toggleVencimientoSort = function() {
 
 window.filterByRecalibracionAndGoDirectorio = function() {
     switchView('directorio');
+    // Limpiar búsqueda y restablecer nicho a todos para mostrar los 63 urgentes
+    clearSearch();
+    selectedNicheFilter = 'todos';
+    renderNichePills();
     window.setExpirationFilter('urgentes');
     window.setTableSort('vencimiento_urgente');
     const sortSel = document.getElementById('table-sort-select');
     if (sortSel) sortSel.value = 'vencimiento_urgente';
     const target = document.getElementById('view-directorio');
     if (target) target.scrollIntoView({ behavior: 'smooth' });
+};
+
+window.resetAllFilters = function() {
+    clearSearch();
+    selectedNicheFilter = 'todos';
+    selectedStatusFilter = 'todos';
+    selectedScoringFilter = 'todos';
+    selectedExpirationFilter = 'todos';
+    currentSortOrder = 'vencimiento_urgente';
+    const sortSel = document.getElementById('table-sort-select');
+    if (sortSel) sortSel.value = 'vencimiento_urgente';
+    renderNichePills();
+    window.setExpirationFilter('todos');
+    renderClientsTable();
+    showToast("Filtros restablecidos: mostrando los 271 clientes.");
 };

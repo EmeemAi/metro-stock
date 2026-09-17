@@ -134,7 +134,9 @@
             <header class="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-3.5 flex items-center justify-between gap-4 shadow-2xs">
                 <div class="relative w-full max-w-xl">
                     <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="global-search" oninput="window.handleSearch(this.value)" 
+                    <input type="search" id="global-search" oninput="window.handleSearch(this.value)" 
+                           name="crm_global_search_no_autofill"
+                           autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"
                            placeholder="Buscar por cliente, empresa, CUIT, email, instrumento o nicho... (Presiona / para buscar)" 
                            class="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 rounded-xl pl-10 pr-10 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition shadow-2xs">
                     <button id="search-clear-btn" onclick="window.clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
