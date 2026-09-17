@@ -4,5 +4,7 @@ scratch/
 *.py
 *.json
 !manifest.json
+!crm/data/backup_clients.json
+!crm/clients.json
 *.xlsx
 ~$*

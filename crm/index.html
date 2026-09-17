@@ -1,0 +1,662 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetroCRM Pro | Fidelización & Ventas B2B Mercado Libre</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#eff6ff',
+                            100: '#dbeafe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                            900: '#1e3a8a',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white">
+
+    <!-- Top Notification & Quick Status Banner -->
+    <div class="bg-white border-b border-slate-200 text-xs px-5 py-2.5 flex items-center justify-between text-slate-700 shadow-xs">
+        <div class="flex items-center gap-3">
+            <span class="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span class="font-medium"><strong>MetroCRM Pro:</strong> Base Unificada de Clientes Mercado Libre & Solicitudes de Certificados</span>
+            <span class="text-slate-300 hidden md:inline">|</span>
+            <span class="text-blue-700 font-semibold hidden md:inline font-mono">SchwyzLab & CR MEDICION</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <button id="btn-sync-firestore" onclick="window.handleSyncFirestore()" 
+                    class="hover:bg-blue-50 hover:text-blue-700 text-slate-700 flex items-center gap-1.5 transition text-xs font-semibold bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-2xs">
+                <i data-lucide="refresh-cw" class="w-3.5 h-3.5 text-blue-600"></i>
+                <span>Sincronizar Firestore</span>
+            </button>
+            <button id="gemini-status-badge" onclick="window.openSettingsModal()" 
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-xs text-blue-800 font-bold transition shadow-2xs cursor-pointer">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5 text-blue-600"></i>
+                <span>Activar Gemini IA</span>
+            </button>
+            <button onclick="window.exportAllCSV()" 
+                    class="hover:bg-emerald-50 hover:text-emerald-700 text-slate-700 flex items-center gap-1.5 transition text-xs font-semibold bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-2xs">
+                <i data-lucide="download" class="w-3.5 h-3.5 text-emerald-600"></i>
+                <span>Exportar CSV</span>
+            </button>
+            <span id="header-time" class="font-mono text-slate-500 font-semibold hidden sm:inline"></span>
+        </div>
+    </div>
+
+    <div class="flex-1 flex overflow-hidden">
+        <!-- Sidebar Navigation -->
+        <aside class="w-64 bg-white border-r border-slate-200 flex flex-col justify-between shrink-0 shadow-xs">
+            <div>
+                <!-- Brand Header -->
+                <div class="p-5 border-b border-slate-200 flex items-center gap-3 bg-slate-50/50">
+                    <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+                        <i data-lucide="gauge" class="w-5 h-5"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-black text-base tracking-tight text-slate-900 flex items-center gap-1">
+                            Metro<span class="text-blue-600">CRM</span>
+                            <span class="text-[10px] bg-blue-100 text-blue-800 px-1.5 py-0.2 rounded font-mono font-bold">PRO</span>
+                        </h1>
+                        <p class="text-[11px] text-slate-500 font-medium">Laboratorio & Fidelización</p>
+                    </div>
+                </div>
+
+                <!-- Nav Items -->
+                <nav class="p-3.5 space-y-1.5 text-sm font-medium">
+                    <button onclick="window.switchView('dashboard')" id="nav-dashboard" 
+                            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl bg-blue-600 text-white font-semibold shadow-xs transition">
+                        <i data-lucide="layout-grid" class="w-4 h-4"></i>
+                        <span>Dashboard General</span>
+                    </button>
+
+                    <button onclick="window.switchView('pipeline')" id="nav-pipeline" 
+                            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium transition">
+                        <i data-lucide="kanban" class="w-4 h-4 text-indigo-600"></i>
+                        <span>Pipeline Comercial</span>
+                    </button>
+
+                    <button onclick="window.switchView('directorio')" id="nav-directorio" 
+                            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium transition">
+                        <i data-lucide="users" class="w-4 h-4 text-blue-600"></i>
+                        <span>Directorio 360°</span>
+                        <span id="badge-total-clients" class="ml-auto text-xs bg-slate-100 text-slate-800 font-bold px-2 py-0.5 rounded-full border border-slate-200 font-mono">271</span>
+                    </button>
+
+                    <button onclick="window.switchView('campanias')" id="nav-campanias" 
+                            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium transition">
+                        <i data-lucide="mail" class="w-4 h-4 text-emerald-600"></i>
+                        <span>Estudio de Emails</span>
+                        <span class="ml-auto text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-200">Pitches</span>
+                    </button>
+
+                    <button onclick="window.switchView('bitacora')" id="nav-bitacora" 
+                            class="nav-btn w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-slate-600 hover:text-slate-900 hover:bg-slate-100 font-medium transition">
+                        <i data-lucide="history" class="w-4 h-4 text-amber-600"></i>
+                        <span>Bitácora & Tareas</span>
+                        <span id="badge-interactions-count" class="ml-auto text-xs bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-full font-mono">0</span>
+                    </button>
+                </nav>
+            </div>
+
+            <!-- Sidebar Footer -->
+            <div class="p-4 border-t border-slate-200 bg-slate-50/70">
+                <div class="bg-white rounded-xl p-3.5 border border-slate-200 shadow-2xs">
+                    <div class="flex items-center gap-2 text-xs font-bold text-slate-800 mb-1">
+                        <i data-lucide="shield-check" class="w-4 h-4 text-emerald-600"></i>
+                        <span>Integridad Protegida</span>
+                    </div>
+                    <p class="text-[11px] text-slate-600 leading-snug">
+                        Colecciones operativas intactas. Los estados comerciales se gestionan de forma segura en este CRM.
+                    </p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="flex-1 flex flex-col overflow-y-auto bg-slate-50">
+
+            <!-- Top Search Header -->
+            <header class="sticky top-0 z-20 bg-white/95 backdrop-blur-md border-b border-slate-200 px-6 py-3.5 flex items-center justify-between gap-4 shadow-2xs">
+                <div class="relative w-full max-w-xl">
+                    <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="global-search" oninput="window.handleSearch(this.value)" 
+                           placeholder="Buscar por cliente, empresa, CUIT, email, instrumento o nicho... (Presiona / para buscar)" 
+                           class="w-full bg-slate-50 hover:bg-white focus:bg-white border border-slate-300 rounded-xl pl-10 pr-10 py-2 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100 transition shadow-2xs">
+                    <button id="search-clear-btn" onclick="window.clearSearch()" class="hidden absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700">
+                        <i data-lucide="x" class="w-4 h-4"></i>
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button onclick="window.switchView('campanias')" 
+                            class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition">
+                        <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                        <span>Nuevo Email</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- VIEW 1: DASHBOARD -->
+            <section id="view-dashboard" class="p-6 space-y-6">
+                <!-- Gemini AI Strategy Banner -->
+                <div class="bg-gradient-to-r from-blue-50 via-indigo-50 to-white border border-blue-200 rounded-2xl p-4.5 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xs">
+                    <div class="flex items-center gap-3.5">
+                        <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
+                            <i data-lucide="sparkles" class="w-5 h-5 text-amber-300"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-black text-slate-900 flex items-center gap-2">
+                                <span>Estrategia Comercial con Gemini IA</span>
+                                <span class="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">Gratis</span>
+                            </h3>
+                            <p class="text-xs text-slate-600 mt-0.5">Analiza en 1 segundo tu cartera de 271 clientes y detecta automáticamente las 5 mejores oportunidades de hoy</p>
+                        </div>
+                    </div>
+                    <button id="btn-ai-analyze-dashboard" onclick="window.analyzeOpportunitiesWithGemini()" 
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition shrink-0 cursor-pointer">
+                        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                        <span>Analizar Oportunidades con IA</span>
+                    </button>
+                </div>
+
+                <!-- Summary Metrics Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="glass-panel p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Clientes Consolidados</span>
+                            <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                                <i data-lucide="building-2" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-baseline gap-2">
+                            <span id="kpi-total-clients" class="text-3xl font-extrabold text-slate-900 font-mono">0</span>
+                            <span class="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-200">100% compras ML</span>
+                        </div>
+                        <p class="text-[12px] text-slate-600 mt-1">Extraídos de solicitudes de certificados</p>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Leads Contactados</span>
+                            <div class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                                <i data-lucide="check-circle" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-baseline gap-2">
+                            <span id="kpi-contacted" class="text-3xl font-extrabold text-slate-900 font-mono">0</span>
+                            <span id="kpi-contacted-pct" class="text-xs text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full font-bold border border-emerald-200">0%</span>
+                        </div>
+                        <p class="text-[12px] text-slate-600 mt-1">En seguimiento en el pipeline comercial</p>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Nichos Industriales</span>
+                            <div class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                <i data-lucide="layers" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-baseline gap-2">
+                            <span class="text-3xl font-extrabold text-slate-900 font-mono">6</span>
+                            <span class="text-xs text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded-full font-bold border border-indigo-200">Segmentos B2B</span>
+                        </div>
+                        <p class="text-[12px] text-slate-600 mt-1">Pitches y ofertas especializadas</p>
+                    </div>
+
+                    <div class="glass-panel p-5 rounded-2xl bg-white border border-slate-200 shadow-xs">
+                        <div class="flex items-center justify-between">
+                            <span class="text-xs font-bold uppercase tracking-wider text-slate-500">Listos para Recalibración</span>
+                            <div class="w-8 h-8 rounded-lg bg-rose-50 text-rose-600 flex items-center justify-center">
+                                <i data-lucide="clock" class="w-4 h-4"></i>
+                            </div>
+                        </div>
+                        <div class="mt-3 flex items-baseline gap-2">
+                            <span id="kpi-recalib-count" class="text-3xl font-extrabold text-slate-900 font-mono">0</span>
+                            <span class="text-xs text-rose-700 bg-rose-50 px-2 py-0.5 rounded-full font-bold border border-rose-200">&ge; 10 meses</span>
+                        </div>
+                        <p class="text-[12px] text-slate-600 mt-1">Oportunidad de renovación anual</p>
+                    </div>
+                </div>
+
+                <!-- Niche Breakdown Grid -->
+                <div class="glass-panel p-6 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-xs">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-base font-extrabold text-slate-900">Segmentación Estratégica por Nicho Industrial</h2>
+                            <p class="text-xs text-slate-600">Haz clic en cualquier segmento para ver los clientes y enviar correos específicos de su rubro</p>
+                        </div>
+                    </div>
+                    <div id="niche-cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 2: PIPELINE KANBAN -->
+            <section id="view-pipeline" class="hidden p-6 space-y-4">
+                <div class="flex items-center justify-between mb-1">
+                    <div>
+                        <h2 class="text-base font-extrabold text-slate-900">Pipeline de Seguimiento Comercial</h2>
+                        <p class="text-xs text-slate-600">Supervisa el ciclo de vida de los clientes desde que compran en Mercado Libre hasta que se fidelizan</p>
+                    </div>
+                </div>
+                <!-- Kanban Board Container -->
+                <div id="kanban-container" class="w-full overflow-x-auto pb-4">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- VIEW 3: DIRECTORIO 360 -->
+            <section id="view-directorio" class="hidden p-6 space-y-4">
+                <!-- Filters Bar -->
+                <div class="glass-panel p-4 rounded-2xl bg-white border border-slate-200 space-y-3 shadow-xs">
+                    <div class="flex flex-wrap items-center justify-between gap-3">
+                        <div class="flex flex-wrap items-center gap-2" id="niche-pills-container">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Table Container -->
+                <div class="glass-panel rounded-2xl overflow-hidden border border-slate-200 bg-white shadow-xs">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-slate-100 text-slate-700 uppercase tracking-wider font-bold border-b border-slate-200 text-[11px]">
+                                <tr>
+                                    <th class="px-4 py-3.5">Cliente / Empresa & CUIT</th>
+                                    <th class="px-4 py-3.5">Contacto & Email</th>
+                                    <th class="px-4 py-3.5">Nicho Industrial</th>
+                                    <th class="px-4 py-3.5">Equipos & Certificados</th>
+                                    <th class="px-4 py-3.5">Estado Comercial</th>
+                                    <th class="px-4 py-3.5 text-right">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="clients-table-body" class="divide-y divide-slate-100">
+                                <!-- Rendered by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-600">
+                        <div id="table-results-count" class="font-medium">Cargando clientes...</div>
+                        <span class="text-[11px] text-slate-500">Haz clic en cualquier cliente para abrir su Ficha 360° con atajos de investigación</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 4: ESTUDIO DE EMAILS -->
+            <section id="view-campanias" class="hidden p-6 space-y-6">
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                    <!-- Configurator -->
+                    <div class="lg:col-span-5 space-y-4">
+                        <div class="glass-panel p-5 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-xs">
+                            <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                <i data-lucide="sliders" class="w-4 h-4 text-blue-600"></i>
+                                <span>Plantilla y Configuración</span>
+                            </h2>
+
+                            <div>
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <label class="block text-xs font-bold text-slate-700">Seleccionar Plantilla Comercial</label>
+                                    <button id="btn-ai-compose" onclick="window.generateEmailWithGemini('profesional y consultivo')" 
+                                            class="px-2.5 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-[11px] font-bold flex items-center gap-1.5 shadow-2xs transition cursor-pointer">
+                                        <i data-lucide="sparkles" class="w-3 h-3 text-amber-300"></i>
+                                        <span>✨ Redactar con Gemini IA</span>
+                                    </button>
+                                </div>
+                                <select id="campaign-template-select" onchange="window.handleTemplateChange(this.value)" 
+                                        class="w-full bg-slate-50 hover:bg-white border border-slate-300 text-xs text-slate-900 rounded-xl px-3.5 py-2.5 focus:outline-none focus:border-blue-600 transition shadow-2xs">
+                                    <!-- Options rendered dynamically -->
+                                </select>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Asunto del Correo</label>
+                                <input type="text" id="campaign-subject-input" oninput="window.updateCampaignPreview()" 
+                                       class="w-full bg-slate-50 hover:bg-white border border-slate-300 text-xs text-slate-900 rounded-xl px-3.5 py-2 focus:outline-none focus:border-blue-600 transition shadow-2xs font-medium">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1.5">Cuerpo del Correo</label>
+                                <textarea id="campaign-body-input" rows="12" oninput="window.updateCampaignPreview()" 
+                                          class="w-full bg-slate-50 hover:bg-white border border-slate-300 text-xs text-slate-900 rounded-xl p-3 focus:outline-none focus:border-blue-600 transition shadow-2xs font-sans leading-relaxed"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Preview & Dispatch -->
+                    <div class="lg:col-span-7 space-y-4">
+                        <div class="glass-panel p-5 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-xs">
+                            <div class="flex items-center justify-between">
+                                <h2 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+                                    <i data-lucide="eye" class="w-4 h-4 text-emerald-600"></i>
+                                    <span>Vista Previa con Datos Reales del Cliente</span>
+                                </h2>
+                            </div>
+
+                            <!-- Email Mockup -->
+                            <div class="bg-white rounded-xl border-2 border-slate-200 p-5 space-y-3 shadow-sm text-slate-900">
+                                <div class="flex items-center gap-2 text-xs border-b border-slate-200 pb-2">
+                                    <span class="text-slate-500 font-bold w-16">Para:</span>
+                                    <span id="preview-to" class="text-slate-900 font-mono font-semibold"></span>
+                                </div>
+                                <div class="flex items-center gap-2 text-xs border-b border-slate-200 pb-2">
+                                    <span class="text-slate-500 font-bold w-16">Asunto:</span>
+                                    <span id="preview-subject" class="text-slate-900 font-bold"></span>
+                                </div>
+                                <div class="pt-2 text-xs text-slate-800 whitespace-pre-wrap leading-relaxed min-h-[250px]" id="preview-body"></div>
+                            </div>
+
+                            <!-- Dispatch Buttons -->
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                                <button onclick="window.dispatchOutlookDesktop()" 
+                                        class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition">
+                                    <i data-lucide="send" class="w-4 h-4"></i>
+                                    <span>Abrir en Outlook</span>
+                                </button>
+
+                                <button onclick="window.dispatchGmailWeb()" 
+                                        class="px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition">
+                                    <i data-lucide="external-link" class="w-4 h-4"></i>
+                                    <span>Abrir en Gmail Web</span>
+                                </button>
+
+                                <button onclick="window.copyEmailToClipboard()" 
+                                        class="px-4 py-3 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-800 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition shadow-2xs">
+                                    <i data-lucide="copy" class="w-4 h-4 text-blue-600"></i>
+                                    <span>Copiar al Portapapeles</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- VIEW 5: BITÁCORA -->
+            <section id="view-bitacora" class="hidden p-6 space-y-4">
+                <div class="glass-panel p-6 rounded-2xl bg-white border border-slate-200 space-y-4 shadow-xs">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h2 class="text-base font-extrabold text-slate-900">Bitácora de Interacciones Comerciales</h2>
+                            <p class="text-xs text-slate-600">Historial completo de contactos, cambios de estado y notas comerciales</p>
+                        </div>
+                        <button onclick="window.clearBitacora()" class="text-xs text-red-600 hover:text-red-700 font-semibold flex items-center gap-1 bg-red-50 hover:bg-red-100 border border-red-200 px-3 py-1.5 rounded-lg transition">
+                            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                            <span>Limpiar Historial</span>
+                        </button>
+                    </div>
+                    <div id="bitacora-list" class="space-y-3 pt-2">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- CLIENT 360 DRAWER MODAL -->
+    <div id="client-drawer" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs hidden items-center justify-end">
+        <div class="w-full max-w-2xl h-full bg-white border-l border-slate-200 shadow-2xl flex flex-col justify-between overflow-y-auto transform transition-transform">
+            <!-- Header -->
+            <div class="p-6 border-b border-slate-200 bg-white sticky top-0 z-10 flex items-start justify-between shadow-2xs">
+                <div class="space-y-1">
+                    <div class="flex items-center gap-2">
+                        <span id="drawer-client-id" class="text-[11px] font-mono bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200 font-bold"></span>
+                        <span id="drawer-nicho-badge" class="text-xs px-2.5 py-0.5 rounded-full font-bold"></span>
+                    </div>
+                    <h2 id="drawer-client-name" class="text-xl font-black text-slate-900"></h2>
+                    <p id="drawer-client-empresa" class="text-xs text-slate-600 font-medium"></p>
+                </div>
+                <button onclick="window.closeClientDrawer()" class="text-slate-400 hover:text-slate-700 p-1.5 rounded-lg hover:bg-slate-100 transition">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Body -->
+            <div class="p-6 space-y-6 flex-1 bg-slate-50/50">
+                <!-- Contact info cards -->
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                        <span class="text-[11px] font-bold text-slate-500 block mb-1">Contacto Directo</span>
+                        <div id="drawer-contacts" class="text-xs font-bold text-slate-900"></div>
+                    </div>
+                    <div class="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
+                        <span class="text-[11px] font-bold text-slate-500 block mb-1">Correo Electrónico</span>
+                        <div id="drawer-emails" class="text-xs font-mono font-bold text-blue-600 break-all"></div>
+                    </div>
+                </div>
+
+                <!-- Fast Research Shortcuts -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-2 shadow-2xs">
+                    <span class="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <i data-lucide="search" class="w-3.5 h-3.5 text-blue-600"></i>
+                        <span>Investigación Rápida del Cliente</span>
+                    </span>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1">
+                        <a id="btn-research-google" target="_blank" href="#" 
+                           class="px-2.5 py-2 bg-slate-50 hover:bg-blue-50 text-slate-800 hover:text-blue-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-300 transition">
+                            <i data-lucide="globe" class="w-3.5 h-3.5 text-blue-600"></i>
+                            <span>Google</span>
+                        </a>
+                        <a id="btn-research-cuit" target="_blank" href="#" 
+                           class="px-2.5 py-2 bg-slate-50 hover:bg-emerald-50 text-slate-800 hover:text-emerald-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-300 transition">
+                            <i data-lucide="file-text" class="w-3.5 h-3.5 text-emerald-600"></i>
+                            <span>CUIT Online</span>
+                        </a>
+                        <a id="btn-research-linkedin" target="_blank" href="#" 
+                           class="px-2.5 py-2 bg-slate-50 hover:bg-indigo-50 text-slate-800 hover:text-indigo-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-300 transition">
+                            <i data-lucide="briefcase" class="w-3.5 h-3.5 text-indigo-600"></i>
+                            <span>LinkedIn</span>
+                        </a>
+                        <a id="btn-research-maps" target="_blank" href="#" 
+                           class="px-2.5 py-2 bg-slate-50 hover:bg-rose-50 text-slate-800 hover:text-rose-700 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 border border-slate-300 transition">
+                            <i data-lucide="map-pin" class="w-3.5 h-3.5 text-rose-600"></i>
+                            <span>Maps</span>
+                        </a>
+                    </div>
+                    <!-- AI Investigation Action -->
+                    <button id="btn-ai-investigate" onclick="window.investigateWithGemini()" 
+                            class="w-full mt-2.5 px-3.5 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-xs transition cursor-pointer">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-amber-300"></i>
+                        <span>✨ Investigar y Perfilar Empresa con Gemini IA</span>
+                    </button>
+                </div>
+
+                <!-- Commercial Classification Overrides -->
+                <div class="bg-white p-4 rounded-xl border border-slate-200 grid grid-cols-2 gap-3 shadow-2xs">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">CUIT / Razón Social</label>
+                        <input type="text" id="drawer-cuit-input" onchange="window.updateClientDrawerData()" placeholder="Ej: 30-71234567-8" 
+                               class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 font-mono focus:bg-white focus:outline-none focus:border-blue-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Clasificación / Scoring</label>
+                        <select id="drawer-scoring-select" onchange="window.updateClientDrawerData()" 
+                                class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-blue-600 font-semibold">
+                            <option value="A">Tier A (Gran Empresa / Planta)</option>
+                            <option value="B">Tier B (Consultora / Pyme)</option>
+                            <option value="C">Tier C (Usuario / Taller)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Estado de Seguimiento</label>
+                        <select id="drawer-status-select" onchange="window.updateClientDrawerData()" 
+                                class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-blue-600 font-semibold">
+                            <option value="nuevo">Nuevo Lead ML</option>
+                            <option value="investigado">Investigado & Perfilado</option>
+                            <option value="contactado">Primer Contacto Enviado</option>
+                            <option value="en_conversacion">En Conversación / Cotizado</option>
+                            <option value="ganado">Cliente Fidelizado</option>
+                            <option value="recalibracion">Próxima Recalibración</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1">Nicho Industrial</label>
+                        <select id="drawer-nicho-select" onchange="window.updateClientDrawerData()" 
+                                class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 rounded-lg p-2 focus:bg-white focus:outline-none focus:border-blue-600 font-semibold">
+                            <option value="hs">Higiene, Seguridad y Medio Ambiente</option>
+                            <option value="farma">Farmacéutica, Alimentos y Laboratorios</option>
+                            <option value="metal">Metalmecánica, Automotriz y Mecanizado</option>
+                            <option value="end">Construcción, END y Minería</option>
+                            <option value="gas">Gas, Petróleo y Plantas de Proceso</option>
+                            <option value="gral">Servicios Generales y Mantenimiento</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- AI Suggested Pitch & Opportunities -->
+                <div class="bg-gradient-to-br from-blue-50 to-indigo-50/50 p-4 rounded-xl border border-blue-200 space-y-3 shadow-2xs">
+                    <div class="flex items-center gap-2 text-xs font-bold text-blue-900">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+                        <span>Enfoque Comercial Recomendado</span>
+                    </div>
+                    <p id="drawer-pitch" class="text-xs text-slate-800 leading-relaxed font-medium"></p>
+                    <div class="pt-2 border-t border-blue-200/60">
+                        <span class="text-[11px] font-bold text-slate-700 block mb-1">Oportunidades de Venta Cruzada / Renovación:</span>
+                        <ul id="drawer-oportunidades" class="list-disc list-inside text-xs text-slate-700 space-y-1"></ul>
+                    </div>
+                </div>
+
+                <!-- Instruments History -->
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                        <span>Parque Instrumental y Certificados</span>
+                        <span id="drawer-total-calibs" class="text-slate-500 font-normal"></span>
+                    </h3>
+                    <div id="drawer-instruments-list" class="space-y-2 max-h-48 overflow-y-auto pr-1"></div>
+                </div>
+
+                <!-- Notes Section -->
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold text-slate-700 uppercase tracking-wider">Bitácora y Notas del Cliente</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="drawer-new-note" placeholder="Escribir nota (ej: 'Llamé a Jorge, pide cotización de 2 termómetros para el lunes')..." 
+                               class="flex-1 bg-white border border-slate-300 text-xs text-slate-900 rounded-xl px-3 py-2 focus:outline-none focus:border-blue-600 shadow-2xs">
+                        <button id="btn-ai-process-note" onclick="window.processNoteWithGemini()" title="Procesar nota a tarea con IA"
+                                class="px-3 py-2 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 rounded-xl text-xs font-bold flex items-center gap-1.5 transition shadow-2xs cursor-pointer">
+                            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-indigo-600"></i>
+                            <span>IA</span>
+                        </button>
+                        <button onclick="window.addDrawerNote()" 
+                                class="px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-2xs">
+                            Guardar
+                        </button>
+                    </div>
+                    <div id="drawer-notes-list" class="space-y-1.5 pt-1 max-h-36 overflow-y-auto"></div>
+                </div>
+            </div>
+
+            <!-- Drawer Footer -->
+            <div class="p-6 border-t border-slate-200 bg-white flex items-center gap-3 shadow-2xs">
+                <button onclick="window.prepareEmailForClient(selectedClient.id); window.closeClientDrawer();" 
+                        class="flex-1 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition">
+                    <i data-lucide="send" class="w-4 h-4"></i>
+                    <span>Preparar Email Personalizado</span>
+                </button>
+                <button onclick="window.closeClientDrawer()" 
+                        class="px-4 py-2.5 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold transition">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Configuración Gemini API Key -->
+    <div id="settings-modal" onclick="if(event.target === this) window.closeSettingsModal()" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs hidden items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <i data-lucide="sparkles" class="w-4 h-4"></i>
+                    </div>
+                    <h3 class="font-black text-slate-900 text-base">Configuración de Gemini IA</h3>
+                </div>
+                <button onclick="window.closeSettingsModal()" class="text-slate-400 hover:text-slate-700">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <p class="text-xs text-slate-600 leading-relaxed">
+                Ingresa tu <strong>API Key gratuita de Google AI Studio</strong>. Tu clave queda guardada de forma 100% privada en tu navegador (sin costo, hasta 1.500 consultas por día).
+            </p>
+            <div>
+                <label class="block text-xs font-bold text-slate-700 mb-1">API Key de Google Gemini:</label>
+                <input type="password" id="setting-gemini-key" placeholder="AIzaSy..." 
+                       class="w-full bg-slate-50 border border-slate-300 text-xs text-slate-900 font-mono rounded-xl p-2.5 focus:bg-white focus:outline-none focus:border-blue-600">
+                <a href="https://aistudio.google.com/app/apikey" target="_blank" class="mt-2 text-[11px] text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1 font-semibold">
+                    <span>Obtener API Key gratis en Google AI Studio (1 clic)</span>
+                    <i data-lucide="external-link" class="w-3 h-3"></i>
+                </a>
+            </div>
+            <div class="pt-2 flex items-center justify-end gap-2 border-t border-slate-100">
+                <button onclick="window.closeSettingsModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                    Cancelar
+                </button>
+                <button onclick="window.saveSettingsModal()" class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-xs">
+                    Guardar Clave
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: Top Oportunidades del Mes (Gemini IA) -->
+    <div id="opportunities-modal" class="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs hidden items-center justify-center p-4">
+        <div class="bg-white border border-slate-200 rounded-2xl shadow-2xl max-w-2xl w-full p-6 space-y-4 max-h-[85vh] flex flex-col">
+            <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div class="flex items-center gap-2.5">
+                    <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 text-white flex items-center justify-center shadow-xs">
+                        <i data-lucide="sparkles" class="w-5 h-5 text-amber-300"></i>
+                    </div>
+                    <div>
+                        <h3 class="font-black text-slate-900 text-base">Top 5 Oportunidades Prioritarias</h3>
+                        <p class="text-[11px] text-slate-500">Seleccionadas por Gemini IA según tamaño de empresa y ciclo de calibración</p>
+                    </div>
+                </div>
+                <button onclick="window.closeOpportunitiesModal()" class="text-slate-400 hover:text-slate-700">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+            <div id="opportunities-modal-content" class="space-y-3 overflow-y-auto flex-1 pr-1 custom-scrollbar">
+                <!-- Rendered dynamically -->
+            </div>
+            <div class="pt-2 flex justify-end border-t border-slate-100">
+                <button onclick="window.closeOpportunitiesModal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold transition">
+                    Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Floating Toast Notification -->
+    <div id="crm-toast" class="fixed bottom-6 right-6 z-50 bg-slate-900 border border-blue-500 text-white text-xs font-bold px-4 py-3 rounded-xl shadow-2xl transition transform translate-y-20 opacity-0 pointer-events-none flex items-center gap-2">
+        <i data-lucide="check" class="w-4 h-4 text-emerald-400"></i>
+        <span>Acción completada</span>
+    </div>
+
+    <!-- Firebase SDK (Compat) -->
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
+
+    <!-- Core Scripts -->
+    <script src="js/firebase-config.js"></script>
+    <script src="clients_data.js"></script>
+    <script src="js/gemini-ai.js"></script>
+    <script src="js/enrichment.js"></script>
+    <script src="js/templates.js"></script>
+    <script src="js/pipeline.js"></script>
+    <script src="js/data-sync.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
