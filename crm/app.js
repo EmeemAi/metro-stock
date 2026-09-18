@@ -8,16 +8,187 @@ let currentView = 'dashboard';
 let selectedNicheFilter = 'todos';
 let selectedStatusFilter = 'todos';
 let selectedScoringFilter = 'todos';
+let selectedExpirationFilter = 'todos'; // 'todos' | 'urgentes' | 'vencidos' | 'por_vencer' | 'al_dia'
+let currentSortOrder = 'vencimiento_urgente'; // 'vencimiento_urgente' | 'vencimiento_lejano' | 'recientes' | 'antiguos' | 'empresa_asc' | 'equipos_desc' | 'scoring_desc'
 let searchQuery = '';
 let selectedClient = null;
 let currentCampaignClient = null;
 
+// Helper: Calcular información detallada de vencimiento metrológico
+function getClientExpirationInfo(client) {
+    if (!client) return { status: 'desconocido', daysRemaining: 9999, label: 'Sin datos', sublabel: '', badgeClass: '' };
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let expDate = null;
+    let expEq = null;
+
+    // 1. Buscar entre todos los equipos el vencimiento más cercano
+    if (client.equipos && client.equipos.length > 0) {
+        for (const eq of client.equipos) {
+            let dStr = eq.fecha_vencimiento;
+            if (!dStr && eq.fecha_calibracion) {
+                try {
+                    const parts = eq.fecha_calibracion.slice(0, 10).split('-');
+                    dStr = `${parseInt(parts[0]) + 1}-${parts[1]}-${parts[2]}`;
+                } catch(e){}
+            }
+            if (dStr && dStr.length >= 10) {
+                const parsed = new Date(dStr.slice(0, 10) + 'T00:00:00');
+                if (!isNaN(parsed.getTime())) {
+                    if (!expDate || parsed < expDate) {
+                        expDate = parsed;
+                        expEq = eq;
+                    }
+                }
+            }
+        }
+    }
+
+    // 2. Fallback a ultima_calibracion + 1 año
+    if (!expDate && client.ultima_calibracion && client.ultima_calibracion.length >= 10) {
+        try {
+            const parts = client.ultima_calibracion.slice(0, 10).split('-');
+            const dStr = `${parseInt(parts[0]) + 1}-${parts[1]}-${parts[2]}`;
+            const parsed = new Date(dStr + 'T00:00:00');
+            if (!isNaN(parsed.getTime())) {
+                expDate = parsed;
+            }
+        } catch(e){}
+    }
+
+    if (!expDate) {
+        return {
+            status: 'desconocido',
+            daysRemaining: 9999,
+            dateFormatted: 'Sin fecha',
+            rawDate: '9999-12-31',
+            badgeClass: 'bg-slate-100 text-slate-600 border-slate-200',
+            label: 'Sin vencimiento',
+            sublabel: 'Sin registros',
+            equipment: null
+        };
+    }
+
+    const diffDays = Math.round((expDate - today) / (1000 * 60 * 60 * 24));
+    const year = expDate.getFullYear();
+    const month = String(expDate.getMonth() + 1).padStart(2, '0');
+    const day = String(expDate.getDate()).padStart(2, '0');
+    const dateFormatted = `${day}/${month}/${year}`;
+    const rawDate = `${year}-${month}-${day}`;
+
+    if (diffDays < 0) {
+        const daysAgo = Math.abs(diffDays);
+        return {
+            status: 'vencido',
+            daysRemaining: diffDays,
+            daysAgo: daysAgo,
+            dateFormatted: dateFormatted,
+            rawDate: rawDate,
+            badgeClass: 'bg-rose-50 text-rose-700 border-rose-300 font-bold',
+            icon: 'alert-circle',
+            label: daysAgo === 0 ? 'Vence hoy' : `Vencido hace ${daysAgo}d`,
+            sublabel: `Venció el ${dateFormatted}`,
+            equipment: expEq
+        };
+    } else if (diffDays <= 60) {
+        return {
+            status: 'por_vencer',
+            daysRemaining: diffDays,
+            dateFormatted: dateFormatted,
+            rawDate: rawDate,
+            badgeClass: 'bg-amber-50 text-amber-800 border-amber-300 font-bold',
+            icon: 'clock',
+            label: diffDays === 0 ? 'Vence hoy' : `Vence en ${diffDays}d`,
+            sublabel: `Vence el ${dateFormatted}`,
+            equipment: expEq
+        };
+    } else {
+        const months = Math.round(diffDays / 30.4);
+        return {
+            status: 'al_dia',
+            daysRemaining: diffDays,
+            dateFormatted: dateFormatted,
+            rawDate: rawDate,
+            badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200 font-medium',
+            icon: 'check-circle-2',
+            label: `Al día (en ${months}m)`,
+            sublabel: `Vence el ${dateFormatted}`,
+            equipment: expEq
+        };
+    }
+}
+
+// ==========================================
+// THEME MANAGER (DARK / LIGHT MODE)
+// ==========================================
+
+function initTheme() {
+    try {
+        const savedTheme = localStorage.getItem('metrocrm_theme');
+        // Si no hay preferencia guardada, respetamos preferencia del sistema si es dark, o por defecto light
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+        applyTheme(isDark ? 'dark' : 'light', false);
+    } catch (e) {
+        console.warn("No se pudo inicializar tema:", e);
+    }
+}
+
+function applyTheme(theme, showNotification = true) {
+    const isDark = theme === 'dark';
+    const htmlEl = document.documentElement;
+    const btnText = document.getElementById('theme-toggle-text');
+    const btnIcon = document.getElementById('theme-toggle-icon');
+    const btn = document.getElementById('btn-theme-toggle');
+
+    if (isDark) {
+        htmlEl.classList.add('dark');
+        try { localStorage.setItem('metrocrm_theme', 'dark'); } catch(e){}
+        if (btnText) btnText.innerText = 'Modo Claro';
+        if (btnIcon) {
+            btnIcon.setAttribute('data-lucide', 'sun');
+            btnIcon.className = 'w-3.5 h-3.5 text-amber-400';
+        }
+        if (btn) btn.title = 'Cambiar a Modo Claro (Ctrl+Shift+D)';
+    } else {
+        htmlEl.classList.remove('dark');
+        try { localStorage.setItem('metrocrm_theme', 'light'); } catch(e){}
+        if (btnText) btnText.innerText = 'Modo Oscuro';
+        if (btnIcon) {
+            btnIcon.setAttribute('data-lucide', 'moon');
+            btnIcon.className = 'w-3.5 h-3.5 text-indigo-500';
+        }
+        if (btn) btn.title = 'Cambiar a Modo Oscuro (Ctrl+Shift+D)';
+    }
+
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+
+    if (showNotification && typeof showToast === 'function') {
+        showToast(isDark ? 'Modo Oscuro activado 🌙' : 'Modo Claro activado ☀️');
+    }
+}
+
+function toggleTheme() {
+    const isDark = document.documentElement.classList.contains('dark');
+    applyTheme(isDark ? 'light' : 'dark', true);
+}
+
 // Initialize Application
 async function initApp() {
     try {
-        console.log("MetroCRM Pro iniciando en modo claro...");
+        initTheme();
+        console.log("MetroCRM Pro iniciando...");
         clients = await window.DataSync.loadInitialClients();
         interactionsHistory = window.DataSync.loadHistory();
+
+        // Limpiar cualquier autocompletado del navegador en el buscador
+        const searchInput = document.getElementById('global-search');
+        if (searchInput) searchInput.value = '';
+        searchQuery = '';
 
         updateDashboardKPIs();
         renderNicheCards();
@@ -77,18 +248,19 @@ function updateDashboardKPIs() {
     const contacted = clients.filter(c => c.estado && c.estado !== 'nuevo' && c.estado !== 'Nuevo').length;
     const contactedPct = total > 0 ? Math.round((contacted * 100) / total) : 0;
     
-    // Recalibration candidates (more than 10 months since last calibration)
-    const now = new Date();
-    const recalibReady = clients.filter(c => {
-        if (!c.ultima_calibracion) return false;
-        try {
-            const calDate = new Date(c.ultima_calibracion);
-            const diffMonths = (now - calDate) / (1000 * 60 * 60 * 24 * 30.4);
-            return diffMonths >= 10;
-        } catch(e) {
-            return false;
-        }
-    }).length;
+    // Conteo de vencimientos en tiempo real
+    let vencidosCount = 0;
+    let porVencerCount = 0;
+    let alDiaCount = 0;
+
+    clients.forEach(c => {
+        const info = getClientExpirationInfo(c);
+        if (info.status === 'vencido') vencidosCount++;
+        else if (info.status === 'por_vencer') porVencerCount++;
+        else alDiaCount++;
+    });
+
+    const urgentesCount = vencidosCount + porVencerCount;
 
     const elTotal = document.getElementById('kpi-total-clients');
     const elContacted = document.getElementById('kpi-contacted');
@@ -99,8 +271,21 @@ function updateDashboardKPIs() {
     if (elTotal) elTotal.innerText = total;
     if (elContacted) elContacted.innerText = contacted;
     if (elContactedPct) elContactedPct.innerText = `${contactedPct}% del total`;
-    if (elRecalib) elRecalib.innerText = recalibReady;
+    if (elRecalib) elRecalib.innerText = urgentesCount;
     if (badgeTotal) badgeTotal.innerText = total;
+
+    // Actualizar contadores de las píldoras de vencimiento en Directorio
+    const elExpTodos = document.getElementById('count-exp-todos');
+    const elExpUrgentes = document.getElementById('count-exp-urgentes');
+    const elExpVencidos = document.getElementById('count-exp-vencidos');
+    const elExpPorVencer = document.getElementById('count-exp-por-vencer');
+    const elExpAlDia = document.getElementById('count-exp-al-dia');
+
+    if (elExpTodos) elExpTodos.innerText = total;
+    if (elExpUrgentes) elExpUrgentes.innerText = urgentesCount;
+    if (elExpVencidos) elExpVencidos.innerText = vencidosCount;
+    if (elExpPorVencer) elExpPorVencer.innerText = porVencerCount;
+    if (elExpAlDia) elExpAlDia.innerText = alDiaCount;
 }
 
 function renderNicheCards() {
@@ -202,12 +387,56 @@ function clearSearch() {
     renderClientsTable();
 }
 
+function sortClients(clientList, sortOrder) {
+    return clientList.sort((a, b) => {
+        const expA = getClientExpirationInfo(a);
+        const expB = getClientExpirationInfo(b);
+
+        switch (sortOrder) {
+            case 'vencimiento_urgente':
+                // Los días negativos (vencidos) o más pequeños primero
+                return expA.daysRemaining - expB.daysRemaining;
+            case 'vencimiento_lejano':
+                return expB.daysRemaining - expA.daysRemaining;
+            case 'recientes':
+                return (b.ultima_calibracion || '').localeCompare(a.ultima_calibracion || '');
+            case 'antiguos':
+                return (a.ultima_calibracion || '').localeCompare(b.ultima_calibracion || '');
+            case 'empresa_asc':
+                return (a.empresa || a.nombre || '').localeCompare(b.empresa || b.nombre || '');
+            case 'equipos_desc':
+                const eqA = a.equipos ? a.equipos.length : (a.total_calibraciones || 1);
+                const eqB = b.equipos ? b.equipos.length : (b.total_calibraciones || 1);
+                return eqB - eqA;
+            case 'scoring_desc':
+                const scoreOrder = { A: 1, B: 2, C: 3 };
+                return (scoreOrder[a.scoring || 'C'] || 3) - (scoreOrder[b.scoring || 'C'] || 3);
+            default:
+                return expA.daysRemaining - expB.daysRemaining;
+        }
+    });
+}
+
 function getFilteredClients() {
-    return clients.filter(c => {
+    const list = clients.filter(c => {
         const nid = c.nicho_id || 'gral';
         if (selectedNicheFilter !== 'todos' && nid !== selectedNicheFilter) return false;
         if (selectedStatusFilter !== 'todos' && window.PipelineManager.normalizeStage(c.estado) !== selectedStatusFilter) return false;
         if (selectedScoringFilter !== 'todos' && (c.scoring || 'C') !== selectedScoringFilter) return false;
+
+        // Filtro de vencimiento
+        if (selectedExpirationFilter !== 'todos') {
+            const exp = getClientExpirationInfo(c);
+            if (selectedExpirationFilter === 'urgentes') {
+                if (exp.status !== 'vencido' && exp.status !== 'por_vencer') return false;
+            } else if (selectedExpirationFilter === 'vencidos') {
+                if (exp.status !== 'vencido') return false;
+            } else if (selectedExpirationFilter === 'por_vencer') {
+                if (exp.status !== 'por_vencer') return false;
+            } else if (selectedExpirationFilter === 'al_dia') {
+                if (exp.status !== 'al_dia') return false;
+            }
+        }
 
         if (searchQuery) {
             const name = (c.nombre || '').toLowerCase();
@@ -226,6 +455,8 @@ function getFilteredClients() {
         }
         return true;
     });
+
+    return sortClients(list, currentSortOrder);
 }
 
 function renderClientsTable() {
@@ -239,12 +470,29 @@ function renderClientsTable() {
     if (filtered.length === 0) {
         tbody.innerHTML = `
         <tr>
-            <td colspan="6" class="px-6 py-12 text-center text-slate-500">
-                <p class="text-sm font-semibold text-slate-700">No se encontraron clientes con los filtros aplicados.</p>
-                <p class="text-xs text-slate-500 mt-1">Prueba quitando términos de búsqueda o cambiando el nicho seleccionado.</p>
+            <td colspan="7" class="px-6 py-12 text-center text-slate-500">
+                <div class="max-w-md mx-auto space-y-3">
+                    <div class="w-12 h-12 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center mx-auto">
+                        <i data-lucide="search-x" class="w-6 h-6"></i>
+                    </div>
+                    <p class="text-sm font-bold text-slate-800">No se encontraron clientes con los filtros aplicados.</p>
+                    <p class="text-xs text-slate-500 leading-relaxed">
+                        ${searchQuery ? `Hay una búsqueda de texto activa: <span class="font-mono font-bold text-blue-700 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-200">"${searchQuery}"</span>.<br>` : ''}
+                        ${selectedNicheFilter !== 'todos' ? `Está seleccionado el nicho: <span class="font-bold text-indigo-700">${selectedNicheFilter}</span>.<br>` : ''}
+                        ${selectedExpirationFilter !== 'todos' ? `Filtro de vencimiento: <span class="font-bold text-rose-700">${selectedExpirationFilter}</span>.` : ''}
+                    </p>
+                    <div class="pt-2">
+                        <button onclick="window.resetAllFilters()" 
+                                class="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-xs cursor-pointer inline-flex items-center gap-2">
+                            <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+                            <span>Restablecer Filtros y Ver los 271 Clientes</span>
+                        </button>
+                    </div>
+                </div>
             </td>
         </tr>
         `;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
         return;
     }
 
@@ -255,6 +503,7 @@ function renderClientsTable() {
         const email = (c.emails && c.emails.length > 0) ? c.emails[0] : 'Sin email';
         const totalEq = c.equipos ? c.equipos.length : (c.total_calibraciones || 1);
         const stage = window.PIPELINE_STAGES.find(s => s.id === window.PipelineManager.normalizeStage(c.estado)) || window.PIPELINE_STAGES[0];
+        const expInfo = getClientExpirationInfo(c);
 
         const scoringBadge = c.scoring === 'A' ? 'bg-amber-100 text-amber-900 border-amber-300' :
                              c.scoring === 'B' ? 'bg-blue-100 text-blue-900 border-blue-300' :
@@ -292,32 +541,57 @@ function renderClientsTable() {
             <td class="px-4 py-3.5">
                 <div class="text-xs font-semibold text-slate-900 flex items-center gap-1.5">
                     <span class="font-mono text-blue-700 font-bold">${totalEq} eq.</span>
-                    <span class="text-[11px] text-slate-600 truncate max-w-[200px]">
+                    <span class="text-[11px] text-slate-600 truncate max-w-[170px]">
                         ${(c.categorias || []).slice(0, 2).join(', ')}
                     </span>
                 </div>
-                <div class="text-[10px] text-slate-400 font-mono">
+                <div class="text-[10px] text-slate-400 font-mono mt-0.5">
                     Últ: ${c.ultima_calibracion ? c.ultima_calibracion.slice(0, 10) : 'N/A'}
                 </div>
             </td>
 
-            <!-- Estado -->
+            <!-- Semáforo de Vencimiento -->
+            <td class="px-4 py-3.5">
+                <div class="flex items-center gap-1.5">
+                    <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] border ${expInfo.badgeClass}">
+                        ${expInfo.status === 'vencido' ? '<span class="w-2 h-2 rounded-full bg-rose-500"></span>' : 
+                          expInfo.status === 'por_vencer' ? '<span class="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>' : 
+                          '<span class="w-2 h-2 rounded-full bg-emerald-500"></span>'}
+                        <span>${expInfo.label}</span>
+                    </span>
+                </div>
+                <div class="text-[10px] text-slate-500 font-mono mt-1 flex items-center gap-1">
+                    <i data-lucide="calendar" class="w-3 h-3 text-slate-400"></i>
+                    <span>${expInfo.sublabel}</span>
+                </div>
+            </td>
+
+            <!-- Estado Comercial -->
             <td class="px-4 py-3.5">
                 <span class="text-[10px] px-2.5 py-0.5 rounded-full font-bold border ${stage.badgeClass}">
                     ${stage.name}
                 </span>
             </td>
 
-            <!-- Acciones -->
+            <!-- Acciones Rápidas -->
             <td class="px-4 py-3.5 text-right" onclick="event.stopPropagation()">
                 <div class="flex items-center justify-end gap-1.5">
+                    ${expInfo.status === 'vencido' || expInfo.status === 'por_vencer' ? `
+                    <button onclick="window.prepareEmailForClient('${c.id}', 'recalibracion_anual')" 
+                            title="Enviar Recordatorio de Vencimiento"
+                            class="px-2.5 py-1.5 ${expInfo.status === 'vencido' ? 'bg-rose-50 hover:bg-rose-600 text-rose-700 hover:text-white border-rose-300' : 'bg-amber-50 hover:bg-amber-600 text-amber-800 hover:text-white border-amber-300'} rounded-lg border transition shadow-2xs text-xs font-bold flex items-center gap-1.5">
+                        <i data-lucide="bell-ring" class="w-3.5 h-3.5"></i>
+                        <span class="hidden xl:inline">${expInfo.status === 'vencido' ? 'Aviso Vencido' : 'Recordar'}</span>
+                    </button>
+                    ` : `
                     <button onclick="window.prepareEmailForClient('${c.id}')" 
                             title="Preparar Email"
                             class="p-2 bg-blue-50 hover:bg-blue-600 text-blue-600 hover:text-white rounded-lg border border-blue-200 transition shadow-2xs">
                         <i data-lucide="mail" class="w-3.5 h-3.5"></i>
                     </button>
+                    `}
                     <button onclick="window.openClientDrawer('${c.id}')" 
-                            title="Ver Ficha 360°"
+                            title="Ver Ficha 360° & Investigar"
                             class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition border border-slate-200 shadow-2xs">
                         <i data-lucide="eye" class="w-3.5 h-3.5"></i>
                     </button>
@@ -354,6 +628,24 @@ function openClientDrawer(clientId) {
     document.getElementById('drawer-contacts').innerText = selectedClient.contactos ? selectedClient.contactos.join(', ') : 'No especificado';
     document.getElementById('drawer-emails').innerText = selectedClient.emails ? selectedClient.emails.join(', ') : 'Sin email';
 
+    // Empresa and Web inputs
+    const empresaInput = document.getElementById('drawer-empresa-input');
+    if (empresaInput) empresaInput.value = selectedClient.empresa || selectedClient.nombre || '';
+
+    const webInput = document.getElementById('drawer-web-input');
+    const webBtn = document.getElementById('btn-drawer-web-link');
+    if (webInput) webInput.value = selectedClient.web || '';
+    if (webBtn) {
+        if (selectedClient.web) {
+            let url = selectedClient.web.trim();
+            if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+            webBtn.href = url;
+            webBtn.classList.remove('hidden');
+        } else {
+            webBtn.classList.add('hidden');
+        }
+    }
+
     // CUIT input
     const cuitInput = document.getElementById('drawer-cuit-input');
     if (cuitInput) cuitInput.value = selectedClient.cuit || '';
@@ -387,7 +679,32 @@ function openClientDrawer(clientId) {
     if (!selectedClient.equipos || selectedClient.equipos.length === 0) {
         instList.innerHTML = '<p class="text-xs text-slate-500 italic">No hay equipos registrados para este cliente.</p>';
     } else {
-        instList.innerHTML = selectedClient.equipos.map(eq => `
+        instList.innerHTML = selectedClient.equipos.map(eq => {
+            let eqBadgeClass = 'bg-slate-100 text-slate-700 border-slate-300';
+            let eqVenceLabel = eq.fecha_vencimiento ? `Vence: ${eq.fecha_vencimiento}` : '12 meses';
+
+            if (eq.fecha_vencimiento && eq.fecha_vencimiento.length >= 10) {
+                try {
+                    const expD = new Date(eq.fecha_vencimiento.slice(0, 10) + 'T00:00:00');
+                    if (!isNaN(expD.getTime())) {
+                        const nowD = new Date();
+                        nowD.setHours(0, 0, 0, 0);
+                        const diff = Math.round((expD - nowD) / (1000 * 60 * 60 * 24));
+                        if (diff < 0) {
+                            eqBadgeClass = 'bg-rose-100 text-rose-800 border-rose-300 font-bold';
+                            eqVenceLabel = `Vencido (${Math.abs(diff)}d) • ${eq.fecha_vencimiento}`;
+                        } else if (diff <= 60) {
+                            eqBadgeClass = 'bg-amber-100 text-amber-900 border-amber-300 font-bold';
+                            eqVenceLabel = `Vence en ${diff}d • ${eq.fecha_vencimiento}`;
+                        } else {
+                            eqBadgeClass = 'bg-emerald-100 text-emerald-800 border-emerald-300 font-medium';
+                            eqVenceLabel = `Al día • Vence: ${eq.fecha_vencimiento}`;
+                        }
+                    }
+                } catch(e) {}
+            }
+
+            return `
             <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs shadow-2xs">
                 <div>
                     <div class="font-bold text-slate-900 flex items-center gap-2">
@@ -399,15 +716,16 @@ function openClientDrawer(clientId) {
                     </div>
                 </div>
                 <div class="text-right">
-                    <span class="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold font-mono">
-                        Vence: ${eq.fecha_vencimiento || '12 meses'}
+                    <span class="text-[10px] px-2 py-0.5 rounded-full border font-mono ${eqBadgeClass}">
+                        ${eqVenceLabel}
                     </span>
                     <div class="text-[10px] text-slate-500 font-mono mt-1">
                         Calib: ${eq.fecha_calibracion || eq.timestamp_solicitud || ''}
                     </div>
                 </div>
             </div>
-        `).join('');
+            `;
+        }).join('');
     }
 
     // Commercial Notes
@@ -429,28 +747,77 @@ function closeClientDrawer() {
 function updateClientDrawerData() {
     if (!selectedClient) return;
 
-    const cuitVal = document.getElementById('drawer-cuit-input').value.trim();
-    const statusVal = document.getElementById('drawer-status-select').value;
-    const nichoVal = document.getElementById('drawer-nicho-select').value;
-    const scoringVal = document.getElementById('drawer-scoring-select').value;
+    const empresaVal = document.getElementById('drawer-empresa-input')?.value.trim();
+    const webVal = document.getElementById('drawer-web-input')?.value.trim();
+    const cuitVal = document.getElementById('drawer-cuit-input')?.value.trim();
+    const statusVal = document.getElementById('drawer-status-select')?.value;
+    const nichoVal = document.getElementById('drawer-nicho-select')?.value;
+    const scoringVal = document.getElementById('drawer-scoring-select')?.value;
 
-    selectedClient.cuit = cuitVal;
-    selectedClient.estado = statusVal;
-    selectedClient.nicho_id = nichoVal;
-    selectedClient.scoring = scoringVal;
+    if (empresaVal) {
+        selectedClient.empresa = empresaVal;
+        const nameEl = document.getElementById('drawer-client-name');
+        if (nameEl) nameEl.innerText = empresaVal;
+    }
+    if (webVal !== undefined) {
+        selectedClient.web = webVal;
+        const webBtn = document.getElementById('btn-drawer-web-link');
+        if (webBtn) {
+            if (webVal) {
+                let url = webVal;
+                if (!/^https?:\/\//i.test(url)) url = 'https://' + url;
+                webBtn.href = url;
+                webBtn.classList.remove('hidden');
+            } else {
+                webBtn.classList.add('hidden');
+            }
+        }
+    }
+    if (cuitVal !== undefined) selectedClient.cuit = cuitVal;
+    if (statusVal) selectedClient.estado = statusVal;
+    if (scoringVal) selectedClient.scoring = scoringVal;
 
-    const ninfo = window.NICHES[nichoVal];
-    selectedClient.nicho = ninfo.name;
-    selectedClient.nicho_short = ninfo.short;
-    selectedClient.pitch = ninfo.pitch;
-    selectedClient.oportunidades = ninfo.oportunidades;
+    if (nichoVal) {
+        selectedClient.nicho_id = nichoVal;
+        const ninfo = window.NICHES[nichoVal];
+        if (ninfo) {
+            selectedClient.nicho = ninfo.name;
+            selectedClient.nicho_short = ninfo.short;
+            selectedClient.pitch = ninfo.pitch;
+            selectedClient.oportunidades = ninfo.oportunidades;
+
+            const badgeNicho = document.getElementById('drawer-nicho-badge');
+            if (badgeNicho) {
+                badgeNicho.className = `text-xs px-2.5 py-0.5 rounded-full font-bold ${ninfo.badgeClass}`;
+                badgeNicho.innerText = ninfo.name;
+            }
+            const pitchEl = document.getElementById('drawer-pitch');
+            if (pitchEl) pitchEl.innerText = `"${selectedClient.pitch || ninfo.pitch}"`;
+            const oppList = document.getElementById('drawer-oportunidades');
+            if (oppList) {
+                oppList.innerHTML = (selectedClient.oportunidades || ninfo.oportunidades || []).map(o => `<li>${o}</li>`).join('');
+            }
+        }
+    }
+
+    // Refresh research links with updated company name
+    const empName = selectedClient.empresa || selectedClient.nombre;
+    const googleBtn = document.getElementById('btn-research-google');
+    const cuitBtn = document.getElementById('btn-research-cuit');
+    const linkedinBtn = document.getElementById('btn-research-linkedin');
+    const mapsBtn = document.getElementById('btn-research-maps');
+
+    if (googleBtn) googleBtn.href = window.ResearchEngine.getGoogleSearchUrl(empName);
+    if (cuitBtn) cuitBtn.href = window.ResearchEngine.getCuitOnlineUrl(selectedClient.cuit || empName);
+    if (linkedinBtn) linkedinBtn.href = window.ResearchEngine.getLinkedInCompanyUrl(empName);
+    if (mapsBtn) mapsBtn.href = window.ResearchEngine.getGoogleMapsUrl(empName);
 
     window.DataSync.saveClients(clients);
     updateDashboardKPIs();
     renderClientsTable();
     if (currentView === 'pipeline') window.PipelineManager.renderKanban(clients, 'kanban-container');
 
-    showToast("Datos del cliente actualizados.");
+    showToast("Ficha del cliente actualizada.");
 }
 
 function moveClientStage(clientId, newStage) {
@@ -531,19 +898,27 @@ function handleTemplateChange(templateId) {
     updateCampaignPreview();
 }
 
-function prepareEmailForClient(clientId) {
+function prepareEmailForClient(clientId, templateId = null) {
     const client = clients.find(c => c.id === clientId);
     if (!client) return;
 
     currentCampaignClient = client;
     switchView('campanias');
 
-    const foundTpl = Object.keys(window.CRM_TEMPLATES).find(k => k.startsWith(client.nicho_id)) || 'onboarding_ml';
+    let chosenTpl = templateId;
+    if (!chosenTpl) {
+        const expInfo = getClientExpirationInfo(client);
+        if (expInfo.status === 'vencido' || expInfo.status === 'por_vencer') {
+            chosenTpl = 'recalibracion_anual';
+        } else {
+            chosenTpl = Object.keys(window.CRM_TEMPLATES).find(k => k.startsWith(client.nicho_id)) || 'onboarding_ml';
+        }
+    }
     
     const tplSelect = document.getElementById('campaign-template-select');
     if (tplSelect) {
-        tplSelect.value = foundTpl;
-        handleTemplateChange(foundTpl);
+        tplSelect.value = chosenTpl;
+        handleTemplateChange(chosenTpl);
     }
 }
 
@@ -703,6 +1078,10 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeClientDrawer();
     }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+        e.preventDefault();
+        toggleTheme();
+    }
     if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
         e.preventDefault();
         document.getElementById('global-search')?.focus();
@@ -716,6 +1095,9 @@ if (document.readyState === 'loading') {
     initApp();
 }
 
+window.initTheme = initTheme;
+window.applyTheme = applyTheme;
+window.toggleTheme = toggleTheme;
 window.switchView = switchView;
 window.handleSearch = handleSearch;
 window.clearSearch = clearSearch;
@@ -979,3 +1361,85 @@ window.generateEmailWithGemini = generateEmailWithGemini;
 window.processNoteWithGemini = processNoteWithGemini;
 window.analyzeOpportunitiesWithGemini = analyzeOpportunitiesWithGemini;
 window.closeOpportunitiesModal = closeOpportunitiesModal;
+window.getClientExpirationInfo = getClientExpirationInfo;
+
+window.setExpirationFilter = function(filterType) {
+    selectedExpirationFilter = filterType;
+    
+    // Actualizar estilos activos de las píldoras
+    const filters = ['todos', 'urgentes', 'vencidos', 'por_vencer', 'al_dia'];
+    filters.forEach(f => {
+        const btn = document.getElementById(`filter-exp-${f.replace('_', '-')}`);
+        if (btn) {
+            if (f === filterType) {
+                btn.className = "px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-blue-600 text-white shadow-2xs";
+            } else {
+                btn.className = "px-2.5 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 bg-slate-50 text-slate-700 hover:bg-slate-100 border border-slate-200";
+            }
+        }
+    });
+
+    // Si filtra urgentes o vencidos, ordenar automáticamente por más urgentes
+    if (filterType !== 'todos' && filterType !== 'al_dia') {
+        currentSortOrder = 'vencimiento_urgente';
+        const sortSel = document.getElementById('table-sort-select');
+        if (sortSel) sortSel.value = 'vencimiento_urgente';
+
+        // Si estaba seleccionado un nicho sin clientes en esta categoría, resetear nicho a 'todos'
+        if (selectedNicheFilter !== 'todos') {
+            const inNiche = clients.filter(c => (c.nicho_id || 'gral') === selectedNicheFilter);
+            if (inNiche.length === 0) {
+                selectedNicheFilter = 'todos';
+                renderNichePills();
+            }
+        }
+    }
+
+    renderClientsTable();
+};
+
+window.setTableSort = function(sortType) {
+    currentSortOrder = sortType;
+    renderClientsTable();
+};
+
+window.toggleVencimientoSort = function() {
+    if (currentSortOrder === 'vencimiento_urgente') {
+        currentSortOrder = 'vencimiento_lejano';
+    } else {
+        currentSortOrder = 'vencimiento_urgente';
+    }
+    const sortSel = document.getElementById('table-sort-select');
+    if (sortSel) sortSel.value = currentSortOrder;
+    renderClientsTable();
+    showToast(currentSortOrder === 'vencimiento_urgente' ? "Orden: Vencimientos más urgentes / vencidos primero" : "Orden: Vencimientos más lejanos primero");
+};
+
+window.filterByRecalibracionAndGoDirectorio = function() {
+    switchView('directorio');
+    // Limpiar búsqueda y restablecer nicho a todos para mostrar los 63 urgentes
+    clearSearch();
+    selectedNicheFilter = 'todos';
+    renderNichePills();
+    window.setExpirationFilter('urgentes');
+    window.setTableSort('vencimiento_urgente');
+    const sortSel = document.getElementById('table-sort-select');
+    if (sortSel) sortSel.value = 'vencimiento_urgente';
+    const target = document.getElementById('view-directorio');
+    if (target) target.scrollIntoView({ behavior: 'smooth' });
+};
+
+window.resetAllFilters = function() {
+    clearSearch();
+    selectedNicheFilter = 'todos';
+    selectedStatusFilter = 'todos';
+    selectedScoringFilter = 'todos';
+    selectedExpirationFilter = 'todos';
+    currentSortOrder = 'vencimiento_urgente';
+    const sortSel = document.getElementById('table-sort-select');
+    if (sortSel) sortSel.value = 'vencimiento_urgente';
+    renderNichePills();
+    window.setExpirationFilter('todos');
+    renderClientsTable();
+    showToast("Filtros restablecidos: mostrando los 271 clientes.");
+};

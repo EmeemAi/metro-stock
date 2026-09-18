@@ -120,10 +120,68 @@ function getClientExpirationInfo(client) {
     }
 }
 
+// ==========================================
+// THEME MANAGER (DARK / LIGHT MODE)
+// ==========================================
+
+function initTheme() {
+    try {
+        const savedTheme = localStorage.getItem('metrocrm_theme');
+        // Si no hay preferencia guardada, respetamos preferencia del sistema si es dark, o por defecto light
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const isDark = savedTheme === 'dark' || (!savedTheme && prefersDark);
+        applyTheme(isDark ? 'dark' : 'light', false);
+    } catch (e) {
+        console.warn("No se pudo inicializar tema:", e);
+    }
+}
+
+function applyTheme(theme, showNotification = true) {
+    const isDark = theme === 'dark';
+    const htmlEl = document.documentElement;
+    const btnText = document.getElementById('theme-toggle-text');
+    const btnIcon = document.getElementById('theme-toggle-icon');
+    const btn = document.getElementById('btn-theme-toggle');
+
+    if (isDark) {
+        htmlEl.classList.add('dark');
+        try { localStorage.setItem('metrocrm_theme', 'dark'); } catch(e){}
+        if (btnText) btnText.innerText = 'Modo Claro';
+        if (btnIcon) {
+            btnIcon.setAttribute('data-lucide', 'sun');
+            btnIcon.className = 'w-3.5 h-3.5 text-amber-400';
+        }
+        if (btn) btn.title = 'Cambiar a Modo Claro (Ctrl+Shift+D)';
+    } else {
+        htmlEl.classList.remove('dark');
+        try { localStorage.setItem('metrocrm_theme', 'light'); } catch(e){}
+        if (btnText) btnText.innerText = 'Modo Oscuro';
+        if (btnIcon) {
+            btnIcon.setAttribute('data-lucide', 'moon');
+            btnIcon.className = 'w-3.5 h-3.5 text-indigo-500';
+        }
+        if (btn) btn.title = 'Cambiar a Modo Oscuro (Ctrl+Shift+D)';
+    }
+
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+
+    if (showNotification && typeof showToast === 'function') {
+        showToast(isDark ? 'Modo Oscuro activado 🌙' : 'Modo Claro activado ☀️');
+    }
+}
+
+function toggleTheme() {
+    const isDark = document.documentElement.classList.contains('dark');
+    applyTheme(isDark ? 'light' : 'dark', true);
+}
+
 // Initialize Application
 async function initApp() {
     try {
-        console.log("MetroCRM Pro iniciando en modo claro...");
+        initTheme();
+        console.log("MetroCRM Pro iniciando...");
         clients = await window.DataSync.loadInitialClients();
         interactionsHistory = window.DataSync.loadHistory();
 
@@ -1020,6 +1078,10 @@ document.addEventListener('keydown', (e) => {
     if (e.key === 'Escape') {
         closeClientDrawer();
     }
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
+        e.preventDefault();
+        toggleTheme();
+    }
     if (e.key === '/' && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') {
         e.preventDefault();
         document.getElementById('global-search')?.focus();
@@ -1033,6 +1095,9 @@ if (document.readyState === 'loading') {
     initApp();
 }
 
+window.initTheme = initTheme;
+window.applyTheme = applyTheme;
+window.toggleTheme = toggleTheme;
 window.switchView = switchView;
 window.handleSearch = handleSearch;
 window.clearSearch = clearSearch;

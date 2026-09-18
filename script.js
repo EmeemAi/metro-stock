@@ -5,7 +5,7 @@ const PATRONES_CATALOG = {
     "BAL-001": { desc: "Balanza Electrónica", brand: "Prec", model: "HZT-B6000", serial: "-", cert: "", emisor: "CR MEDICION" },
     "CALP-002": { desc: "Calibre digital", brand: "SCHWYZ", model: "Sin identificar", serial: "17113143", cert: "202604-CA-16386", emisor: "CR MEDICION" },
     "CALP-003": { desc: "Calibre Digital", brand: "SCHWYZ", model: "SC111003", serial: "Sin Identificar", cert: "", emisor: "CR MEDICION" },
-    "CDEC-001": { desc: "Calibrador Decibelimetro", brand: "SCHWYZ", model: "ND9", serial: "423623", cert: "", emisor: "CR MEDICION" },
+    "CDEC-001": { desc: "Calibrador Decibelimetro", brand: "SCHWYZ", model: "ND9", serial: "423623", cert: "C02226.1", emisor: "CINTRA" },
     "CMP-001": { desc: "Calibrador multifunción", brand: "TRANSMILLE", model: "3050A", serial: "K1358I20", cert: "", emisor: "CR MEDICION" },
     "COM-001": { desc: "COMPARADOR", brand: "PRIDE", model: "-", serial: "19G0094", cert: "A-04015", emisor: "CR MEDICION" },
     "CRO-001": { desc: "Cronómetro digital", brand: "TRESSA", model: "-", serial: "22423520", cert: "", emisor: "CR MEDICION" },
