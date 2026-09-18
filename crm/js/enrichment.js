@@ -21,7 +21,7 @@ const NICHES = {
         name: "Farmacéutica, Alimentos y Laboratorios",
         short: "Farma y Alimentos",
         badgeClass: "badge-nicho-farma",
-        icon: "flask",
+        icon: "flask-conical",
         color: "#10b981",
         pitch: "Trazabilidad térmica, calibración de dataloggers y mapeo térmico conforme a normativas ANMAT y BPM / GMP.",
         oportunidades: [

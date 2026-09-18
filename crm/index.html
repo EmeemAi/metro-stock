@@ -4,12 +4,60 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MetroCRM Pro | Fidelización & Ventas B2B Mercado Libre</title>
-    <!-- Script para prevención de FOUC (Flash of Unstyled Content) -->
+    <!-- Controlador Autónomo de Tema (Dark / Light Mode) -->
     <script>
+        window.applyTheme = function(theme, notify) {
+            var isDark = (theme === 'dark');
+            var html = document.documentElement;
+            if (isDark) {
+                html.classList.add('dark');
+                try { localStorage.setItem('metrocrm_theme', 'dark'); } catch(e){}
+            } else {
+                html.classList.remove('dark');
+                try { localStorage.setItem('metrocrm_theme', 'light'); } catch(e){}
+            }
+
+            var labels = ['theme-toggle-text', 'sidebar-theme-text'];
+            labels.forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) el.innerText = isDark ? 'Modo Claro' : 'Modo Oscuro';
+            });
+
+            var icons = ['theme-toggle-icon', 'sidebar-theme-icon'];
+            icons.forEach(function(id) {
+                var el = document.getElementById(id);
+                if (el) {
+                    el.setAttribute('data-lucide', isDark ? 'sun' : 'moon');
+                    el.className = isDark ? 'w-3.5 h-3.5 text-amber-400' : 'w-3.5 h-3.5 text-indigo-500';
+                }
+            });
+
+            if (typeof lucide !== 'undefined' && lucide.createIcons) {
+                lucide.createIcons();
+            }
+
+            if (notify) {
+                var toast = document.getElementById('crm-toast');
+                if (toast) {
+                    toast.innerText = isDark ? 'Modo Oscuro activado 🌙' : 'Modo Claro activado ☀️';
+                    toast.classList.remove('translate-y-20', 'opacity-0');
+                    setTimeout(function() {
+                        toast.classList.add('translate-y-20', 'opacity-0');
+                    }, 2500);
+                }
+            }
+        };
+
+        window.toggleTheme = function() {
+            var isDark = document.documentElement.classList.contains('dark');
+            window.applyTheme(isDark ? 'light' : 'dark', true);
+        };
+
+        // Prevención instantánea de FOUC
         (function() {
             try {
-                var theme = localStorage.getItem('metrocrm_theme');
-                if (theme === 'dark' || (!theme && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                var saved = localStorage.getItem('metrocrm_theme');
+                if (saved === 'dark' || (!saved && window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
                     document.documentElement.classList.add('dark');
                 } else {
                     document.documentElement.classList.remove('dark');
@@ -21,7 +69,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest"></script>
-    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="styles.css?v=2.2">
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -41,6 +89,114 @@
             }
         }
     </script>
+    <!-- Estilos Inline para garantizar Modo Oscuro sin dependencia de caché -->
+    <style id="crm-dark-theme-inline">
+        html.dark {
+            color-scheme: dark;
+        }
+        html.dark body,
+        html.dark main {
+            background-color: #0b0f19 !important;
+            color: #f3f4f6 !important;
+        }
+        html.dark .bg-slate-50 {
+            background-color: #0b0f19 !important;
+        }
+        html.dark .bg-white {
+            background-color: #111827 !important;
+            color: #f3f4f6 !important;
+        }
+        html.dark .bg-white\/95 {
+            background-color: rgba(17, 24, 39, 0.95) !important;
+        }
+        html.dark .bg-slate-50\/50 {
+            background-color: rgba(17, 24, 39, 0.6) !important;
+        }
+        html.dark .bg-slate-100 {
+            background-color: #1f2937 !important;
+        }
+        html.dark .bg-slate-100\/80 {
+            background-color: rgba(31, 41, 55, 0.85) !important;
+        }
+        html.dark .bg-slate-200 {
+            background-color: #374151 !important;
+        }
+        html.dark .border-slate-100,
+        html.dark .border-slate-200,
+        html.dark .border-slate-300 {
+            border-color: #1f2937 !important;
+        }
+        html.dark .divide-slate-100 > :not([hidden]) ~ :not([hidden]),
+        html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+            border-color: #1f2937 !important;
+        }
+        html.dark .text-slate-900,
+        html.dark .text-slate-800 {
+            color: #f9fafb !important;
+        }
+        html.dark .text-slate-700 {
+            color: #e5e7eb !important;
+        }
+        html.dark .text-slate-600,
+        html.dark .text-slate-500 {
+            color: #9ca3af !important;
+        }
+        html.dark .text-slate-400 {
+            color: #6b7280 !important;
+        }
+        html.dark .hover\:bg-slate-50:hover,
+        html.dark .hover\:bg-slate-100:hover,
+        html.dark .hover\:bg-slate-200:hover {
+            background-color: #1f2937 !important;
+        }
+        html.dark .hover\:bg-blue-50\/40:hover {
+            background-color: rgba(30, 58, 138, 0.25) !important;
+        }
+        html.dark .hover\:text-slate-900:hover,
+        html.dark .hover\:text-slate-700:hover {
+            color: #ffffff !important;
+        }
+        html.dark .glass-panel,
+        html.dark .glass-card {
+            background: #111827 !important;
+            border-color: #1f2937 !important;
+        }
+        html.dark .kanban-card {
+            background: #141c2e !important;
+            border-color: #1f2937 !important;
+        }
+        html.dark input,
+        html.dark select,
+        html.dark textarea {
+            background-color: #0b0f19 !important;
+            border-color: #374151 !important;
+            color: #f9fafb !important;
+        }
+        html.dark input:focus,
+        html.dark select:focus,
+        html.dark textarea:focus {
+            background-color: #111827 !important;
+            border-color: #3b82f6 !important;
+        }
+        html.dark table thead {
+            background-color: #0f172a !important;
+        }
+        html.dark table thead th {
+            color: #9ca3af !important;
+            border-color: #1f2937 !important;
+        }
+        html.dark #client-drawer > div,
+        html.dark #settings-modal > div,
+        html.dark #opportunities-modal > div {
+            background-color: #111827 !important;
+            border-color: #1f2937 !important;
+            color: #f9fafb !important;
+        }
+        html.dark .from-blue-50.via-indigo-50.to-white {
+            background-image: linear-gradient(to right, #0d1b3e, #131c38, #111827) !important;
+            border-color: #1d4ed8 !important;
+        }
+    </style>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen flex flex-col antialiased selection:bg-blue-600 selection:text-white transition-colors duration-150">
 
@@ -133,6 +289,19 @@
                         <span id="badge-interactions-count" class="ml-auto text-xs bg-slate-100 text-slate-700 font-bold px-2 py-0.5 rounded-full font-mono">0</span>
                     </button>
                 </nav>
+            </div>
+
+            <!-- Botón Tema en Barra Lateral -->
+            <div class="px-3.5 py-2.5 border-t border-slate-200">
+                <button id="btn-sidebar-theme-toggle" onclick="window.toggleTheme()" 
+                        class="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-semibold text-xs transition shadow-2xs cursor-pointer"
+                        title="Alternar entre modo oscuro y claro (Ctrl+Shift+D)">
+                    <div class="flex items-center gap-2.5">
+                        <i id="sidebar-theme-icon" data-lucide="moon" class="w-4 h-4 text-indigo-500"></i>
+                        <span id="sidebar-theme-text">Modo Oscuro</span>
+                    </div>
+                    <span class="text-[10px] text-slate-400 font-mono">Ctrl+Shift+D</span>
+                </button>
             </div>
 
             <!-- Sidebar Footer -->
@@ -760,13 +929,13 @@
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
 
     <!-- Core Scripts -->
-    <script src="js/firebase-config.js"></script>
-    <script src="clients_data.js"></script>
-    <script src="js/gemini-ai.js"></script>
-    <script src="js/enrichment.js"></script>
-    <script src="js/templates.js"></script>
-    <script src="js/pipeline.js"></script>
-    <script src="js/data-sync.js"></script>
-    <script src="js/app.js"></script>
+    <script src="js/firebase-config.js?v=2.2"></script>
+    <script src="clients_data.js?v=2.2"></script>
+    <script src="js/gemini-ai.js?v=2.2"></script>
+    <script src="js/enrichment.js?v=2.2"></script>
+    <script src="js/templates.js?v=2.2"></script>
+    <script src="js/pipeline.js?v=2.2"></script>
+    <script src="js/data-sync.js?v=2.2"></script>
+    <script src="js/app.js?v=2.2"></script>
 </body>
 </html>
