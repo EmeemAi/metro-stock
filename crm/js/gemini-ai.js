@@ -225,24 +225,43 @@ ${client.notas && client.notas.length > 0 ? `- Antecedentes o notas: ${client.no
         }
     },
 
-    // 2. REDACTAR EMAIL HIPERPERSONALIZADO
-    async generateCustomEmail(client, tone = 'profesional') {
-        const system = `Eres Darío Del Real, director del Laboratorio de Metrología y Calibraciones CR MEDICION / SchwyzLab en Buenos Aires, Argentina.
-Redacta un correo comercial consultivo, profesional, empático y de alto valor para un cliente que compró un instrumento por Mercado Libre.
-No uses tono genérico ni spam. Menciona el instrumento exacto, las normativas aplicables en Argentina (ej. SRT para higiene, ANMAT/BPM para farma, ISO 9001 para metalmecánica) y ofrece calibración de su parque instrumental de planta.
-Devuelve ÚNICAMENTE un JSON válido con:
+    // 2. REDACTAR EMAIL HIPERPERSONALIZADO (100% INFORMATIVO Y ANTI-SPAM)
+    async generateCustomEmail(client, tone = 'informativo y servicial') {
+        const system = `Eres Darío Del Real, responsable del Laboratorio de Metrología y Calibraciones CR MEDICION / SchwyzLab en Buenos Aires, Argentina.
+Redacta un correo comercial de contacto institucional, 100% informativo, técnico y de alto valor para un cliente que compró un instrumento a través de Mercado Libre.
+
+POLÍTICA ESTRICTA ANTI-SPAM Y CERO CUESTIONARIOS:
+1. PROHIBIDO HACER PREGUNTAS INQUISITIVAS O CUESTIONARIOS NUMERADOS:
+   - NUNCA pongas preguntas como: "¿Cuál es el plan de uso...?", "¿Cuentan con un inventario en planta...?", "¿Podemos agendar una llamada de 15 min?". Nadie responde eso y genera rechazo inmediato por parecer spam invasivo o darles trabajo.
+2. ENFOQUE DIRECTO, CLARO Y SERVICIAL:
+   - Saludo cordial y agradecimiento sincero por la compra del equipo en Mercado Libre.
+   - Confirmación de que el instrumento cuenta con Certificado de Calibración con trazabilidad oficial emitida por nuestro laboratorio.
+   - Presentación explícita y concisa (en viñetas claras) de QUÉ SOLUCIONES Y CALIBRACIONES EXACTAS OFRECEMOS para su rubro específico:
+     * Si es Higiene y Seguridad: Calibración y certificación periódica de sonómetros, dosímetros (Res. SRT 85/12), luxómetros (Res. SRT 84/12), detectores de gases y calibradores acústicos para auditorías de ART. Provisión de gas patrón para Bump Test.
+     * Si es Farma/Alimentos/Salud: Trazabilidad térmica y calibración de termohigrómetros, dataloggers de temperatura y humedad, termómetros de inmersión y penetración conforme a normativas ANMAT y BPM / GMP.
+     * Si es Metalmecánica/Automotriz: Calibración dimensional con cálculo de incertidumbre de calibres, micrómetros, comparadores, torquímetros y llaves dinamométricas para auditorías ISO 9001.
+     * Si es Construcción/END: Calibración de medidores de espesor por ultrasonido, inclinómetros, pirómetros y medidores de recubrimiento.
+     * Si es Gas/Procesos: Calibración de manómetros patrón y de proceso, transmisores de presión y verificación de torquímetros de bridas.
+   - Ventajas prácticas de trabajar directo con el laboratorio: entrega rápida (48 a 72 hs) para no frenar la actividad, aviso preventivo automático antes de que venza el certificado, y descuentos por lote si calibran varios equipos.
+3. CIERRE AMABLE Y SIN PRESIÓN:
+   - Indicar que guarden este contacto para cuando necesiten calibrar instrumental, verificar equipos o solicitar presupuestos formales.
+   - Incluir datos de contacto directo: WhatsApp +54 11 2863-4493, Teléfono (011) 4361-3499, Laboratorio en Perú 1297 (CABA), Web www.todomedicion.com.
+
+Devuelve ÚNICAMENTE un JSON válido con esta estructura:
 {
-  "subject": "asunto atractivo y profesional",
-  "body": "cuerpo del correo con saludo, cuerpo y firma formal"
+  "subject": "asunto formal y específico (ej: Respaldo Metrológico y Servicios de Calibración - [Empresa])",
+  "body": "cuerpo del correo completo con saludo, viñetas de servicios, ventajas, cierre sin presión y firma formal"
 }`;
 
         const prompt = `Cliente:
 - Empresa: ${client.empresa || client.nombre}
 - Contacto: ${(client.contactos && client.contactos[0]) ? client.contactos[0] : 'Estimado/a'}
-- Equipos adquiridos: ${(client.categorias || []).join(', ')}
+- Equipos adquiridos: ${(client.categorias || []).join(', ') || 'Instrumental de medición'}
 - Certificados: ${client.equipos ? client.equipos.map(e => e.certificado).filter(Boolean).join(', ') : ''}
 - Nicho: ${client.nicho || 'Metrología Industrial'}
-- Tono solicitado: ${tone} (profesional, técnico y orientado a generar una conversación o cotización)`;
+- Oportunidades del nicho: ${(client.oportunidades || []).join('; ')}
+
+Redacta el correo siguiendo estrictamente el tono informativo y de valor, sin preguntas ni cuestionarios, orientado a dar soluciones concretas a su rubro y dejar el canal abierto.`;
 
         const raw = await this.callModel(prompt, system);
         try {
@@ -251,7 +270,7 @@ Devuelve ÚNICAMENTE un JSON válido con:
         } catch (e) {
             // Fallback: return raw text as body
             return {
-                subject: `Propuesta de Calibración y Mantenimiento - ${client.empresa || ''}`,
+                subject: `Servicios de Calibración y Respaldo Metrológico - ${client.empresa || ''}`,
                 body: raw
             };
         }

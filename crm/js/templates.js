@@ -7,22 +7,31 @@ const CRM_TEMPLATES = {
         id: "onboarding_ml",
         nombre: "Entrega de Certificado & Presentación de Laboratorio",
         nicho: "gral",
-        asunto: "Certificado de Calibración - {{empresa}} | CR MEDICION & SchwyzLab",
+        asunto: "Certificado de Calibración & Respaldo Técnico - {{empresa}} | CR MEDICION",
         cuerpo: `Estimado/a {{contacto}},
 
-Te contactamos desde el Laboratorio de Calibraciones (CR MEDICION | SchwyzLab).
+Te contactamos desde el Laboratorio de Calibraciones (CR MEDICION | SchwyzLab) en Buenos Aires.
 
-Queríamos agradecerte por tu compra a través de Mercado Libre y confirmar la emisión del Certificado de Calibración para su equipo:
-• Equipo: {{instrumento}}
+Queríamos agradecerte por tu reciente compra a través de Mercado Libre y confirmar la emisión y respaldo técnico de su Certificado de Calibración:
+• Equipo adquirido: {{instrumento}}
 • Certificado Nº: {{certificado}}
 • Validez recomendada: Hasta {{vencimiento}}
 
-Aprovechamos para ponernos a disposición de {{empresa}} como su laboratorio de confianza. Contamos con alcance metrológico para calibrar y certificar todo su instrumental de planta:
+Aprovechamos para ponernos a disposición de {{empresa}} como su laboratorio directo de confianza. Para que tengan presente lo que podemos resolverles cuando lo precisen, contamos con alcance metrológico para calibrar y certificar todo su parque de instrumentos:
 {{oportunidades}}
 
-¿Cuentan actualmente con otros instrumentos en uso que requieran calibración periódica o mantenimiento? Con gusto podemos prepararles una cotización formal y bonificada por lote.
+Ventajas directas de trabajar con nuestro laboratorio:
+• Tiempos rápidos de calibración (48 a 72 hs) para evitar que sus herramientas queden fuera de uso.
+• Certificados con cálculo de incertidumbre y trazabilidad metrológica para auditorías (ISO 9001, SRT, ANMAT).
+• Tarifas especiales por lote si deciden calibrar varios equipos juntos.
+• Sistema de aviso preventivo automático antes de que venza el certificado, para que no tengan que estar pendientes de las fechas.
 
-Quedamos a su entera disposición.
+Les dejamos nuestro contacto directo para cualquier consulta técnica o solicitud de presupuesto formal:
+• WhatsApp directo: +54 11 2863-4493
+• Teléfono: (011) 4361-3499
+• Laboratorio: Perú 1297, San Telmo, CABA
+
+¡Muchos éxitos con el equipo y quedamos a su entera disposición!
 
 Saludos cordiales,
 
@@ -30,26 +39,32 @@ Darío Del Real
 Laboratorio de Metrología & Calibraciones
 CR MEDICION | SchwyzLab
 Perú 1297 - CABA - Argentina
-Tel: +54 11 4361-3499 / WhatsApp: +54 11 2863-4493
-Web: www.todomedicion.com`
+WhatsApp: +54 11 2863-4493 | Web: www.todomedicion.com`
     },
 
     "hs_srt_preventiva": {
         id: "hs_srt_preventiva",
-        nombre: "Renovación Preventiva SRT (84/12 y 85/12) + Calibración",
+        nombre: "Servicios de Calibración para Higiene y Seguridad (SRT)",
         nicho: "hs",
-        asunto: "Actualización de Calibración para Auditorías SRT - {{empresa}}",
+        asunto: "Servicios de Calibración para Instrumental de Higiene y Seguridad - {{empresa}}",
         cuerpo: `Hola {{contacto}}, espero que estés muy bien.
 
-Te escribo desde el Laboratorio de Calibraciones. Revisando nuestro registro de instrumental, vemos que cuentan con equipos de medición laboral ({{instrumento}}) utilizados para relevamientos de higiene y seguridad.
+Te escribo desde el Laboratorio de Calibraciones CR MEDICION / SchwyzLab en relación al instrumental de medición laboral ({{instrumento}}) que adquirieron con nosotros.
 
-De cara a las próximas auditorías y verificaciones de cumplimiento de las resoluciones SRT 84/12 (Iluminación) y SRT 85/12 (Ruido Laboral), queríamos consultarles si precisan renovar los certificados de calibración o sumar nuevos equipos a la campaña.
+Como sabemos que las mediciones de higiene y seguridad laboral están sujetas a auditorías periódicas y exigencias de las ART bajo resoluciones de la Superintendencia de Riesgos del Trabajo (SRT), queríamos dejarles a mano los servicios específicos que brindamos para su sector:
 
-Adicionalmente, incorporamos calibración y verificación de:
-• Detectores de gases monogas y multigas (con emisión de informe técnico).
-• Calibradores acústicos y dosímetros de ruido.
+• Calibración con emisión de informe técnico y certificados trazables para:
+  - Luxómetros (conforme a Resolución SRT 84/12 de Iluminación Laboral).
+  - Sonómetros y Dosímetros (conforme a Resolución SRT 85/12 de Ruido).
+  - Calibradores acústicos de campo.
+  - Detectores de gases monogas y multigas (con verificación de respuesta y sensores).
+• Provisión de mezclas de gas patrón para Bump Test y verificación periódica de detectores.
+• Aviso preventivo de vencimiento para asegurar que sus certificados estén siempre al día antes de una inspección.
+• Turnos prioritarios en laboratorio (48 a 72 hs hábiles) para que los técnicos de campo no se queden sin instrumental.
 
-¿Tienen actualmente instrumental próximo a vencer o necesitan cotizar un lote de equipos? Quedo a su entera disposición para coordinar o enviarles presupuesto sin compromiso.
+Les dejamos este canal directo por si en algún momento precisan renovar certificados, verificar equipos antes de una medición o cotizar un lote de instrumental de su estudio o empresa. Nos pueden responder directamente a este correo o escribirnos por WhatsApp al +54 11 2863-4493.
+
+¡Muchos éxitos y a total disposición!
 
 Saludos cordiales,
 
@@ -63,128 +78,147 @@ WhatsApp: +54 11 2863-4493 | www.todomedicion.com`
         id: "farma_cadena_frio",
         nombre: "Trazabilidad Térmica & Normas GMP/BPM (Farma y Alimentos)",
         nicho: "farma",
-        asunto: "Trazabilidad y Calibración Térmica / Humedad - {{empresa}}",
+        asunto: "Calibración y Trazabilidad Térmica para Farma y Alimentos - {{empresa}}",
         cuerpo: `Estimado/a {{contacto}},
 
-Nos comunicamos desde el Laboratorio de Calibración para saludarte y consultar sobre el estado de sus instrumentos de control térmico y ambiental ({{instrumento}}).
+Nos comunicamos desde el Laboratorio de Metrología CR MEDICION / SchwyzLab en referencia al instrumental de control térmico y ambiental ({{instrumento}}) que utilizan en {{empresa}}.
 
-Para garantizar la cadena de frío, estabilidad de depósitos y cumplimiento estricto de normativas BPM / GMP / ANMAT, ponemos a su disposición nuestros servicios especializados:
-• Calibración de Termohigrómetros y Termómetros con patrones trazables a organismos oficiales.
-• Calibración de Dataloggers de temperatura y humedad en múltiples puntos de control.
-• Provisión de DataLoggers de última generación con alarmas y software de trazabilidad.
+Para respaldar sus controles de calidad, cadena de frío y los requerimientos de auditorías bajo normativas ANMAT, BPM / GMP y SENASA, les dejamos a mano los servicios especializados que ofrecemos para su sector:
 
-¿Tienen previsto algún mantenimiento preventivo o calibración en las próximas semanas? Podemos coordinar turno prioritario en laboratorio para minimizar el tiempo de su instrumental fuera de servicio.
+• Calibración en laboratorio con patrones trazables a organismos oficiales:
+  - Termohigrómetros y termómetros digitales en múltiples puntos de control.
+  - Dataloggers de temperatura y humedad para depósitos y transporte.
+  - Termómetros de penetración, inmersión y control de cámaras frigoríficas.
+• Emisión de Certificados de Calibración con cálculo de incertidumbre expandida y tablas de corrección para auditorías de calidad.
+• Provisión de DataLoggers de última generación con alarmas y software de trazabilidad inalterable (PDF automático).
+• Planificación de turnos ágiles para minimizar el tiempo del instrumental fuera de servicio.
+
+Les dejamos este contacto directo para cuando requieran calibrar instrumental de planta, validar nuevos depósitos o solicitar presupuestos formales. Pueden escribirnos respondiendo este correo o por WhatsApp al +54 11 2863-4493.
 
 Agradecemos su confianza de siempre.
 
 Saludos cordiales,
 
+Darío Del Real
 Laboratorio de Metrología & Calidad
 CR MEDICION | SchwyzLab
-WhatsApp: +54 11 2863-4493 | www.todomedicion.com`
+Perú 1297 - CABA | WhatsApp: +54 11 2863-4493 | www.todomedicion.com`
     },
 
     "metal_iso9001": {
         id: "metal_iso9001",
-        nombre: "Calibración Dimensional & Torquímetros (ISO 9001)",
+        nombre: "Calibración Instrumental y Trazabilidad ISO 9001",
         nicho: "metal",
-        asunto: "Aseguramiento de Calidad y Calibración Instrumental - {{empresa}}",
+        asunto: "Calibración Instrumental y Trazabilidad ISO 9001 - {{empresa}}",
         cuerpo: `Estimado/a {{contacto}},
 
-Te escribimos desde el Laboratorio de Metrología. En vistas a sus procesos de mecanizado y control de calidad donde utilizan instrumental de precisión ({{instrumento}}), queremos ponernos a disposición para la calibración periódica de sus patrones e instrumentos de taller.
+Te escribimos desde el Laboratorio de Metrología CR MEDICION / SchwyzLab en relación al instrumental de precisión ({{instrumento}}) incorporado en {{empresa}}.
 
-Nuestros alcances principales para el rubro metalmecánico incluyen:
-• Calibración de Calibres, Micrómetros y Relojes Comparadores.
-• Verificación y Calibración de Torquímetros y Llaves Dinamométricas.
-• Control de Durómetros y Medidores de Rugosidad.
+Para acompañar sus procesos de mecanizado, tolerancias dimensionales y auditorías bajo normas ISO 9001, les compartimos los servicios metrológicos que brindamos a la industria metalmecánica y automotriz:
 
-Emitimos certificados con cálculo de incertidumbre y trazabilidad metrológica conforme a los requerimientos de auditorías ISO 9001.
+• Calibración dimensional con patrones trazables:
+  - Calibres pie de rey, micrómetros de exteriores e interiores y relojes comparadores.
+  - Verificación y calibración de torquímetros y llaves dinamométricas (con tabla de desvío y repetibilidad).
+  - Medidores de espesores por ultrasonido, rugosímetros y durómetros.
+• Emisión de certificados con determinación de error e incertidumbre metrológica requerida por auditores de calidad.
+• Tiempos rápidos de calibración para que las herramientas de taller o metrología no demoren las líneas de producción.
+• Tarifas preferenciales por lote si calibran varios instrumentos en un mismo envío.
 
-¿Tienen instrumentos en planta pendientes de calibración o necesitan cotizar la renovación de herramientas de medición?
+Quedamos a su entera disposición para cuando precisen calibrar patrones de taller, verificar torquímetros o solicitar presupuestos formales.
 
-Quedamos a su disposición.
+Pueden contactarnos directamente respondiendo este correo o por WhatsApp al +54 11 2863-4493.
 
-Atentamente,
+Saludos cordiales,
 
+Darío Del Real
 Área Metrología Dimensional e Industrial
 CR MEDICION | SchwyzLab
-WhatsApp: +54 11 2863-4493 | www.todomedicion.com`
+Perú 1297 - CABA | WhatsApp: +54 11 2863-4493 | www.todomedicion.com`
     },
 
     "end_ultrasonido": {
         id: "end_ultrasonido",
         nombre: "Calibración de Medidores de Espesores & END",
         nicho: "end",
-        asunto: "Certificación y Calibración de Instrumental END - {{empresa}}",
+        asunto: "Servicios de Calibración para Instrumental END - {{empresa}}",
         cuerpo: `Estimado/a {{contacto}},
 
-Nos ponemos en contacto desde el Laboratorio para consultar sobre el estado de su instrumental de ensayos no destructivos y control de obras ({{instrumento}}).
+Nos ponemos en contacto desde el Laboratorio de Metrología CR MEDICION / SchwyzLab con respecto a su instrumental de ensayos y control técnico ({{instrumento}}).
 
-Contamos con servicio especializado de calibración con bloques escalonados y patrones certificados para:
-• Medidores de espesor por ultrasonido.
-• Inclinómetros y niveles digitales de precisión.
-• Pirómetros infrarrojos de alta temperatura.
+Para garantizar la exactitud de sus inspecciones de obra, ensayos no destructivos y peritajes técnicos, ponemos a su disposición nuestros servicios especializados de calibración:
 
-Si tienen proyectos en marcha o inspecciones programadas, podemos realizar la calibración ágil con retiro y entrega coordinada.
+• Calibración con patrones trazables y bloques escalonados certificados:
+  - Medidores de espesor por ultrasonido (acero, fundición y plásticos).
+  - Inclinómetros y niveles digitales de precisión.
+  - Pirómetros infrarrojos de alta temperatura y medidores de recubrimiento.
+• Emisión de certificado oficial con datos de repetibilidad, desvío e incertidumbre para presentar ante comitentes o auditorías de obra.
+• Servicio ágil de laboratorio con recepción y despacho coordinado para no retrasar los plazos de obra.
 
-¿Desean que les preparemos una cotización actualizada?
+Les dejamos nuestro contacto directo para cuando precisen calibrar este o cualquier otro instrumento de su parque técnico. Nos pueden escribir a este email o por WhatsApp al +54 11 2863-4493.
 
 Saludos cordiales,
 
+Darío Del Real
 Laboratorio de Calibraciones Industriales
 CR MEDICION | SchwyzLab
-WhatsApp: +54 11 2863-4493 | www.todomedicion.com`
+Perú 1297 - CABA | WhatsApp: +54 11 2863-4493 | www.todomedicion.com`
     },
 
     "gas_seguridad_presion": {
         id: "gas_seguridad_presion",
         nombre: "Verificación de Gases Patrón y Presión",
         nicho: "gas",
-        asunto: "Seguridad Operativa y Calibración de Instrumentos - {{empresa}}",
+        asunto: "Servicios de Verificación y Calibración en Presión y Gases - {{empresa}}",
         cuerpo: `Estimado/a {{contacto}},
 
-Esperamos que se encuentren muy bien. Nos contactamos en relación al parque de medición y seguridad operativa de {{empresa}} ({{instrumento}}).
+Esperamos que se encuentren muy bien. Nos comunicamos desde el Laboratorio CR MEDICION / SchwyzLab en relación al parque de medición y seguridad operativa de {{empresa}} ({{instrumento}}).
 
-Les recordamos nuestros servicios de verificación y calibración para líneas presurizadas y seguridad de planta:
-• Calibración de Detectores de Gases y provisión de mezclas de gas patrón para Bump Test.
-• Calibración de Manómetros patrón y transmisores de presión.
-• Verificación de torquímetros para apriete de bridas y conexiones críticas.
+Para respaldar sus programas de mantenimiento preventivo, seguridad en líneas presurizadas y cumplimiento normativo, les compartimos nuestras soluciones directas de laboratorio:
 
-Quedamos a su disposición para coordinar los ensayos técnicos o enviar presupuesto formal.
+• Calibración y control metrológico de:
+  - Manómetros de proceso, manómetros patrón y transmisores de presión.
+  - Detectores de gases monogas y multigas (con emisión de informe de respuesta y sensibilidad de sensores).
+  - Verificación de torquímetros para apriete de bridas y conexiones críticas.
+• Provisión de mezclas de gas patrón certificadas para verificación funcional (Bump Test) en planta.
+• Emisión de certificados con trazabilidad oficial para auditorías de seguridad e higiene y entes reguladores.
+
+Quedamos a su disposición para cuando precisen presupuestos formales, renovación de certificados o calibración por lote de sus manómetros e instrumental de planta.
+
+Nos pueden responder este correo o escribirnos al WhatsApp +54 11 2863-4493.
 
 Saludos cordiales,
 
+Darío Del Real
 Equipo Metrológico & Seguridad de Procesos
 CR MEDICION | SchwyzLab
-WhatsApp: +54 11 2863-4493 | www.todomedicion.com`
+Perú 1297 - CABA | WhatsApp: +54 11 2863-4493 | www.todomedicion.com`
     },
 
     "recalibracion_anual": {
         id: "recalibracion_anual",
         nombre: "Aviso de Re-calibración Anual Preventiva",
         nicho: "gral",
-        asunto: "Aviso de Próximo Vencimiento de Calibración - {{empresa}}",
+        asunto: "Aviso Preventivo: Próximo Vencimiento de Calibración - {{empresa}}",
         cuerpo: `Hola {{contacto}}, ¡buen día!
 
-Te contactamos desde el Laboratorio de Calibraciones. 
+Te contactamos desde el Laboratorio de Calibraciones CR MEDICION / SchwyzLab para brindarte un aviso de cortesía.
 
-Revisando el historial de {{empresa}}, observamos que el certificado de su equipo {{instrumento}} (Certificado Nº: {{certificado}}) se encuentra próximo a cumplir el ciclo de validez anual el día {{vencimiento}}.
+Revisando el historial de {{empresa}}, observamos que el certificado de su equipo {{instrumento}} (Certificado Nº: {{certificado}}) se encuentra próximo a cumplir su ciclo de validez anual el día {{vencimiento}}.
 
-Para garantizar que sus mediciones continúen bajo estándares certificados y sin demoras operativas frente a auditorías o controles de calidad, ponemos a su disposición:
-1. Turno prioritario de ingreso en laboratorio para entrega en 48/72 hs.
-2. Descuento especial por renovación anual preventiva.
-3. Posibilidad de incluir otros equipos de la planta en el mismo lote de retiro/entrega.
+Para que no tengan que preocuparse por imprevistos ante una auditoría o control de calidad, les acercamos las facilidades que tenemos reservadas para clientes de nuestro laboratorio:
+• Turno prioritario en laboratorio (entrega en 48 a 72 hs) para evitar que el equipo quede fuera de servicio.
+• Descuento preferencial directo por renovación anual preventiva.
+• Posibilidad de incluir otros instrumentos de la empresa en el mismo despacho para optimizar costos de logística.
 
-¿Te gustaría que te preparemos el presupuesto formal para coordinar el ingreso?
+Si desean que les preparemos la cotización formal o tienen dudas sobre el estado de este u otros equipos, nos pueden responder directamente a este correo o escribirnos por WhatsApp al +54 11 2863-4493.
 
-¡Muchas gracias y que tengas excelente semana!
+¡Muchos éxitos y gracias por seguir confiando en nuestro laboratorio!
 
 Saludos cordiales,
 
 Darío Del Real
 CR MEDICION | SchwyzLab Laboratorio de Metrología
-Perú 1297 - CABA - Argentina
-Tel: +54 11 4361-3499 / WhatsApp: +54 11 2863-4493
+Perú 1297 - CABA - Argentina | Tel: (011) 4361-3499 | WhatsApp: +54 11 2863-4493
 Web: www.todomedicion.com`
     },
 
