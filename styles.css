@@ -1107,6 +1107,16 @@ td:nth-child(9) {
 .text-danger { color: #dc2626; }
 .text-danger:hover { background-color: #fee2e2; }
 
+.btn-eliminar-solicitud {
+    color: #dc2626 !important;
+    border-color: rgba(220, 38, 38, 0.35) !important;
+}
+.btn-eliminar-solicitud:hover {
+    background-color: #fee2e2 !important;
+    border-color: #dc2626 !important;
+    color: #b91c1c !important;
+}
+
 /* Context Alerts */
 .alert {
     padding: 0.75rem 1rem;

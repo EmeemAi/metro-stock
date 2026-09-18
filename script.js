@@ -952,6 +952,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const index = btnVerFicha.getAttribute('data-index');
                 handleVerFichaSolicitud(index);
             }
+
+            const btnEliminar = e.target.closest('.btn-eliminar-solicitud');
+            if (btnEliminar) {
+                const index = btnEliminar.getAttribute('data-index');
+                handleEliminarSolicitud(index);
+            }
         });
     }
 
@@ -4124,12 +4130,57 @@ function renderSolicitudes() {
                 <div style="display: flex; gap: 0.25rem; justify-content: flex-end; align-items: center;">
                     ${isEnviado ? '' : `<button class="btn btn-primary btn-sm btn-atender-solicitud" data-index="${targetIndex}" style="height: 25px; padding: 0 0.5rem; font-size: 0.7rem; white-space: nowrap;"><i data-lucide="external-link" style="width:13px; height:13px;"></i> Atender</button>`}
                     <button class="btn btn-outline btn-sm btn-ver-ficha-solicitud" data-index="${targetIndex}" title="Ver Ficha del Instrumento" style="height: 25px; padding: 0 0.5rem; font-size: 0.7rem; white-space: nowrap;"><i data-lucide="eye" style="width:13px; height:13px;"></i> Info</button>
+                    <button class="btn btn-outline btn-sm btn-eliminar-solicitud" data-index="${targetIndex}" title="Eliminar Solicitud" style="height: 25px; width: 28px; padding: 0; display: inline-flex; align-items: center; justify-content: center; font-size: 0.7rem;"><i data-lucide="trash-2" style="width:13px; height:13px;"></i></button>
                 </div>
             </td>
         `;
         tbody.appendChild(tr);
     });
     lucide.createIcons();
+}
+
+async function handleEliminarSolicitud(index) {
+    const s = appState.solicitudes[index];
+    if (!s) {
+        showToast("No se pudo encontrar la solicitud seleccionada.", "warning");
+        return;
+    }
+
+    const empresa = s.empresa || 'Sin empresa';
+    const contacto = s.contacto ? ` (${s.contacto})` : '';
+    const cert = s.certificado ? `\n• Certificado: ${s.certificado}` : '';
+    const email = s.email ? `\n• Email: ${s.email}` : '';
+    const fecha = s.timestamp ? `\n• Fecha: ${s.timestamp}` : '';
+
+    const confirmMsg = `⚠️ ¿Estás seguro de que deseas ELIMINAR esta solicitud?\n\n` +
+                       `• Empresa: ${empresa}${contacto}${cert}${email}${fecha}\n\n` +
+                       `Esta acción borrará la solicitud de forma permanente de la base de datos.`;
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    const docId = s.firestoreId || s.id;
+
+    try {
+        // 1. Eliminar de Firestore si está conectado
+        if (docId && typeof db !== 'undefined' && db) {
+            await db.collection("solicitudes").doc(docId).delete();
+        }
+
+        // 2. Actualizar estado local inmediatamente
+        appState.solicitudes = appState.solicitudes.filter(item => {
+            if (docId && (item.firestoreId === docId || item.id === docId)) return false;
+            return item !== s;
+        });
+
+        renderSolicitudes();
+        updateBadge();
+        showToast(`Solicitud de "${empresa}" eliminada permanentemente.`, "success");
+    } catch (err) {
+        console.error("Error al eliminar solicitud:", err);
+        showToast("Error al eliminar la solicitud: " + err.message, "error");
+    }
 }
 
 function handleVerFichaSolicitud(index) {
