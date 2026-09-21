@@ -4201,7 +4201,13 @@ function updateSolicitudesBadge() {
         badge.style.display = 'none';
         return;
     }
+    const seenKeys = new Set();
     const pendientes = appState.solicitudes.filter(s => {
+        const key = (s.id || s.firestoreId || `${s.timestamp}_${s.email}_${s.certificado}`).toLowerCase().trim();
+        if (seenKeys.has(key)) return false;
+        seenKeys.add(key);
+        const hasFechaEnvio = Boolean(s.fecha_envio && String(s.fecha_envio).trim() !== '');
+        if (hasFechaEnvio) return false;
         const est = (s.estado || '').trim().toLowerCase();
         return est === '' || est === 'pendiente';
     }).length;
@@ -4248,7 +4254,8 @@ function renderSolicitudes() {
 
     uniqueSolicitudes.forEach((s, index) => {
         const est = (s.estado || '').trim().toLowerCase();
-        const isEnviado = est !== '' && est !== 'pendiente';
+        const hasFechaEnvio = Boolean(s.fecha_envio && String(s.fecha_envio).trim() !== '');
+        const isEnviado = (est !== '' && est !== 'pendiente') || hasFechaEnvio;
         const tr = document.createElement('tr');
         if (isEnviado) tr.style.opacity = '0.6';
         
@@ -4268,7 +4275,8 @@ function renderSolicitudes() {
         const hasPrevSent = appState.solicitudes.some(other => {
             if (other === s || (s.firestoreId && other.firestoreId === s.firestoreId)) return false;
             const oEst = (other.estado || '').trim().toLowerCase();
-            return certificadosCoinciden(other.certificado, certSol) && oEst !== '' && oEst !== 'pendiente';
+            const oHasFecha = Boolean(other.fecha_envio && String(other.fecha_envio).trim() !== '');
+            return certificadosCoinciden(other.certificado, certSol) && ((oEst !== '' && oEst !== 'pendiente') || oHasFecha);
         });
         const matchedEq = appState.data.find(e => certificadosCoinciden(e.certificado, certSol));
         const isEqDelivered = matchedEq && matchedEq.estado === 'ENTREGADO';
@@ -4286,13 +4294,14 @@ function renderSolicitudes() {
         // Obtener el índice real en appState.solicitudes
         const realIndex = appState.solicitudes.findIndex(orig => (orig.firestoreId && s.firestoreId) ? orig.firestoreId === s.firestoreId : (orig.id && s.id ? orig.id === s.id : orig === s));
         const targetIndex = realIndex > -1 ? realIndex : index;
+        const estadoDisplay = s.estado ? s.estado : (hasFechaEnvio ? 'enviado' : 'pendiente');
         
         tr.innerHTML = `
             <td style="white-space: nowrap; font-family: var(--font-data);">${s.timestamp}</td>
             <td><strong class="text-truncate" style="max-width: 180px; display: block;" title="${s.empresa}">${s.empresa}</strong><small style="color: var(--text-secondary);" class="text-truncate" title="${s.contacto}">${s.contacto}</small></td>
             <td style="text-align: center; white-space: nowrap; font-family: var(--font-data);"><code>${s.certificado}</code></td>
             <td><span class="text-truncate" style="max-width: 180px; display: block;" title="${s.email}">${s.email}</span></td>
-            <td style="text-align: center; white-space: nowrap;"><span class="badge ${badgeClass}">${s.estado || 'pendiente'}</span>${fechaEnvioHtml}${priorWarningHtml}</td>
+            <td style="text-align: center; white-space: nowrap;"><span class="badge ${badgeClass}">${estadoDisplay}</span>${fechaEnvioHtml}${priorWarningHtml}</td>
             <td style="text-align: right; padding-right: 0.5rem;">
                 <div style="display: flex; gap: 0.25rem; justify-content: flex-end; align-items: center;">
                     ${isEnviado ? '' : `<button class="btn btn-primary btn-sm btn-atender-solicitud" data-index="${targetIndex}" style="height: 25px; padding: 0 0.5rem; font-size: 0.7rem; white-space: nowrap;"><i data-lucide="external-link" style="width:13px; height:13px;"></i> Atender</button>`}
