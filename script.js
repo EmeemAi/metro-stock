@@ -4157,6 +4157,10 @@ function updateVencimientosBadge(proximos = null) {
                 const isAvisado = String(item.estado_recordatorio || '').trim().toLowerCase() === 'enviado';
                 if (isAvisado) return;
 
+                // Si no tiene un email válido registrado, no se puede enviar aviso por email
+                const hasValidEmail = item.email && item.email !== '---' && item.email.includes('@');
+                if (!hasValidEmail) return;
+
                 let vencimientoDate = null;
                 const val = String(item.fecha_vencimiento).trim();
                 if (val.includes('-')) {
@@ -4787,7 +4791,8 @@ function renderVencimientos() {
                     kpiVencidos++;
                 } else if (diasRestantes <= 20) {
                     estadoVenc = 'proximo';
-                    if (!isAvisado) {
+                    const hasValidEmail = item.email && item.email !== '---' && item.email.includes('@');
+                    if (!isAvisado && hasValidEmail) {
                         kpiProximos++;
                     }
                 } else {
@@ -4837,13 +4842,33 @@ function renderVencimientos() {
                 ${eq.email !== '---' && eq.email.includes('@') ? 
                 `<button class="btn ${isEnviado ? 'btn-outline' : 'btn-primary'} btn-sm btn-enviar-aviso" onclick="handleEnviarAviso('${eq.id}')" style="height: 25px; padding: 0 0.5rem; font-size: 0.7rem; white-space: nowrap;">
                     <i data-lucide="${isEnviado ? 'check-circle' : 'mail'}" style="width:13px; height:13px;"></i> ${isEnviado ? 'Re-avisar' : 'Avisar'}
-                </button>` : `<span class="null-text">Sin Email</span>`}
+                </button>` : 
+                `<button class="btn ${isEnviado ? 'btn-outline' : 'btn-secondary'} btn-sm" onclick="handleMarcarAvisado('${eq.id}')" title="Marcar como avisado manualmente (teléfono/WhatsApp)" style="height: 25px; padding: 0 0.5rem; font-size: 0.7rem; white-space: nowrap;">
+                    <i data-lucide="${isEnviado ? 'check-circle' : 'check'}" style="width:13px; height:13px;"></i> ${isEnviado ? 'Avisado manual' : 'Sin Email (Marcar)'}
+                </button>`}
             </td>
         `;
         tbody.appendChild(tr);
     });
     lucide.createIcons();
 }
+
+window.handleMarcarAvisado = async function(id) {
+    const eq = appState.vencimientos.find(e => e.id === id);
+    if (!eq) return;
+    const nuevoEstado = eq.estado_recordatorio === 'Enviado' ? 'pendiente' : 'Enviado';
+    eq.estado_recordatorio = nuevoEstado;
+    renderVencimientos();
+    updateSidebarBadges();
+    try {
+        await db.collection("vencimientos").doc(id).update({
+            estado_recordatorio: nuevoEstado
+        });
+        showToast(nuevoEstado === 'Enviado' ? `Equipo #${id} marcado como avisado.` : `Equipo #${id} marcado como pendiente.`, "success");
+    } catch(err) {
+        console.error("Error al actualizar recordatorio manual en Firebase:", err);
+    }
+};
 
 window.handleEnviarAviso = function(id) {
     const eq = appState.vencimientos.find(e => e.id === id);
