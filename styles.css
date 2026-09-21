@@ -222,7 +222,8 @@ svg.lucide {
     justify-content: space-between;
 }
 
-.nav-item > div {
+.nav-item > div,
+.nav-item .nav-item-content {
     display: flex;
     align-items: center;
     gap: 0.75rem;
@@ -238,6 +239,18 @@ svg.lucide {
     min-width: 1.2rem;
     line-height: 1.2;
     text-align: center;
+    box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
+    margin-left: auto;
+    flex-shrink: 0;
+}
+
+.notification-badge.badge-warning {
+    background-color: #f97316;
+    box-shadow: 0 2px 4px rgba(249, 115, 22, 0.3);
+}
+
+.notification-badge.badge-alert {
+    background-color: #ef4444;
     box-shadow: 0 2px 4px rgba(239, 68, 68, 0.3);
 }
 

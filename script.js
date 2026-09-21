@@ -2031,6 +2031,7 @@ function updateDashboard() {
         const critOnly = criticalRadar.filter(x => x.urgency === 'critical').length;
         elRepoSub.innerText = `${critOnly} en riesgo crítico (<15d)`;
     }
+    updateReposicionBadge();
 
     const elCertificando = document.getElementById('kpi-certificando');
     if (elCertificando) elCertificando.innerText = totalCertificando;
@@ -4042,9 +4043,165 @@ async function handleFormEdit(e) {
     }
 }
 
-function updateBadge() {
+// ==========================================
+// NOTIFICACIONES Y BADGES DEL SIDEBAR
+// ==========================================
+
+function getGlobalReplenishmentCount() {
+    if (!appState.data || appState.data.length === 0) return { count: 0, criticalCount: 0 };
+    
+    const today = new Date();
+    today.setHours(23, 59, 59, 999);
+
+    let earliestDate = today;
+    appState.data.forEach(item => {
+        const d = parseFullDate(item.fecha_calibracion);
+        if (d && d < earliestDate && d.getFullYear() > 2020) {
+            earliestDate = d;
+        }
+    });
+    const totalDays = Math.max(90, Math.round((today - earliestDate) / 86400000));
+    const monthsInPeriod = Math.max(3.0, totalDays / 30.4);
+
+    const stats = {};
+    appState.data.forEach(item => {
+        const normState = getNormalizedState(item);
+        if (normState === 'DADO DE BAJA') return;
+
+        const key = getModelKey(item.marca, item.modelo);
+        if (!stats[key]) {
+            stats[key] = {
+                name: key,
+                disponible: 0,
+                ventasTotal: 0,
+                ventasPeriodo: 0,
+                discontinuado: false
+            };
+        }
+
+        if (item.discontinuado === 'SI' || item.discontinuado === 'si' || item.discontinuado === true) {
+            stats[key].discontinuado = true;
+        }
+
+        if (normState === 'DISPONIBLE') {
+            stats[key].disponible++;
+        } else if (isItemSold(item)) {
+            stats[key].ventasTotal++;
+            stats[key].ventasPeriodo++;
+        }
+    });
+
+    let count = 0;
+    let criticalCount = 0;
+
+    Object.values(stats).forEach(s => {
+        if (s.discontinuado) return;
+        s.monthlyRunRate = Number((s.ventasPeriodo / monthsInPeriod).toFixed(2));
+        if (s.monthlyRunRate > 0) {
+            s.coberturaDias = Math.round((s.disponible / (s.monthlyRunRate / 30.4)));
+        } else {
+            s.coberturaDias = 999;
+        }
+
+        const hasActiveRotation = s.ventasTotal >= 2 && s.monthlyRunRate >= 0.2;
+        if (hasActiveRotation) {
+            if (s.disponible === 0 || s.coberturaDias <= 15) {
+                count++;
+                criticalCount++;
+            } else if (s.coberturaDias <= 30) {
+                count++;
+            }
+        }
+    });
+
+    return { count, criticalCount };
+}
+
+function updateReposicionBadge() {
+    const badge = document.getElementById('badge-reposicion');
+    if (!badge) return;
+    const { count, criticalCount } = getGlobalReplenishmentCount();
+    if (count > 0) {
+        badge.innerText = count;
+        badge.style.display = 'inline-block';
+        if (criticalCount > 0) {
+            badge.classList.remove('badge-warning');
+            badge.classList.add('badge-alert');
+            badge.title = `${count} modelo${count !== 1 ? 's' : ''} en sugerencia de reposición (${criticalCount} en riesgo crítico)`;
+        } else {
+            badge.classList.remove('badge-alert');
+            badge.classList.add('badge-warning');
+            badge.title = `${count} modelo${count !== 1 ? 's' : ''} en sugerencia de reposición preventiva`;
+        }
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function updateVencimientosBadge(proximos = null, vencidos = null) {
+    const badge = document.getElementById('badge-vencimientos');
+    if (!badge) return;
+
+    let proximosCount = proximos;
+    let vencidosCount = vencidos;
+
+    if (proximosCount === null || vencidosCount === null) {
+        proximosCount = 0;
+        vencidosCount = 0;
+        if (appState.vencimientos && appState.vencimientos.length > 0) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            appState.vencimientos.forEach(item => {
+                if (!item.fecha_vencimiento) return;
+                let vencimientoDate = null;
+                const val = String(item.fecha_vencimiento).trim();
+                if (val.includes('-')) {
+                    const parts = val.split('-');
+                    if (parts.length === 3) vencimientoDate = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+                } else if (val.includes('/')) {
+                    const parts = val.split('/');
+                    if (parts.length === 3) vencimientoDate = new Date(parseInt(parts[2]), parseInt(parts[1]) - 1, parseInt(parts[0]));
+                }
+
+                if (vencimientoDate) {
+                    const diffTime = vencimientoDate.getTime() - today.getTime();
+                    const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                    if (diasRestantes < 0) {
+                        vencidosCount++;
+                    } else if (diasRestantes <= 30) {
+                        proximosCount++;
+                    }
+                }
+            });
+        }
+    }
+
+    const totalAlertas = proximosCount + vencidosCount;
+    if (totalAlertas > 0) {
+        badge.innerText = totalAlertas;
+        badge.style.display = 'inline-block';
+        if (vencidosCount > 0) {
+            badge.classList.remove('badge-warning');
+            badge.classList.add('badge-alert');
+            badge.title = `${totalAlertas} calibracion${totalAlertas !== 1 ? 'es' : ''} a gestionar (${vencidosCount} vencida${vencidosCount !== 1 ? 's' : ''}, ${proximosCount} próxima${proximosCount !== 1 ? 's' : ''})`;
+        } else {
+            badge.classList.remove('badge-alert');
+            badge.classList.add('badge-warning');
+            badge.title = `${proximosCount} calibracion${proximosCount !== 1 ? 'es próximas' : ' próxima'} a vencer (<= 30 días)`;
+        }
+    } else {
+        badge.style.display = 'none';
+    }
+}
+
+function updateSolicitudesBadge() {
     const badge = document.getElementById('badge-solicitudes');
     if (!badge) return;
+    if (!appState.solicitudes || appState.solicitudes.length === 0) {
+        badge.style.display = 'none';
+        return;
+    }
     const pendientes = appState.solicitudes.filter(s => {
         const est = (s.estado || '').trim().toLowerCase();
         return est === '' || est === 'pendiente';
@@ -4052,9 +4209,20 @@ function updateBadge() {
     if (pendientes > 0) {
         badge.innerText = pendientes;
         badge.style.display = 'inline-block';
+        badge.title = `${pendientes} solicitud${pendientes !== 1 ? 'es pendientes' : ' pendiente'}`;
     } else {
         badge.style.display = 'none';
     }
+}
+
+function updateSidebarBadges() {
+    updateSolicitudesBadge();
+    updateReposicionBadge();
+    updateVencimientosBadge();
+}
+
+function updateBadge() {
+    updateSidebarBadges();
 }
 
 function renderSolicitudes() {
@@ -4589,6 +4757,7 @@ function renderVencimientos() {
 
     if (!appState.vencimientos || appState.vencimientos.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:2rem; color:var(--text-secondary);">No hay vencimientos registrados en la hoja de cálculo.</td></tr>';
+        updateVencimientosBadge(0, 0);
         return;
     }
 
@@ -4643,6 +4812,7 @@ function renderVencimientos() {
     if (elVigentes) elVigentes.innerText = kpiVigentes;
     if (elProximos) elProximos.innerText = kpiProximos;
     if (elVencidos) elVencidos.innerText = kpiVencidos;
+    updateVencimientosBadge(kpiProximos, kpiVencidos);
 
     itemsProcesados.forEach((eq) => {
         const tr = document.createElement('tr');
@@ -5602,6 +5772,7 @@ function handleLogout() {
     appState.solicitudes = [];
     appState.vencimientos = [];
     if (appState.selectedIds) appState.selectedIds.clear();
+    updateSidebarBadges();
 
     showToast("Sesión cerrada.", "info");
     

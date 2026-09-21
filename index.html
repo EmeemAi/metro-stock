@@ -13,7 +13,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Charts (Chart.js) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=44.0">
+    <link rel="stylesheet" href="styles.css?v=45.0">
     <style>
         #instrumentos-table {
             table-layout: fixed !important;
@@ -111,19 +111,23 @@
                 <h2>MetroMLStock v30.0</h2>
             </div>
             <nav class="sidebar-nav">
-                <a href="#" class="nav-item active" id="nav-gestion"><i data-lucide="layout-dashboard"></i> Gestión de Equipos</a>
+                <a href="#" class="nav-item active" id="nav-gestion">
+                    <div class="nav-item-content"><i data-lucide="layout-dashboard"></i> <span>Gestión de Equipos</span></div>
+                </a>
                 <a href="#" class="nav-item" id="nav-stats">
-                    <i data-lucide="line-chart"></i> Inteligencia de Negocio
+                    <div class="nav-item-content"><i data-lucide="line-chart"></i> <span>Inteligencia de Negocio</span></div>
+                    <span class="notification-badge badge-warning" id="badge-reposicion" style="display: none;">0</span>
                 </a>
                 <a href="#" class="nav-item" id="nav-solicitudes">
-                    <i data-lucide="inbox"></i> Solicitudes
+                    <div class="nav-item-content"><i data-lucide="inbox"></i> <span>Solicitudes</span></div>
                     <span class="notification-badge" id="badge-solicitudes" style="display: none;">0</span>
                 </a>
                 <a href="#" class="nav-item" id="nav-vencimientos">
-                    <i data-lucide="clock"></i> CRM Vencimientos
+                    <div class="nav-item-content"><i data-lucide="clock"></i> <span>CRM Vencimientos</span></div>
+                    <span class="notification-badge" id="badge-vencimientos" style="display: none;">0</span>
                 </a>
                 <a href="crm/index.html" target="_blank" class="nav-item" id="nav-crm-pro" style="background: rgba(37, 99, 235, 0.08); color: #60a5fa; border: 1px solid rgba(59, 130, 246, 0.2);">
-                    <i data-lucide="sparkles"></i> MetroCRM Pro
+                    <div class="nav-item-content"><i data-lucide="sparkles"></i> <span>MetroCRM Pro</span></div>
                     <span class="notification-badge" style="background:#2563eb; color:white; font-size:9px; padding:1px 5px; border-radius:4px; display:inline-block; margin-left:auto;">B2B</span>
                 </a>
             </nav>
@@ -1156,6 +1160,6 @@
     <!-- Firebase SDK (Compat v10) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="script.js?v=44.0"></script>
+    <script src="script.js?v=45.0"></script>
 </body>
 </html>
