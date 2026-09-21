@@ -4138,16 +4138,14 @@ function updateReposicionBadge() {
     }
 }
 
-function updateVencimientosBadge(proximos = null, vencidos = null) {
+function updateVencimientosBadge(proximos = null) {
     const badge = document.getElementById('badge-vencimientos');
     if (!badge) return;
 
     let proximosCount = proximos;
-    let vencidosCount = vencidos;
 
-    if (proximosCount === null || vencidosCount === null) {
+    if (proximosCount === null) {
         proximosCount = 0;
-        vencidosCount = 0;
         if (appState.vencimientos && appState.vencimientos.length > 0) {
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -4167,9 +4165,8 @@ function updateVencimientosBadge(proximos = null, vencidos = null) {
                 if (vencimientoDate) {
                     const diffTime = vencimientoDate.getTime() - today.getTime();
                     const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    if (diasRestantes < 0) {
-                        vencidosCount++;
-                    } else if (diasRestantes <= 30) {
+                    // Alerta SOLAMENTE para los que les falten 20 días o menos para vencer (no vencidos del pasado)
+                    if (diasRestantes >= 0 && diasRestantes <= 20) {
                         proximosCount++;
                     }
                 }
@@ -4177,19 +4174,12 @@ function updateVencimientosBadge(proximos = null, vencidos = null) {
         }
     }
 
-    const totalAlertas = proximosCount + vencidosCount;
-    if (totalAlertas > 0) {
-        badge.innerText = totalAlertas;
+    if (proximosCount > 0) {
+        badge.innerText = proximosCount;
         badge.style.display = 'inline-block';
-        if (vencidosCount > 0) {
-            badge.classList.remove('badge-warning');
-            badge.classList.add('badge-alert');
-            badge.title = `${totalAlertas} calibracion${totalAlertas !== 1 ? 'es' : ''} a gestionar (${vencidosCount} vencida${vencidosCount !== 1 ? 's' : ''}, ${proximosCount} próxima${proximosCount !== 1 ? 's' : ''})`;
-        } else {
-            badge.classList.remove('badge-alert');
-            badge.classList.add('badge-warning');
-            badge.title = `${proximosCount} calibracion${proximosCount !== 1 ? 'es próximas' : ' próxima'} a vencer (<= 30 días)`;
-        }
+        badge.classList.remove('badge-alert');
+        badge.classList.add('badge-warning');
+        badge.title = `${proximosCount} calibracion${proximosCount !== 1 ? 'es próximas' : ' próxima'} a vencer (≤ 20 días)`;
     } else {
         badge.style.display = 'none';
     }
@@ -4788,7 +4778,7 @@ function renderVencimientos() {
                 if (diasRestantes < 0) {
                     estadoVenc = 'vencido';
                     kpiVencidos++;
-                } else if (diasRestantes <= 30) {
+                } else if (diasRestantes <= 20) {
                     estadoVenc = 'proximo';
                     kpiProximos++;
                 } else {
@@ -4812,7 +4802,7 @@ function renderVencimientos() {
     if (elVigentes) elVigentes.innerText = kpiVigentes;
     if (elProximos) elProximos.innerText = kpiProximos;
     if (elVencidos) elVencidos.innerText = kpiVencidos;
-    updateVencimientosBadge(kpiProximos, kpiVencidos);
+    updateVencimientosBadge(kpiProximos);
 
     itemsProcesados.forEach((eq) => {
         const tr = document.createElement('tr');
