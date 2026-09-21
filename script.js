@@ -4152,6 +4152,11 @@ function updateVencimientosBadge(proximos = null) {
 
             appState.vencimientos.forEach(item => {
                 if (!item.fecha_vencimiento) return;
+
+                // Si ya fue avisado, NO debe contar en la alerta
+                const isAvisado = String(item.estado_recordatorio || '').trim().toLowerCase() === 'enviado';
+                if (isAvisado) return;
+
                 let vencimientoDate = null;
                 const val = String(item.fecha_vencimiento).trim();
                 if (val.includes('-')) {
@@ -4165,7 +4170,7 @@ function updateVencimientosBadge(proximos = null) {
                 if (vencimientoDate) {
                     const diffTime = vencimientoDate.getTime() - today.getTime();
                     const diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                    // Alerta SOLAMENTE para los que les falten 20 días o menos para vencer (no vencidos del pasado)
+                    // Alerta SOLAMENTE para los que les falten 20 días o menos para vencer y NO hayan sido avisados
                     if (diasRestantes >= 0 && diasRestantes <= 20) {
                         proximosCount++;
                     }
@@ -4179,7 +4184,7 @@ function updateVencimientosBadge(proximos = null) {
         badge.style.display = 'inline-block';
         badge.classList.remove('badge-alert');
         badge.classList.add('badge-warning');
-        badge.title = `${proximosCount} calibracion${proximosCount !== 1 ? 'es próximas' : ' próxima'} a vencer (≤ 20 días)`;
+        badge.title = `${proximosCount} calibracion${proximosCount !== 1 ? 'es próximas' : ' próxima'} a vencer sin avisar (≤ 20 días)`;
     } else {
         badge.style.display = 'none';
     }
@@ -4775,12 +4780,16 @@ function renderVencimientos() {
                 const diffTime = vencimientoDate.getTime() - today.getTime();
                 diasRestantes = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
+                const isAvisado = String(item.estado_recordatorio || '').trim().toLowerCase() === 'enviado';
+
                 if (diasRestantes < 0) {
                     estadoVenc = 'vencido';
                     kpiVencidos++;
                 } else if (diasRestantes <= 20) {
                     estadoVenc = 'proximo';
-                    kpiProximos++;
+                    if (!isAvisado) {
+                        kpiProximos++;
+                    }
                 } else {
                     estadoVenc = 'vigente';
                     kpiVigentes++;
