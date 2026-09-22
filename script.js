@@ -2975,6 +2975,7 @@ function renderTable() {
 // ==========================================
 function closeAllModals() {
     document.querySelectorAll('.modal-overlay, .modal').forEach(m => m.classList.remove('active'));
+    document.body.classList.remove('printing-ficha', 'printing-certificate');
     document.getElementById('form-nuevo').reset();
     document.getElementById('form-estado').reset();
 }
@@ -2987,6 +2988,7 @@ function openModal(id) {
 function closeModal(id) {
     const modal = document.getElementById(id);
     if (modal) modal.classList.remove('active');
+    document.body.classList.remove('printing-ficha', 'printing-certificate');
 }
 
 function toggleNuevoStateFields() {
@@ -5466,11 +5468,51 @@ window.imprimirCertificado = function(id) {
     }
 
     // Inyectar HTML dinámico final en el contenedor
-    document.getElementById('printable-certificate').innerHTML = htmlContent;
+    const certElem = document.getElementById('printable-certificate');
+    if (certElem) {
+        certElem.innerHTML = htmlContent;
+        certElem.style.display = 'block';
+    }
+    document.body.classList.remove('printing-ficha');
+    document.body.classList.add('printing-certificate');
 
     // Disparar la ventana de impresión nativa
     window.print();
 };
+
+// Función para imprimir la Ficha Técnica / Registro de Calibración
+window.imprimirFicha = function() {
+    const certElem = document.getElementById('printable-certificate');
+    if (certElem) {
+        certElem.innerHTML = '';
+        certElem.style.display = 'none';
+    }
+    document.body.classList.remove('printing-certificate');
+    document.body.classList.add('printing-ficha');
+    window.print();
+};
+
+// Listeners globales para sincronizar modos de impresión y limpiar buffers
+window.addEventListener('beforeprint', () => {
+    const modalFicha = document.getElementById('modal-ficha');
+    if (modalFicha && modalFicha.classList.contains('active') && !document.body.classList.contains('printing-certificate')) {
+        document.body.classList.add('printing-ficha');
+        const certElem = document.getElementById('printable-certificate');
+        if (certElem) {
+            certElem.innerHTML = '';
+            certElem.style.display = 'none';
+        }
+    }
+});
+
+window.addEventListener('afterprint', () => {
+    document.body.classList.remove('printing-ficha', 'printing-certificate');
+    const certElem = document.getElementById('printable-certificate');
+    if (certElem) {
+        certElem.innerHTML = '';
+        certElem.style.display = 'none';
+    }
+});
 
 // Funciones auxiliares para renderizar sub-tablas
 function renderSubTableHTML(title, points) {

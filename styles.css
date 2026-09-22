@@ -1285,52 +1285,96 @@ td:nth-child(9) {
     text-transform: uppercase;
 }
 
-/* Reglas de Impresión Profesionales */
+/* ==========================================
+   REGLAS DE IMPRESIÓN GLOBALES Y FICHA TÉCNICA
+   ========================================== */
 @media print {
+    @page {
+        size: A4 portrait;
+        margin: 0;
+    }
+
     html, body {
-        background-color: white !important;
+        background-color: #ffffff !important;
+        color: #000000 !important;
         margin: 0 !important;
         padding: 0 !important;
         height: auto !important;
+        min-height: 100% !important;
         overflow: visible !important;
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
     }
 
-    .app-container, .main-content {
-        height: auto !important;
-        overflow: visible !important;
-        display: block !important;
-    }
-
-    /* Ocultar Interfaz */
-    .sidebar, .top-header, .kpi-grid, .toolbar, .table-container, .no-print, .alert-badge {
+    /* Ocultar Interfaz de Usuario y elementos flotantes */
+    .app-container,
+    .main-content,
+    .sidebar,
+    .sidebar-overlay,
+    .top-header,
+    .kpi-grid,
+    .toolbar,
+    .table-container,
+    #login-container,
+    #bulk-action-bar,
+    .toast-container,
+    .global-loader,
+    .no-print,
+    .alert-badge {
         display: none !important;
     }
 
-    /* Expandir modal como documento físico */
+    /* Ocultar todos los modales por defecto */
     .modal-overlay {
+        display: none !important;
+    }
+
+    /* MODO FICHA: Mostrar y desplegar como documento físico la Ficha del Instrumento */
+    body.printing-ficha #modal-ficha,
+    body:not(.printing-certificate) #modal-ficha.active {
+        display: block !important;
         position: static !important;
         opacity: 1 !important;
-        background-color: white !important;
-        display: block !important;
+        visibility: visible !important;
+        background-color: #ffffff !important;
+        width: 100% !important;
+        height: auto !important;
+        margin: 0 !important;
+        padding: 0 !important;
         pointer-events: all !important;
+        overflow: visible !important;
     }
 
-    .modal-content.print-sheet {
+    body.printing-ficha #modal-ficha .modal-content,
+    body:not(.printing-certificate) #modal-ficha.active .modal-content {
         box-shadow: none !important;
         border: none !important;
-        width: 100% !important;
-        max-width: none !important;
         border-radius: 0 !important;
-        padding: 0 !important;
+        width: 100% !important;
+        max-width: 100% !important;
         margin: 0 !important;
-        /* Avoid breaks inside */
-        page-break-inside: avoid;
+        padding: 0 !important;
+        background-color: #ffffff !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
     }
 
-    .modal-body.printable-ficha {
+    body.printing-ficha #modal-ficha .modal-header,
+    body:not(.printing-certificate) #modal-ficha.active .modal-header {
+        display: none !important;
+    }
+
+    body.printing-ficha #modal-ficha .modal-body,
+    body:not(.printing-certificate) #modal-ficha.active .modal-body {
         padding: 0 !important;
         max-height: none !important;
         overflow: visible !important;
+    }
+
+    /* Ocultar el contenedor de certificados si se está imprimiendo la ficha */
+    body.printing-ficha #printable-certificate,
+    body:not(.printing-certificate) #printable-certificate {
+        display: none !important;
     }
 }
 /* ==========================================
@@ -2212,10 +2256,14 @@ td:nth-child(9) {
    CSS DEL CERTIFICADO (A4)
    ========================================== */
 @media print {
-    .app-container, .modal-overlay, #login-container {
+    /* En modo Certificado, ocultar la Ficha del Instrumento */
+    body.printing-certificate #modal-ficha {
         display: none !important;
     }
-    #printable-certificate {
+
+    /* Mostrar contenedor del Certificado solo cuando se imprime certificado */
+    body.printing-certificate #printable-certificate,
+    body:not(.printing-ficha) #printable-certificate:not(:empty) {
         display: block !important;
         position: absolute;
         left: 0;
@@ -3158,13 +3206,27 @@ td:nth-child(9) {
     width: 100%;
 }
 
-/* Ajustes específicos para impresión */
+/* Ajustes específicos para impresión de Registro de Calibración (Ficha) */
 @media print {
-    .registro-calibracion-container {
-        padding: 0 !important;
-        margin: 0 !important;
+    body.printing-ficha .registro-calibracion-container,
+    body:not(.printing-certificate) #modal-ficha.active .registro-calibracion-container {
+        padding: 8mm 12mm !important;
+        margin: 0 auto !important;
         max-width: 100% !important;
         width: 100% !important;
+        box-sizing: border-box !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+
+    body.printing-ficha .reg-divider,
+    body:not(.printing-certificate) #modal-ficha.active .reg-divider {
+        height: 0 !important;
+        border-top: 2px solid #000 !important;
+        background-color: transparent !important;
+        margin: 0.5rem 0 !important;
     }
 }
 
