@@ -5,6 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>MetroMLStock - Gestión de Instrumentos</title>
     <meta name="description" content="Dashboard para la gestión integral de estado y calibración de instrumentos de medición.">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <script>
+        // Limpieza proactiva de cachés del navegador y Service Workers
+        if ('caches' in window) {
+            caches.keys().then(function(names) {
+                for (var name of names) caches.delete(name);
+            });
+        }
+    </script>
     <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +24,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Charts (Chart.js) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=50.0">
+    <link rel="stylesheet" href="styles.css?v=52.0">
     <style>
         #instrumentos-table {
             table-layout: fixed !important;
@@ -91,6 +102,116 @@
         .table-actions-cell .btn-change-state svg {
             width: 12px !important;
             height: 12px !important;
+        }
+
+        /* Reglas de Impresión de Alta Prioridad para Ficha del Instrumento */
+        @media print {
+            @page {
+                size: A4 portrait;
+                margin: 0;
+            }
+
+            html, body {
+                background-color: #ffffff !important;
+                color: #000000 !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                height: auto !important;
+                min-height: 100% !important;
+                overflow: visible !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            .app-container,
+            .main-content,
+            .sidebar,
+            .sidebar-overlay,
+            .top-header,
+            .kpi-grid,
+            .toolbar,
+            .table-container,
+            #login-container,
+            #bulk-action-bar,
+            .toast-container,
+            .global-loader,
+            .no-print,
+            .alert-badge {
+                display: none !important;
+            }
+
+            .modal-overlay:not(#modal-ficha) {
+                display: none !important;
+            }
+            #modal-ficha:not(.active) {
+                display: none !important;
+            }
+
+            #modal-ficha.active,
+            body.printing-ficha #modal-ficha {
+                display: block !important;
+                position: static !important;
+                opacity: 1 !important;
+                visibility: visible !important;
+                background-color: #ffffff !important;
+                width: 100% !important;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                pointer-events: all !important;
+                overflow: visible !important;
+            }
+
+            #modal-ficha.active .modal-content,
+            body.printing-ficha #modal-ficha .modal-content {
+                box-shadow: none !important;
+                border: none !important;
+                border-radius: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background-color: #ffffff !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+            }
+
+            #modal-ficha.active .modal-header,
+            body.printing-ficha #modal-ficha .modal-header {
+                display: none !important;
+            }
+
+            #modal-ficha.active .modal-body,
+            body.printing-ficha #modal-ficha .modal-body {
+                padding: 0 !important;
+                max-height: none !important;
+                overflow: visible !important;
+            }
+
+            #modal-ficha.active .registro-calibracion-container,
+            body.printing-ficha .registro-calibracion-container {
+                padding: 8mm 12mm !important;
+                margin: 0 auto !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                box-sizing: border-box !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                page-break-after: avoid !important;
+                break-after: avoid !important;
+            }
+
+            #modal-ficha.active .reg-divider,
+            body.printing-ficha .reg-divider {
+                height: 0 !important;
+                border-top: 2px solid #000 !important;
+                background-color: transparent !important;
+                margin: 0.5rem 0 !important;
+            }
+
+            body:not(.printing-certificate) #printable-certificate {
+                display: none !important;
+            }
         }
     </style>
     
@@ -1161,6 +1282,6 @@
     <!-- Firebase SDK (Compat v10) -->
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore-compat.js"></script>
-    <script src="script.js?v=50.0"></script>
+    <script src="script.js?v=52.0"></script>
 </body>
 </html>

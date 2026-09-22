@@ -1324,14 +1324,17 @@ td:nth-child(9) {
         display: none !important;
     }
 
-    /* Ocultar todos los modales por defecto */
-    .modal-overlay {
+    /* Ocultar todos los modales excepto la ficha cuando está activa */
+    .modal-overlay:not(#modal-ficha) {
+        display: none !important;
+    }
+    #modal-ficha:not(.active) {
         display: none !important;
     }
 
     /* MODO FICHA: Mostrar y desplegar como documento físico la Ficha del Instrumento */
-    body.printing-ficha #modal-ficha,
-    body:not(.printing-certificate) #modal-ficha.active {
+    #modal-ficha.active,
+    body.printing-ficha #modal-ficha {
         display: block !important;
         position: static !important;
         opacity: 1 !important;
@@ -1345,8 +1348,8 @@ td:nth-child(9) {
         overflow: visible !important;
     }
 
-    body.printing-ficha #modal-ficha .modal-content,
-    body:not(.printing-certificate) #modal-ficha.active .modal-content {
+    #modal-ficha.active .modal-content,
+    body.printing-ficha #modal-ficha .modal-content {
         box-shadow: none !important;
         border: none !important;
         border-radius: 0 !important;
@@ -1359,20 +1362,40 @@ td:nth-child(9) {
         break-inside: avoid !important;
     }
 
-    body.printing-ficha #modal-ficha .modal-header,
-    body:not(.printing-certificate) #modal-ficha.active .modal-header {
+    #modal-ficha.active .modal-header,
+    body.printing-ficha #modal-ficha .modal-header {
         display: none !important;
     }
 
-    body.printing-ficha #modal-ficha .modal-body,
-    body:not(.printing-certificate) #modal-ficha.active .modal-body {
+    #modal-ficha.active .modal-body,
+    body.printing-ficha #modal-ficha .modal-body {
         padding: 0 !important;
         max-height: none !important;
         overflow: visible !important;
     }
 
-    /* Ocultar el contenedor de certificados si se está imprimiendo la ficha */
-    body.printing-ficha #printable-certificate,
+    #modal-ficha.active .registro-calibracion-container,
+    body.printing-ficha .registro-calibracion-container {
+        padding: 8mm 12mm !important;
+        margin: 0 auto !important;
+        max-width: 100% !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+        page-break-inside: avoid !important;
+        break-inside: avoid !important;
+        page-break-after: avoid !important;
+        break-after: avoid !important;
+    }
+
+    #modal-ficha.active .reg-divider,
+    body.printing-ficha .reg-divider {
+        height: 0 !important;
+        border-top: 2px solid #000 !important;
+        background-color: transparent !important;
+        margin: 0.5rem 0 !important;
+    }
+
+    /* Ocultar el contenedor de certificados si no se está emitiendo un certificado */
     body:not(.printing-certificate) #printable-certificate {
         display: none !important;
     }
@@ -3206,29 +3229,7 @@ td:nth-child(9) {
     width: 100%;
 }
 
-/* Ajustes específicos para impresión de Registro de Calibración (Ficha) */
-@media print {
-    body.printing-ficha .registro-calibracion-container,
-    body:not(.printing-certificate) #modal-ficha.active .registro-calibracion-container {
-        padding: 8mm 12mm !important;
-        margin: 0 auto !important;
-        max-width: 100% !important;
-        width: 100% !important;
-        box-sizing: border-box !important;
-        page-break-inside: avoid !important;
-        break-inside: avoid !important;
-        page-break-after: avoid !important;
-        break-after: avoid !important;
-    }
 
-    body.printing-ficha .reg-divider,
-    body:not(.printing-certificate) #modal-ficha.active .reg-divider {
-        height: 0 !important;
-        border-top: 2px solid #000 !important;
-        background-color: transparent !important;
-        margin: 0.5rem 0 !important;
-    }
-}
 
 /* Modal Tabs */
 .modal-tabs {

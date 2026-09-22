@@ -5489,7 +5489,12 @@ window.imprimirFicha = function() {
     }
     document.body.classList.remove('printing-certificate');
     document.body.classList.add('printing-ficha');
-    window.print();
+    
+    // Forzar reflow en el motor de renderizado y dar 80ms para que se aplique la clase antes de congelar con el diálogo
+    void document.body.offsetHeight;
+    setTimeout(() => {
+        window.print();
+    }, 80);
 };
 
 // Listeners globales para sincronizar modos de impresión y limpiar buffers
