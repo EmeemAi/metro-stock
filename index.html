@@ -24,7 +24,7 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     <!-- Charts (Chart.js) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link rel="stylesheet" href="styles.css?v=52.0">
+    <link rel="stylesheet" href="styles.css?v=53.0">
     <style>
         #instrumentos-table {
             table-layout: fixed !important;
@@ -67,22 +67,32 @@
             display: flex !important;
             align-items: center !important;
             justify-content: flex-end !important;
-            gap: 0.2rem !important;
+            gap: 0.3rem !important;
             flex-wrap: nowrap !important;
         }
         .table-actions-cell .btn {
-            height: 24px !important;
-            min-height: 24px !important;
-            padding: 0 0.4rem !important;
-            font-size: 0.68rem !important;
-            border-radius: 4px !important;
+            height: 25px !important;
+            min-height: 25px !important;
+            padding: 0 0.45rem !important;
+            font-size: 0.72rem !important;
+            border-radius: 6px !important;
             flex-shrink: 0 !important;
             line-height: 1 !important;
+            border: 1px solid var(--border-color) !important;
+            background-color: var(--bg-card) !important;
+            color: var(--text-secondary) !important;
+            transition: all var(--transition) !important;
+        }
+        .table-actions-cell .btn:hover {
+            color: var(--primary) !important;
+            border-color: var(--border-strong) !important;
+            background-color: var(--bg-sidebar-hover) !important;
+            transform: translateY(-1px) !important;
         }
         .table-actions-cell .btn-icon-only {
-            width: 24px !important;
-            height: 24px !important;
-            min-width: 24px !important;
+            width: 25px !important;
+            height: 25px !important;
+            min-width: 25px !important;
             padding: 0 !important;
             display: inline-flex !important;
             align-items: center !important;
@@ -90,18 +100,43 @@
             flex-shrink: 0 !important;
         }
         .table-actions-cell .btn-icon-only svg {
-            width: 12px !important;
-            height: 12px !important;
+            width: 13px !important;
+            height: 13px !important;
         }
         .table-actions-cell .btn-change-state {
-            font-size: 0.68rem !important;
-            padding: 0 0.45rem !important;
-            gap: 0.22rem !important;
+            font-size: 0.7rem !important;
+            font-weight: 500 !important;
+            padding: 0 0.5rem !important;
+            gap: 0.3rem !important;
             white-space: nowrap !important;
+            color: var(--primary) !important;
+            background-color: rgba(37, 99, 235, 0.04) !important;
+            border-color: rgba(37, 99, 235, 0.2) !important;
         }
-        .table-actions-cell .btn-change-state svg {
-            width: 12px !important;
-            height: 12px !important;
+        .table-actions-cell .btn-change-state:hover {
+            background-color: var(--primary) !important;
+            color: #ffffff !important;
+            border-color: var(--primary) !important;
+        }
+        .theme-matte .table-actions-cell .btn {
+            background-color: #1a1c24 !important;
+            border-color: rgba(255, 255, 255, 0.08) !important;
+            color: var(--text-secondary) !important;
+        }
+        .theme-matte .table-actions-cell .btn:hover {
+            background-color: #242733 !important;
+            color: #ffffff !important;
+            border-color: rgba(255, 255, 255, 0.16) !important;
+        }
+        .theme-matte .table-actions-cell .btn-change-state {
+            background-color: rgba(99, 102, 241, 0.1) !important;
+            color: #818cf8 !important;
+            border-color: rgba(99, 102, 241, 0.25) !important;
+        }
+        .theme-matte .table-actions-cell .btn-change-state:hover {
+            background-color: #4f46e5 !important;
+            color: #ffffff !important;
+            border-color: #4f46e5 !important;
         }
 
         /* Reglas de Impresión de Alta Prioridad para Ficha del Instrumento */
@@ -275,7 +310,7 @@
                     </button>
                     <div>
                         <h1 id="page-title">Gestión de Inventario</h1>
-                        <p class="subtitle" id="page-subtitle">gestiona el stock de instrumentos con certificado para entrega inmediata</p>
+                        <p class="subtitle" id="page-subtitle">Gestiona el stock de instrumentos con certificado para entrega inmediata</p>
                     </div>
                 </div>
                 <div class="header-actions" style="display: flex; gap: 0.5rem;">
