@@ -915,6 +915,13 @@ document.addEventListener('DOMContentLoaded', () => {
             switchView('gestion');
         });
     }
+    const navCalibracion = document.getElementById('nav-calibracion');
+    if (navCalibracion) {
+        navCalibracion.addEventListener('click', (e) => {
+            e.preventDefault();
+            switchView('calibracion');
+        });
+    }
     const navStats = document.getElementById('nav-stats');
     if (navStats) {
         navStats.addEventListener('click', (e) => {
@@ -1646,6 +1653,7 @@ async function saveNewRecord(record) {
 // ==========================================
 function switchView(view) {
     const viewGestion = document.getElementById('view-gestion');
+    const viewCalibracion = document.getElementById('view-calibracion');
     const viewStats = document.getElementById('bi-dashboard');
     const viewSolicitudes = document.getElementById('view-solicitudes');
     const viewVencimientos = document.getElementById('view-vencimientos');
@@ -1653,6 +1661,7 @@ function switchView(view) {
     const pageTitle = document.getElementById('page-title');
     const pageSubtitle = document.getElementById('page-subtitle');
     const btnNew = document.getElementById('btn-new-equipo');
+    const btnMasivo = document.getElementById('btn-masivo-equipo');
     
     if (navItems) {
         navItems.forEach(n => n.classList.remove('active'));
@@ -1660,18 +1669,28 @@ function switchView(view) {
 
     // Ocultar todas
     if(viewGestion) viewGestion.style.display = 'none';
+    if(viewCalibracion) viewCalibracion.style.display = 'none';
     if(viewStats) viewStats.style.display = 'none';
     if(viewSolicitudes) viewSolicitudes.style.display = 'none';
     if(viewVencimientos) viewVencimientos.style.display = 'none';
     if(btnNew) btnNew.style.display = 'none';
+    if(btnMasivo) btnMasivo.style.display = 'none';
 
     if(view === 'gestion') {
         const elNav = document.getElementById('nav-gestion');
         if (elNav) elNav.classList.add('active');
         if(viewGestion) viewGestion.style.display = 'flex';
         if(btnNew) btnNew.style.display = 'inline-flex';
+        if(btnMasivo) btnMasivo.style.display = 'inline-flex';
         if(pageTitle) pageTitle.innerText = "Gestión de Inventario";
         if(pageSubtitle) pageSubtitle.innerText = "gestiona el stock de instrumentos con certificado para entrega inmediata";
+    } else if (view === 'calibracion') {
+        const elNav = document.getElementById('nav-calibracion');
+        if (elNav) elNav.classList.add('active');
+        if(viewCalibracion) viewCalibracion.style.display = 'flex';
+        if(pageTitle) pageTitle.innerText = "Mesa de Calibración";
+        if(pageSubtitle) pageSubtitle.innerText = "Control y registro progresivo de instrumentos en proceso de calibración";
+        renderCalibracionView();
     } else if (view === 'stats') {
         const elNav = document.getElementById('nav-stats');
         if (elNav) elNav.classList.add('active');
@@ -2032,6 +2051,7 @@ function updateDashboard() {
         elRepoSub.innerText = `${critOnly} en riesgo crítico (<15d)`;
     }
     updateReposicionBadge();
+    updateCalibracionBadge();
 
     const elCertificando = document.getElementById('kpi-certificando');
     if (elCertificando) elCertificando.innerText = totalCertificando;
@@ -4222,7 +4242,31 @@ function updateSolicitudesBadge() {
     }
 }
 
+function updateCalibracionBadge() {
+    const badge = document.getElementById('badge-calibracion');
+    const pillText = document.getElementById('calibracion-count-text');
+    let count = 0;
+    if (appState.data && appState.data.length > 0) {
+        count = appState.data.filter(item => getNormalizedState(item) === 'CERTIFICANDO').length;
+    }
+    
+    if (badge) {
+        if (count > 0) {
+            badge.innerText = count;
+            badge.style.display = 'inline-block';
+            badge.title = `${count} equipo${count !== 1 ? 's' : ''} en proceso de calibración`;
+        } else {
+            badge.style.display = 'none';
+        }
+    }
+
+    if (pillText) {
+        pillText.innerText = `${count} calibracion${count !== 1 ? 'es activas' : ' activa'}`;
+    }
+}
+
 function updateSidebarBadges() {
+    updateCalibracionBadge();
     updateSolicitudesBadge();
     updateReposicionBadge();
     updateVencimientosBadge();
@@ -6540,4 +6584,860 @@ async function darDeBajaItemDirect(id) {
 }
 
 window.darDeBajaItemDirect = darDeBajaItemDirect;
+
+// ==========================================
+// MÓDULO DE CALIBRACIÓN (MESA DE CALIBRACIONES ACTIVAS)
+// ==========================================
+
+let currentCalibracionSelectedId = null;
+
+function renderCalibracionView(forceSelectedId = null) {
+    const listContainer = document.getElementById('calibracion-cards-list');
+    const workbenchPanel = document.getElementById('calibracion-workbench-panel');
+    if (!listContainer || !workbenchPanel) return;
+
+    // 1. Filtrar equipos que están en CERTIFICANDO
+    const activeCalibs = (appState.data || []).filter(item => getNormalizedState(item) === 'CERTIFICANDO');
+    
+    // Actualizar badge del sidebar y contador de la barra superior
+    updateCalibracionBadge();
+
+    // 2. Resolver selección
+    if (forceSelectedId && activeCalibs.some(x => x.id === forceSelectedId)) {
+        currentCalibracionSelectedId = forceSelectedId;
+    } else if (currentCalibracionSelectedId && activeCalibs.some(x => x.id === currentCalibracionSelectedId)) {
+        // Mantener selección actual
+    } else if (activeCalibs.length > 0) {
+        currentCalibracionSelectedId = activeCalibs[0].id;
+    } else {
+        currentCalibracionSelectedId = null;
+    }
+
+    // 3. Renderizar listado lateral izquierdo
+    renderCalibracionList(activeCalibs);
+
+    // 4. Renderizar panel derecho de trabajo
+    if (currentCalibracionSelectedId) {
+        const item = activeCalibs.find(x => x.id === currentCalibracionSelectedId);
+        if (item) {
+            renderCalibracionWorkbench(item);
+        } else {
+            renderCalibracionWorkbenchEmpty();
+        }
+    } else {
+        renderCalibracionWorkbenchEmpty();
+    }
+
+    // 5. Configurar búsqueda
+    setupCalibracionSearch();
+
+    // 6. Configurar botón iniciar desde depósito
+    setupCalibracionTopbar();
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+
+function renderCalibracionList(items) {
+    const listContainer = document.getElementById('calibracion-cards-list');
+    if (!listContainer) return;
+
+    if (!items || items.length === 0) {
+        listContainer.innerHTML = `
+            <div style="padding: 2.5rem 1rem; text-align: center; color: var(--text-muted); font-size: 0.85rem;">
+                <i data-lucide="gauge" style="width: 36px; height: 36px; margin-bottom: 0.5rem; opacity: 0.5;"></i>
+                <p style="margin: 0; font-weight: 600; color: var(--text-secondary);">No hay calibraciones activas</p>
+                <small style="display: block; margin-top: 0.35rem; color: var(--text-muted);">Usa el botón "Iniciar Calibración" para comenzar a calibrar un equipo.</small>
+            </div>
+        `;
+        return;
+    }
+
+    const searchVal = (document.getElementById('calibracion-search-input')?.value || '').toLowerCase().trim();
+
+    const filtered = items.filter(item => {
+        if (!searchVal) return true;
+        const text = `${item.id} ${item.instrumento || ''} ${item.marca || ''} ${item.modelo || ''} ${item.serie || ''} ${item.certificado || ''}`.toLowerCase();
+        return text.includes(searchVal);
+    });
+
+    if (filtered.length === 0) {
+        listContainer.innerHTML = `
+            <div style="padding: 1.5rem; text-align: center; color: var(--text-muted); font-size: 0.8rem;">
+                No se encontraron equipos para "${searchVal}".
+            </div>
+        `;
+        return;
+    }
+
+    let html = '';
+    filtered.forEach(item => {
+        const isSelected = item.id === currentCalibracionSelectedId;
+        
+        let pts = [];
+        try { pts = typeof item.puntos === 'string' ? JSON.parse(item.puntos) : (item.puntos || []); } catch(e) {}
+        
+        let pats = [];
+        try { pats = typeof item.patrones === 'string' ? JSON.parse(item.patrones) : (item.patrones || []); } catch(e) {}
+
+        const ptsCount = Array.isArray(pts) ? pts.length : 0;
+        const patsList = Array.isArray(pats) ? pats : [];
+
+        html += `
+            <div class="calibracion-card ${isSelected ? 'active' : ''}" data-id="${item.id}">
+                <div class="calib-card-title">
+                    <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 220px;" title="${item.instrumento || 'Instrumento'}">${item.instrumento || 'Sin Nombre'}</span>
+                    <span class="badge" style="background: rgba(124, 58, 237, 0.1); color: #7c3aed; font-size: 0.7rem; font-family: var(--font-data);">#${item.id}</span>
+                </div>
+                <div class="calib-card-meta">
+                    <strong>${item.marca || ''} ${item.modelo || ''}</strong> &bull; Serie: <span>${item.serie && item.serie !== 'Sin identificar' ? item.serie : 'S/N'}</span>
+                </div>
+                <div class="calib-card-meta" style="color: var(--text-muted); font-size: 0.72rem;">
+                    <span>Cert: <strong>${item.certificado || 'Pendiente'}</strong></span>
+                    ${item.fecha_calibracion ? `<span>&bull; ${item.fecha_calibracion}</span>` : ''}
+                </div>
+                <div class="calib-card-badges">
+                    <span class="calib-badge calib-badge-pts"><i data-lucide="list-ordered" style="width:11px; height:11px; vertical-align: middle;"></i> ${ptsCount} pt${ptsCount !== 1 ? 's' : ''} cargados</span>
+                    ${patsList.length > 0 ? patsList.slice(0, 3).map(p => `<span class="calib-badge calib-badge-pat">${p}</span>`).join('') + (patsList.length > 3 ? `<span class="calib-badge calib-badge-pat">+${patsList.length - 3}</span>` : '') : '<span class="calib-badge" style="background: rgba(0,0,0,0.04); color: var(--text-muted);">Sin patrones</span>'}
+                </div>
+            </div>
+        `;
+    });
+
+    listContainer.innerHTML = html;
+
+    listContainer.querySelectorAll('.calibracion-card').forEach(card => {
+        card.addEventListener('click', () => {
+            const id = card.getAttribute('data-id');
+            if (id && id !== currentCalibracionSelectedId) {
+                currentCalibracionSelectedId = id;
+                const activeCalibs = (appState.data || []).filter(item => getNormalizedState(item) === 'CERTIFICANDO');
+                renderCalibracionList(activeCalibs);
+                const selItem = activeCalibs.find(x => x.id === id);
+                if (selItem) renderCalibracionWorkbench(selItem);
+                if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+            }
+        });
+    });
+}
+
+function renderCalibracionWorkbenchEmpty() {
+    const panel = document.getElementById('calibracion-workbench-panel');
+    if (!panel) return;
+    panel.innerHTML = `
+        <div class="calib-workbench-empty">
+            <i data-lucide="gauge" style="width: 56px; height: 56px; stroke-width: 1.5; color: var(--text-muted);"></i>
+            <h3 style="margin: 0; color: var(--text-primary); font-size: 1.15rem;">No hay equipo seleccionado</h3>
+            <p style="margin: 0; max-width: 440px; font-size: 0.85rem; line-height: 1.4; color: var(--text-secondary);">
+                Selecciona un equipo de la lista izquierda para continuar su calibración, o ingresa un equipo de depósito para comenzar a registrar mediciones.
+            </p>
+            <button class="btn btn-primary" onclick="openIniciarCalibracionModal()" style="margin-top: 0.5rem;">
+                <i data-lucide="plus-circle"></i> Iniciar Calibración desde Depósito
+            </button>
+        </div>
+    `;
+    if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+}
+
+function renderCalibracionWorkbench(item) {
+    const panel = document.getElementById('calibracion-workbench-panel');
+    if (!panel) return;
+
+    let dateVal = '';
+    if (item.fecha_calibracion) {
+        const str = String(item.fecha_calibracion).trim();
+        if (str.includes('-') && str.split('-').length === 3 && str.split('-')[0].length === 4) {
+            dateVal = str;
+        } else if (str.includes('/')) {
+            const parts = str.split('/');
+            if (parts.length === 3) {
+                dateVal = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+            }
+        }
+    }
+
+    panel.innerHTML = `
+        <!-- Cabecera del Instrumento -->
+        <div class="calib-section" style="border-left: 4px solid var(--state-certificando);">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.5rem;">
+                <div>
+                    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                        <span class="badge" style="background: rgba(124, 58, 237, 0.15); color: #7c3aed; font-size: 0.75rem; font-weight: 700; font-family: var(--font-data);">#${item.id}</span>
+                        <h2 style="margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text-primary);">${item.instrumento || 'Instrumento'}</h2>
+                    </div>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                        Marca: <strong>${item.marca || '---'}</strong> &bull; Modelo: <strong>${item.modelo || '---'}</strong>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span class="badge" style="background: rgba(124, 58, 237, 0.12); color: var(--state-certificando); font-weight: 600; padding: 0.3rem 0.6rem; border-radius: 6px; font-size: 0.8rem; border: 1px solid rgba(124, 58, 237, 0.25);">
+                        <i data-lucide="cog" style="width:13px; height:13px; vertical-align: middle;"></i> EN CALIBRACIÓN
+                    </span>
+                </div>
+            </div>
+
+            <!-- Parámetros Principales de la Calibración -->
+            <div class="calib-grid-3">
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">N° Certificado</label>
+                    <input type="text" id="wb-certificado" value="${item.certificado || ''}" placeholder="Ej. 202609-CR-17580" style="font-family: var(--font-data); font-weight: 600;">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">Fecha de Calibración</label>
+                    <input type="date" id="wb-fecha" value="${dateVal}">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">N° de Serie</label>
+                    <input type="text" id="wb-serie" value="${item.serie && item.serie !== 'Sin identificar' ? item.serie : ''}" placeholder="Serie del instrumento">
+                </div>
+                <div class="form-group" style="margin-bottom: 0;">
+                    <label style="font-size: 0.75rem; font-weight: 600; text-transform: uppercase;">Cliente (Opcional)</label>
+                    <input type="text" id="wb-cliente" value="${item.cliente || ''}" placeholder="Para venta o servicio directo">
+                </div>
+            </div>
+        </div>
+
+        <!-- Sección 1: Patrones de Calibración -->
+        <div class="calib-section">
+            <div class="calib-section-title">
+                <i data-lucide="shield-check" style="color: var(--primary);"></i>
+                <span>Patrones de Referencia Utilizados</span>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-secondary); margin: 0 0 0.75rem 0;">
+                Selecciona los patrones del laboratorio asignados a este ensayo para asegurar la trazabilidad metrológica:
+            </p>
+            <div id="wb-patrones-checklist" class="patrones-checklist" style="display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 0.75rem;">
+                <!-- Checkboxes inyectados por JS -->
+            </div>
+            <div style="display: flex; gap: 0.5rem; align-items: center;">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-wb-add-patron" style="font-size: 0.75rem; padding: 0.25rem 0.5rem; height: 30px;">
+                    <i data-lucide="plus" style="width:13px; height:13px; vertical-align: middle;"></i> Agregar otro patrón
+                </button>
+                <select id="wb-patrones-catalogo-select" class="input-tiny" style="display: none; height: 30px; padding: 0.2rem 0.5rem; width: 230px;">
+                    <option value="">-- Seleccionar Patrón --</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Sección 2: Puntos de Medición -->
+        <div class="calib-section">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; flex-wrap: wrap; gap: 0.5rem;">
+                <div class="calib-section-title" style="margin-bottom: 0;">
+                    <i data-lucide="ruler" style="color: #7c3aed;"></i>
+                    <span>Puntos de Medición (Lecturas en vivo)</span>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">
+                    El error se calcula automáticamente: <code style="font-weight: 600;">Error = Inst - Ref</code>
+                </div>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-secondary); margin: 0 0 0.75rem 0;">
+                Carga progresiva de lecturas. Ideal para registrar puntos en diferentes días (ej. estabilización térmica o de humedad).
+            </p>
+
+            <div class="calib-table-wrapper">
+                <table class="calib-points-table">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;"># Pt</th>
+                            <th style="width: 90px;">Unidad</th>
+                            <th>Valor Patrón (Ref)</th>
+                            <th>Lectura Equipo (Inst)</th>
+                            <th style="width: 130px;">Error (Inst - Ref)</th>
+                            <th style="width: 50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="wb-tbody-puntos">
+                        <!-- Filas inyectadas dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div style="margin-top: 0.75rem; display: flex; justify-content: flex-start;">
+                <button type="button" class="btn btn-outline btn-sm" id="btn-wb-add-punto" style="font-size: 0.78rem; height: 32px;">
+                    <i data-lucide="plus"></i> Añadir Punto de Medición
+                </button>
+            </div>
+        </div>
+
+        <!-- Sección 3: Bitácora / Notas de Calibración -->
+        <div class="calib-section">
+            <div class="calib-section-title">
+                <i data-lucide="file-text" style="color: #f59e0b;"></i>
+                <span>Bitácora y Notas del Ensayo</span>
+            </div>
+            <p style="font-size: 0.78rem; color: var(--text-secondary); margin: 0 0 0.5rem 0;">
+                Espacio para registrar notas técnicas diarias (temperatura ambiente, estabilización de cámara para termohigrómetros, observaciones del instrumento, etc.):
+            </p>
+            <textarea id="wb-observaciones" rows="3" placeholder="Ej: Día 1: Se ingresa equipo a cámara a 20°C y 50% HR para estabilización por 24hs..." style="width: 100%; border: 1px solid var(--border-color); border-radius: 6px; padding: 0.5rem; background: var(--bg-card); color: var(--text-primary); font-size: 0.82rem; resize: vertical;">${item.observaciones || item.notas || ''}</textarea>
+        </div>
+
+        <!-- Barra de Acciones Fija Inferior -->
+        <div class="calib-actions-bar">
+            <div>
+                <button type="button" class="btn btn-outline" id="btn-wb-deposito" style="color: #64748b; border-color: var(--border-color); font-size: 0.8rem;">
+                    <i data-lucide="arrow-left"></i> Devolver a Depósito
+                </button>
+            </div>
+            <div style="display: flex; gap: 0.6rem; align-items: center;">
+                <button type="button" class="btn btn-outline" id="btn-wb-save" style="border-color: var(--primary); color: var(--primary); font-weight: 600;">
+                    <i data-lucide="save"></i> Guardar Progreso
+                </button>
+                <button type="button" class="btn btn-primary" id="btn-wb-finish" style="background-color: #10b981; border-color: #10b981; font-weight: 600;">
+                    <i data-lucide="check-circle"></i> Finalizar Calibración
+                </button>
+            </div>
+        </div>
+    `;
+
+    // 1. Configurar Patrones
+    setupWorkbenchPatronesChecklist(item);
+
+    // 2. Configurar Puntos
+    setupWorkbenchPointsTable(item);
+
+    // 3. Configurar Botones de Acción
+    const btnSave = document.getElementById('btn-wb-save');
+    if (btnSave) {
+        btnSave.onclick = () => saveCalibracionProgress(item.id);
+    }
+
+    const btnFinish = document.getElementById('btn-wb-finish');
+    if (btnFinish) {
+        btnFinish.onclick = () => finishCalibracion(item.id);
+    }
+
+    const btnDeposito = document.getElementById('btn-wb-deposito');
+    if (btnDeposito) {
+        btnDeposito.onclick = () => returnCalibracionToDeposito(item.id);
+    }
+
+    if (typeof lucide !== 'undefined' && lucide.createIcons) {
+        lucide.createIcons();
+    }
+}
+
+function setupWorkbenchPatronesChecklist(item) {
+    const container = document.getElementById('wb-patrones-checklist');
+    const select = document.getElementById('wb-patrones-catalogo-select');
+    const btnAdd = document.getElementById('btn-wb-add-patron');
+    if (!container) return;
+
+    let selectedPats = [];
+    try {
+        selectedPats = typeof item.patrones === 'string' ? JSON.parse(item.patrones) : (item.patrones || []);
+    } catch(e) {}
+    if (!Array.isArray(selectedPats)) selectedPats = [];
+    selectedPats = selectedPats.map(x => String(x).toUpperCase());
+
+    const matchingMapping = getTemplateForInstrument(item.instrumento, item.certificado);
+    const defaultPats = matchingMapping ? matchingMapping.patrones : [];
+    const allPats = Array.from(new Set([...defaultPats, ...selectedPats]));
+
+    container.innerHTML = '';
+    if (allPats.length === 0) {
+        container.innerHTML = '<span style="font-size: 0.8rem; color: var(--text-muted);">Sin patrones sugeridos por defecto. Usa "+ Agregar patrón" para seleccionar del catálogo.</span>';
+    } else {
+        allPats.forEach(id => {
+            const isChecked = selectedPats.length > 0 ? selectedPats.includes(id) : defaultPats.includes(id);
+            const pDet = PATRONES_CATALOG[id];
+            const title = pDet ? `${id} - ${pDet.desc} (${pDet.brand} ${pDet.model})` : id;
+            
+            const div = document.createElement('div');
+            div.className = 'patron-chk-item';
+            div.innerHTML = `
+                <input type="checkbox" id="chk-wb-${id}" value="${id}" ${isChecked ? 'checked' : ''}>
+                <label for="chk-wb-${id}" title="${title}">${id}</label>
+            `;
+            container.appendChild(div);
+        });
+    }
+
+    // Cargar catálogo de patrones si no está inicializado
+    if (select && select.children.length <= 1) {
+        Object.keys(PATRONES_CATALOG).sort().forEach(id => {
+            const p = PATRONES_CATALOG[id];
+            const opt = document.createElement('option');
+            opt.value = id;
+            opt.innerText = `${id} - ${p.desc} (${p.brand})`;
+            select.appendChild(opt);
+        });
+    }
+
+    if (btnAdd && select) {
+        btnAdd.onclick = () => {
+            if (select.style.display === 'none') {
+                select.style.display = 'inline-block';
+                btnAdd.innerHTML = '<i data-lucide="minus" style="width:13px; height:13px; vertical-align: middle;"></i> Ocultar';
+            } else {
+                select.style.display = 'none';
+                btnAdd.innerHTML = '<i data-lucide="plus" style="width:13px; height:13px; vertical-align: middle;"></i> Agregar otro patrón';
+            }
+            if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+        };
+
+        select.onchange = () => {
+            const id = select.value;
+            if (!id) return;
+            const exists = document.getElementById(`chk-wb-${id}`);
+            if (!exists) {
+                const pDet = PATRONES_CATALOG[id];
+                const title = pDet ? `${id} - ${pDet.desc} (${pDet.brand} ${pDet.model})` : id;
+                const div = document.createElement('div');
+                div.className = 'patron-chk-item';
+                div.innerHTML = `
+                    <input type="checkbox" id="chk-wb-${id}" value="${id}" checked>
+                    <label for="chk-wb-${id}" title="${title}">${id}</label>
+                `;
+                if (container.querySelector('span')) container.innerHTML = '';
+                container.appendChild(div);
+            }
+        };
+    }
+}
+
+function setupWorkbenchPointsTable(item) {
+    const tbody = document.getElementById('wb-tbody-puntos');
+    const btnAdd = document.getElementById('btn-wb-add-punto');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    let puntos = [];
+    try {
+        puntos = typeof item.puntos === 'string' ? JSON.parse(item.puntos) : (item.puntos || []);
+    } catch(e) {}
+    if (!Array.isArray(puntos)) puntos = [];
+
+    if (puntos.length === 0) {
+        puntos = [{ pt: '1', unidad: '', ref: '', inst: '', inc: '' }];
+    }
+
+    puntos.forEach((p, idx) => {
+        addWorkbenchPointRow(tbody, p, idx + 1);
+    });
+
+    if (btnAdd) {
+        btnAdd.onclick = () => {
+            const nextIdx = tbody.children.length + 1;
+            addWorkbenchPointRow(tbody, { pt: String(nextIdx), unidad: '', ref: '', inst: '', inc: '' }, nextIdx);
+            if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+        };
+    }
+}
+
+function addWorkbenchPointRow(tbody, p, rowNum) {
+    const tr = document.createElement('tr');
+    
+    const ptName = p.pt !== undefined && p.pt !== '' ? p.pt : String(rowNum);
+    const unit = p.unidad || '';
+    const refVal = p.ref !== undefined ? p.ref : '';
+    const instVal = p.inst !== undefined ? p.inst : '';
+
+    const errorCalc = calculatePointError(refVal, instVal);
+
+    tr.innerHTML = `
+        <td style="width: 50px; font-weight: 600;">
+            <input type="text" name="wb-pt-name" value="${ptName}" style="width: 45px; text-align: center;">
+        </td>
+        <td style="width: 90px;">
+            <input type="text" name="wb-pt-unit" value="${unit}" placeholder="ej. mm, dB, °C" style="width: 80px; text-align: center;">
+        </td>
+        <td>
+            <input type="text" class="wb-input-ref" name="wb-pt-ref" value="${refVal}" placeholder="Valor Patrón" style="font-weight: 600;">
+        </td>
+        <td>
+            <input type="text" class="wb-input-inst" name="wb-pt-inst" value="${instVal}" placeholder="Lectura Equipo" style="font-weight: 600;">
+        </td>
+        <td style="width: 140px;">
+            <span class="wb-error-cell ${errorCalc.pillClass}">${errorCalc.text}</span>
+        </td>
+        <td style="width: 50px;">
+            <button type="button" class="btn btn-outline btn-icon-only btn-remove-wb-row" title="Eliminar Punto" style="color: #ef4444; border-color: rgba(239, 68, 68, 0.3);">
+                <i data-lucide="trash-2" style="width: 13px; height: 13px;"></i>
+            </button>
+        </td>
+    `;
+
+    tbody.appendChild(tr);
+
+    const refInput = tr.querySelector('.wb-input-ref');
+    const instInput = tr.querySelector('.wb-input-inst');
+    const errorSpan = tr.querySelector('.wb-error-cell');
+
+    const updateError = () => {
+        const res = calculatePointError(refInput.value, instInput.value);
+        errorSpan.className = `wb-error-cell ${res.pillClass}`;
+        errorSpan.innerText = res.text;
+    };
+
+    if (refInput) refInput.addEventListener('input', updateError);
+    if (instInput) instInput.addEventListener('input', updateError);
+
+    const btnRemove = tr.querySelector('.btn-remove-wb-row');
+    if (btnRemove) {
+        btnRemove.onclick = () => {
+            tr.remove();
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach((r, i) => {
+                const nameInp = r.querySelector('input[name="wb-pt-name"]');
+                if (nameInp && !isNaN(parseInt(nameInp.value))) {
+                    nameInp.value = String(i + 1);
+                }
+            });
+        };
+    }
+}
+
+function calculatePointError(refStr, instStr) {
+    if (refStr === '' || instStr === '' || refStr === undefined || instStr === undefined) {
+        return { text: '---', pillClass: '' };
+    }
+    const refNum = parseFloat(String(refStr).replace(',', '.'));
+    const instNum = parseFloat(String(instStr).replace(',', '.'));
+    if (isNaN(refNum) || isNaN(instNum)) {
+        return { text: '---', pillClass: '' };
+    }
+    const err = instNum - refNum;
+    const formatted = (err >= 0 ? '+' : '') + err.toFixed(3).replace(/\.?0+$/, (match) => match === '.000' ? '.00' : match);
+    
+    if (Math.abs(err) < 0.00001) {
+        return { text: '0.00 (Exacto)', pillClass: 'calib-error-pill zero' };
+    }
+    return { text: `${formatted}`, pillClass: 'calib-error-pill normal' };
+}
+
+function setupCalibracionSearch() {
+    const searchInput = document.getElementById('calibracion-search-input');
+    if (!searchInput) return;
+    searchInput.oninput = () => {
+        const activeCalibs = (appState.data || []).filter(item => getNormalizedState(item) === 'CERTIFICANDO');
+        renderCalibracionList(activeCalibs);
+        if (typeof lucide !== 'undefined' && lucide.createIcons) lucide.createIcons();
+    };
+}
+
+function setupCalibracionTopbar() {
+    const btnIniciar = document.getElementById('btn-iniciar-calibracion');
+    if (btnIniciar) {
+        btnIniciar.onclick = () => openIniciarCalibracionModal();
+    }
+}
+
+function setupIniciarCalibracionModalHandlers() {
+    const filterInput = document.getElementById('deposito-filter-input');
+    if (filterInput) {
+        filterInput.oninput = () => populateDepositoSelect();
+    }
+
+    const btnConfirm = document.getElementById('btn-confirm-iniciar-calibracion');
+    const select = document.getElementById('deposito-item-select');
+    if (btnConfirm && select) {
+        btnConfirm.onclick = () => {
+            const id = select.value;
+            if (id) {
+                startCalibracionFromDeposito(id);
+            }
+        };
+    }
+}
+
+function openIniciarCalibracionModal() {
+    const modal = document.getElementById('modal-iniciar-calibracion');
+    const select = document.getElementById('deposito-item-select');
+    const filterInput = document.getElementById('deposito-filter-input');
+    const btnConfirm = document.getElementById('btn-confirm-iniciar-calibracion');
+    if (!modal || !select) return;
+
+    if (filterInput) filterInput.value = '';
+    if (btnConfirm) btnConfirm.disabled = true;
+
+    populateDepositoSelect();
+
+    modal.classList.add('active');
+    if (filterInput) filterInput.focus();
+}
+
+function populateDepositoSelect() {
+    const select = document.getElementById('deposito-item-select');
+    const filterInput = document.getElementById('deposito-filter-input');
+    const btnConfirm = document.getElementById('btn-confirm-iniciar-calibracion');
+    if (!select) return;
+
+    const query = (filterInput?.value || '').toLowerCase().trim();
+    const depositoItems = (appState.data || []).filter(item => getNormalizedState(item) === 'EN DEPÓSITO');
+
+    const filtered = depositoItems.filter(item => {
+        if (!query) return true;
+        const text = `${item.id} ${item.instrumento || ''} ${item.marca || ''} ${item.modelo || ''} ${item.serie || ''}`.toLowerCase();
+        return text.includes(query);
+    });
+
+    if (filtered.length === 0) {
+        select.innerHTML = '<option value="" disabled>No hay equipos en depósito disponibles</option>';
+        if (btnConfirm) btnConfirm.disabled = true;
+        return;
+    }
+
+    select.innerHTML = filtered.map(item => `
+        <option value="${item.id}">#${item.id} - ${item.instrumento || 'Instrumento'} (${item.marca || ''} ${item.modelo || ''}) - Serie: ${item.serie || 'S/N'}</option>
+    `).join('');
+
+    select.onchange = () => {
+        if (btnConfirm) btnConfirm.disabled = !select.value;
+    };
+
+    if (filtered.length > 0) {
+        select.selectedIndex = 0;
+        if (btnConfirm) btnConfirm.disabled = false;
+    }
+}
+
+async function startCalibracionFromDeposito(id) {
+    const item = (appState.data || []).find(x => x.id === id);
+    if (!item) return;
+
+    showLoader();
+    try {
+        item.estado = 'CERTIFICANDO';
+        if (!item.fecha_calibracion) {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            const d = String(today.getDate()).padStart(2, '0');
+            item.fecha_calibracion = `${y}-${m}-${d}`;
+        }
+
+        if (!item.certificado) {
+            const mapping = getTemplateForInstrument(item.instrumento, '');
+            let prefix = 'CR';
+            if (mapping && mapping.filename) {
+                const matchPref = mapping.filename.match(/0\d+\s+([A-Z]{2})?/i);
+                if (matchPref && matchPref[1]) prefix = matchPref[1].toUpperCase();
+            }
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            item.certificado = `${y}${m}-${prefix}-${item.id}`;
+        }
+
+        await saveFullUpdate(item);
+
+        closeAllModals();
+        renderTable();
+        updateDashboard();
+        updateSidebarBadges();
+
+        // Cambiar a la vista de calibración con este equipo seleccionado
+        switchView('calibracion');
+        renderCalibracionView(item.id);
+
+        showToast(`🔬 Equipo #${item.id} ingresado a Mesa de Calibración.`, "success");
+    } catch(err) {
+        console.error("Error al pasar a calibración:", err);
+        showToast("⚠️ Error al pasar a calibración: " + err.message, "error");
+    } finally {
+        hideLoader();
+    }
+}
+
+async function saveCalibracionProgress(id) {
+    const item = (appState.data || []).find(x => x.id === id);
+    if (!item) return;
+
+    const certInput = document.getElementById('wb-certificado');
+    const fechaInput = document.getElementById('wb-fecha');
+    const serieInput = document.getElementById('wb-serie');
+    const clienteInput = document.getElementById('wb-cliente');
+    const obsInput = document.getElementById('wb-observaciones');
+
+    const certificado = certInput ? certInput.value.trim() : (item.certificado || '');
+    const fecha = fechaInput ? fechaInput.value : (item.fecha_calibracion || '');
+    const serie = serieInput ? serieInput.value.trim() : (item.serie || '');
+    const cliente = clienteInput ? clienteInput.value.trim() : (item.cliente || '');
+    const observaciones = obsInput ? obsInput.value.trim() : '';
+
+    // Patrones
+    const checkedPats = [];
+    document.querySelectorAll('#wb-patrones-checklist input[type="checkbox"]:checked').forEach(cb => {
+        checkedPats.push(cb.value);
+    });
+
+    // Puntos
+    const puntos = [];
+    document.querySelectorAll('#wb-tbody-puntos tr').forEach(tr => {
+        const nameInp = tr.querySelector('input[name="wb-pt-name"]');
+        const unitInp = tr.querySelector('input[name="wb-pt-unit"]');
+        const refInp = tr.querySelector('input[name="wb-pt-ref"]');
+        const instInp = tr.querySelector('input[name="wb-pt-inst"]');
+        
+        if (refInp || instInp) {
+            puntos.push({
+                pt: nameInp ? nameInp.value : '',
+                variable: '',
+                unidad: unitInp ? unitInp.value : '',
+                ref: refInp ? refInp.value : '',
+                inst: instInp ? instInp.value : '',
+                inc: ''
+            });
+        }
+    });
+
+    // Actualizar objeto en memoria
+    item.certificado = certificado;
+    item.fecha_calibracion = fecha;
+    item.serie = serie;
+    item.cliente = cliente;
+    item.observaciones = observaciones;
+    item.patrones = JSON.stringify(checkedPats);
+    item.puntos = JSON.stringify(puntos);
+    item.estado = 'CERTIFICANDO'; // Permanece en certificando
+
+    // Sincronizar en segundo plano
+    saveFullUpdate(item).catch(err => {
+        console.error("Error al guardar progreso en la nube:", err);
+        showToast("⚠️ Error al sincronizar en la nube.", "warning");
+    });
+
+    // Actualizar lista lateral sin perder el foco
+    const activeCalibs = (appState.data || []).filter(x => getNormalizedState(x) === 'CERTIFICANDO');
+    renderCalibracionList(activeCalibs);
+    updateCalibracionBadge();
+
+    showToast("💾 Progreso guardado exitosamente. Estado: Certificando.", "success");
+}
+
+async function finishCalibracion(id) {
+    const item = (appState.data || []).find(x => x.id === id);
+    if (!item) return;
+
+    const certInput = document.getElementById('wb-certificado');
+    const certificado = certInput ? certInput.value.trim() : (item.certificado || '');
+    if (!certificado) {
+        showToast("⚠️ Debes asignar un número de certificado antes de finalizar la calibración.", "warning");
+        if (certInput) certInput.focus();
+        return;
+    }
+
+    if (!confirm(`¿Confirmas finalizar la calibración del equipo #${item.id}?\n\nEl instrumento pasará a estado DISPONIBLE para la venta con su certificado emitido.`)) {
+        return;
+    }
+
+    showLoader();
+    try {
+        const fechaInput = document.getElementById('wb-fecha');
+        const serieInput = document.getElementById('wb-serie');
+        const clienteInput = document.getElementById('wb-cliente');
+        const obsInput = document.getElementById('wb-observaciones');
+
+        item.certificado = certificado;
+        item.serie = serieInput ? serieInput.value.trim() : (item.serie || '');
+        item.cliente = clienteInput ? clienteInput.value.trim() : (item.cliente || '');
+        item.observaciones = obsInput ? obsInput.value.trim() : '';
+        
+        let fecha = fechaInput ? fechaInput.value : '';
+        if (!fecha) {
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth() + 1).padStart(2, '0');
+            const d = String(today.getDate()).padStart(2, '0');
+            fecha = `${y}-${m}-${d}`;
+        }
+        item.fecha_calibracion = fecha;
+
+        // Calcular fecha de vencimiento (12 meses por defecto)
+        const dObj = parseToDateObject(fecha);
+        if (dObj) {
+            const vObj = new Date(dObj.getTime());
+            vObj.setFullYear(vObj.getFullYear() + 1);
+            const vy = vObj.getFullYear();
+            const vm = String(vObj.getMonth() + 1).padStart(2, '0');
+            const vd = String(vObj.getDate()).padStart(2, '0');
+            item.fecha_vencimiento = `${vy}-${vm}-${vd}`;
+        }
+
+        // Patrones
+        const checkedPats = [];
+        document.querySelectorAll('#wb-patrones-checklist input[type="checkbox"]:checked').forEach(cb => {
+            checkedPats.push(cb.value);
+        });
+        item.patrones = JSON.stringify(checkedPats);
+
+        // Puntos
+        const puntos = [];
+        document.querySelectorAll('#wb-tbody-puntos tr').forEach(tr => {
+            const nameInp = tr.querySelector('input[name="wb-pt-name"]');
+            const unitInp = tr.querySelector('input[name="wb-pt-unit"]');
+            const refInp = tr.querySelector('input[name="wb-pt-ref"]');
+            const instInp = tr.querySelector('input[name="wb-pt-inst"]');
+            if (refInp || instInp) {
+                puntos.push({
+                    pt: nameInp ? nameInp.value : '',
+                    variable: '',
+                    unidad: unitInp ? unitInp.value : '',
+                    ref: refInp ? refInp.value : '',
+                    inst: instInp ? instInp.value : '',
+                    inc: ''
+                });
+            }
+        });
+        item.puntos = JSON.stringify(puntos);
+
+        // Pasar a DISPONIBLE
+        item.estado = 'DISPONIBLE';
+
+        // Guardar en Firestore y Sheets
+        await saveFullUpdate(item);
+
+        // Actualizar vistas
+        renderTable();
+        updateDashboard();
+        updateSidebarBadges();
+        
+        // Refrescar mesa de calibración
+        renderCalibracionView();
+
+        showToast(`🎉 ¡Calibración de #${item.id} finalizada! Equipo en estado DISPONIBLE.`, "success");
+
+    } catch(err) {
+        console.error("Error al finalizar calibración:", err);
+        showToast("⚠️ Error al finalizar calibración: " + err.message, "error");
+    } finally {
+        hideLoader();
+    }
+}
+
+async function returnCalibracionToDeposito(id) {
+    const item = (appState.data || []).find(x => x.id === id);
+    if (!item) return;
+
+    if (!confirm(`¿Deseas devolver el equipo #${item.id} a "EN DEPÓSITO"?\n\nSe conservarán las mediciones y notas que hayas cargado hasta el momento.`)) {
+        return;
+    }
+
+    showLoader();
+    try {
+        item.estado = 'EN DEPÓSITO';
+        await saveFullUpdate(item);
+
+        renderTable();
+        updateDashboard();
+        updateSidebarBadges();
+        renderCalibracionView();
+
+        showToast(`Equipo #${item.id} devuelto a EN DEPÓSITO.`, "info");
+    } catch(err) {
+        console.error("Error al devolver a depósito:", err);
+        showToast("⚠️ Error al actualizar estado: " + err.message, "error");
+    } finally {
+        hideLoader();
+    }
+}
+
+window.renderCalibracionView = renderCalibracionView;
+window.openIniciarCalibracionModal = openIniciarCalibracionModal;
+window.saveCalibracionProgress = saveCalibracionProgress;
+window.finishCalibracion = finishCalibracion;
+window.returnCalibracionToDeposito = returnCalibracionToDeposito;
+
 
